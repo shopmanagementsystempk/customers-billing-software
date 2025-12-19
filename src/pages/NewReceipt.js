@@ -680,7 +680,8 @@ const NewReceipt = () => {
     shopData,
     totals,
     transactionId,
-    language
+    language,
+    currentUser?.uid
   ]);
 
   // Handle Enter key to save and print receipt
