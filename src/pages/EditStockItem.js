@@ -20,6 +20,7 @@ const EditStockItem = () => {
   const [sku, setSku] = useState('');
   const [barcode, setBarcode] = useState('');
   const [lowStockAlert, setLowStockAlert] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [itemLoading, setItemLoading] = useState(true);
@@ -65,6 +66,7 @@ const EditStockItem = () => {
         setSku(item.sku || '');
         setBarcode(item.barcode || item.sku || ''); // Load existing barcode or SKU
         setLowStockAlert(item.lowStockAlert?.toString() || ''); // Load existing low stock alert
+        setExpiryDate(item.expiryDate || '');
       })
       .catch(error => {
         setError('Failed to load item: ' + error.message);
@@ -218,6 +220,7 @@ const EditStockItem = () => {
       supplier: supplier.trim(),
       sku: sku.trim(),
       barcode: barcode.trim(), // Include barcode in the update
+      expiryDate: expiryDate || null,
       lowStockAlert: lowStockAlert ? parseFloat(lowStockAlert) : null // Include low stock alert
     };
     
@@ -446,6 +449,16 @@ const EditStockItem = () => {
                     <Form.Text className="text-muted">
                       Alert when stock falls below this quantity
                     </Form.Text>
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Expiry Date (Optional)</Form.Label>
+                    <Form.Control
+                      type="date"
+                      value={expiryDate || ''}
+                      onChange={(e) => setExpiryDate(e.target.value)}
+                    />
                   </Form.Group>
                 </Col>
               </Row>

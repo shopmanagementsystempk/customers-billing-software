@@ -149,24 +149,28 @@ const Dashboard = () => {
         <MainNavbar />
         <Container className="pos-content">
           <PageHeader
-            title="Staff Dashboard"
+            title={<Translate textKey="staffDashboard" fallback="Staff Dashboard" />}
             icon="bi-person-badge"
-            subtitle={`Welcome back ${staffData.name || currentUser?.email || ''}. Here's a snapshot of your access.`}
+            subtitle={
+              <>
+                <Translate textKey="welcomeBack" fallback="Welcome back" /> {staffData.name || currentUser?.email || ''}. <Translate textKey="accessSnapshot" fallback="Here's a snapshot of your access." />
+              </>
+            }
           >
             <div className="hero-metrics__item">
-              <span className="hero-metrics__label">Shop</span>
+              <span className="hero-metrics__label"><Translate textKey="shop" fallback="Shop" /></span>
               <span className="hero-metrics__value">{shopData?.shopName || '—'}</span>
             </div>
             <div className="hero-metrics__item">
-              <span className="hero-metrics__label">Permissions</span>
+              <span className="hero-metrics__label"><Translate textKey="permissions" fallback="Permissions" /></span>
               <span className="hero-metrics__value">{staffPermissionCount}</span>
             </div>
             <div className="hero-metrics__item">
-              <span className="hero-metrics__label">Role</span>
-              <span className="hero-metrics__value">{staffData.role || 'Team Member'}</span>
+              <span className="hero-metrics__label"><Translate textKey="role" fallback="Role" /></span>
+              <span className="hero-metrics__value">{staffData.role || <Translate textKey="teamMember" fallback="Team Member" />}</span>
             </div>
             <div className="hero-metrics__item">
-              <span className="hero-metrics__label">Attendance</span>
+              <span className="hero-metrics__label"><Translate textKey="attendance" fallback="Attendance" /></span>
               <span className="hero-metrics__value">
                 {translatedAttendance.present}/{translatedAttendance.total}
               </span>
@@ -195,20 +199,20 @@ const Dashboard = () => {
                       <i className="bi bi-shop text-primary"></i>
                       {shopData.shopName}
                     </h5>
-                    <p className="text-muted mb-0">Store overview for your reference.</p>
+                    <p className="text-muted mb-0"><Translate textKey="storeOverviewRef" fallback="Store overview for your reference." /></p>
                   </div>
-                  <span className="pos-badge">Shop Info</span>
+                  <span className="pos-badge"><Translate textKey="shopInfo" fallback="Shop Info" /></span>
                 </div>
                 <Row className="g-4">
                   <Col md={4}>
                     <div className="d-flex flex-column">
-                      <span className="text-uppercase text-muted fw-semibold small">Address</span>
-                      <span className="fw-semibold text-primary mt-1">{shopData.address || 'Not provided'}</span>
+                      <span className="text-uppercase text-muted fw-semibold small"><Translate textKey="address" fallback="Address" /></span>
+                      <span className="fw-semibold text-primary mt-1">{shopData.address || <Translate textKey="notSet" fallback="Not provided" />}</span>
                     </div>
                   </Col>
                   <Col md={4}>
                     <div className="d-flex flex-column">
-                      <span className="text-uppercase text-muted fw-semibold small">Phone</span>
+                      <span className="text-uppercase text-muted fw-semibold small"><Translate textKey="phone" fallback="Phone" /></span>
                       <span className="fw-semibold text-primary mt-1">
                         {Array.isArray(shopData.phoneNumbers) && shopData.phoneNumbers.length > 0
                           ? shopData.phoneNumbers.join(', ')
@@ -218,7 +222,7 @@ const Dashboard = () => {
                   </Col>
                   <Col md={4}>
                     <div className="d-flex flex-column">
-                      <span className="text-uppercase text-muted fw-semibold small">Reporting To</span>
+                      <span className="text-uppercase text-muted fw-semibold small"><Translate textKey="reportingTo" fallback="Reporting To" /></span>
                       <span className="fw-semibold text-primary mt-1">{shopData.ownerName || shopData.shopName}</span>
                     </div>
                   </Col>
@@ -232,7 +236,7 @@ const Dashboard = () => {
               <Card className="h-100 dashboard-card slide-in-up">
                 <Card.Header className="d-flex align-items-center">
                   <i className="bi bi-receipt me-2"></i>
-                  <span>New Receipt</span>
+                  <span><Translate textKey="newReceipt" fallback="New Receipt" /></span>
                 </Card.Header>
                 <Card.Body className="d-flex flex-column">
                   <div className="text-center mb-4">
@@ -240,7 +244,7 @@ const Dashboard = () => {
                       <i className="bi bi-receipt text-primary fs-1"></i>
                     </div>
                     <h6 className="text-muted mb-3">
-                      Create new receipts for customers
+                      <Translate textKey="newReceiptDesc" fallback="Create new receipts for customers" />
                     </h6>
                   </div>
                   <div className="mt-auto">
@@ -250,7 +254,7 @@ const Dashboard = () => {
                       className="w-100"
                     >
                       <i className="bi bi-plus me-1"></i>
-                      Create Receipt
+                      <Translate textKey="createNewReceipt" fallback="Create Receipt" />
                     </Button>
                   </div>
                 </Card.Body>
@@ -262,7 +266,7 @@ const Dashboard = () => {
                 <Card className="h-100 dashboard-card slide-in-up">
                   <Card.Header className="d-flex align-items-center">
                     <i className="bi bi-list-ul me-2"></i>
-                    <span>View Receipts</span>
+                    <span><Translate textKey="receipts" fallback="View Receipts" /></span>
                   </Card.Header>
                   <Card.Body className="d-flex flex-column">
                     <div className="text-center mb-4">
@@ -270,7 +274,7 @@ const Dashboard = () => {
                         <i className="bi bi-list-ul text-success fs-1"></i>
                       </div>
                       <h6 className="text-muted mb-3">
-                        View and manage existing receipts
+                        <Translate textKey="viewReceiptsDesc" fallback="View and manage existing receipts" />
                       </h6>
                     </div>
                     <div className="mt-auto">
@@ -280,7 +284,7 @@ const Dashboard = () => {
                         className="w-100"
                       >
                         <i className="bi bi-eye me-1"></i>
-                        View Receipts
+                        <Translate textKey="viewReceipts" fallback="View Receipts" />
                       </Button>
                     </div>
                   </Card.Body>
@@ -293,7 +297,7 @@ const Dashboard = () => {
                 <Card className="h-100 dashboard-card slide-in-up">
                   <Card.Header className="d-flex align-items-center">
                     <i className="bi bi-calendar-check me-2"></i>
-                    <span>Mark Attendance</span>
+                    <span><Translate textKey="markAttendance" fallback="Mark Attendance" /></span>
                   </Card.Header>
                   <Card.Body className="d-flex flex-column">
                     <div className="text-center mb-4">
@@ -301,7 +305,7 @@ const Dashboard = () => {
                         <i className="bi bi-calendar-check text-warning fs-1"></i>
                       </div>
                       <h6 className="text-muted mb-3">
-                        Mark employee attendance
+                        <Translate textKey="markAttendanceDesc" fallback="Mark employee attendance" />
                       </h6>
                     </div>
                     <div className="mt-auto">
@@ -311,7 +315,7 @@ const Dashboard = () => {
                         className="w-100"
                       >
                         <i className="bi bi-check-circle me-1"></i>
-                        Mark Attendance
+                        <Translate textKey="markAttendance" fallback="Mark Attendance" />
                       </Button>
                     </div>
                   </Card.Body>
@@ -329,26 +333,30 @@ const Dashboard = () => {
       <MainNavbar />
       <Container className="pos-content">
         <PageHeader
-          title="Store Dashboard"
+          title={<Translate textKey="storeDashboard" fallback="Store Dashboard" />}
           icon="bi-speedometer2"
-          subtitle={`Real-time monitoring and control for ${translatedShopData?.shopName || 'your store'}.`}
+          subtitle={
+            <>
+              <Translate textKey="storeDashboardSubtitle" fallback="Real-time monitoring and control for" /> {translatedShopData?.shopName || <Translate textKey="yourStore" fallback="your store" />}.
+            </>
+          }
         >
           <div className="hero-metrics__item">
-            <span className="hero-metrics__label">Today's Sales</span>
+            <span className="hero-metrics__label"><Translate textKey="todaysSales" fallback="Today's Sales" /></span>
             <span className="hero-metrics__value">
               {salesLoading ? '—' : todaySales ? formatCurrency(todaySales.sales) : formatCurrency(0)}
             </span>
           </div>
           <div className="hero-metrics__item">
-            <span className="hero-metrics__label">Receipts</span>
+            <span className="hero-metrics__label"><Translate textKey="receipts" fallback="Receipts" /></span>
             <span className="hero-metrics__value">{receiptCount}</span>
           </div>
           <div className="hero-metrics__item">
-            <span className="hero-metrics__label">Team</span>
+            <span className="hero-metrics__label"><Translate textKey="teamMember" fallback="Team" /></span>
             <span className="hero-metrics__value">{employeeCount}</span>
           </div>
           <div className="hero-metrics__item">
-            <span className="hero-metrics__label">Attendance</span>
+            <span className="hero-metrics__label"><Translate textKey="attendance" fallback="Attendance" /></span>
             <span className="hero-metrics__value">
               {translatedAttendance.present}/{translatedAttendance.total}
             </span>
@@ -359,56 +367,56 @@ const Dashboard = () => {
           <div className="dashboard-stat-card">
             <div className="stat-chip">
               <i className="bi bi-cash-stack"></i>
-              Today
+              <Translate textKey="today" fallback="Today" />
             </div>
-            <div className="dashboard-stat-card__label">Total Revenue</div>
+            <div className="dashboard-stat-card__label"><Translate textKey="totalRevenue" fallback="Total Revenue" /></div>
             <div className="dashboard-stat-card__value">
-              {salesLoading ? 'Loading…' : todaySales ? formatCurrency(todaySales.sales) : formatCurrency(0)}
+              {salesLoading ? <Translate textKey="loading" fallback="Loading..." /> : todaySales ? formatCurrency(todaySales.sales) : formatCurrency(0)}
             </div>
             <div className="dashboard-stat-card__trend">
-              <i className="bi bi-arrow-up-right"></i> Daily snapshot
+              <i className="bi bi-arrow-up-right"></i> <Translate textKey="dailySnapshot" fallback="Daily snapshot" />
             </div>
           </div>
           <div className="dashboard-stat-card">
             <div className="stat-chip">
               <i className="bi bi-receipt"></i>
-              Receipts
+              <Translate textKey="receipts" fallback="Receipts" />
             </div>
-            <div className="dashboard-stat-card__label">Total Receipts</div>
+            <div className="dashboard-stat-card__label"><Translate textKey="totalReceipts" fallback="Total Receipts" /></div>
             <div className="dashboard-stat-card__value">{receiptCount}</div>
             <div className="dashboard-stat-card__trend">
-              <i className="bi bi-clock-history"></i> Last 24 hours
+              <i className="bi bi-clock-history"></i> <Translate textKey="last24Hours" fallback="Last 24 hours" />
             </div>
           </div>
           <div className="dashboard-stat-card">
             <div className="stat-chip">
               <i className="bi bi-people"></i>
-              Workforce
+              <Translate textKey="workforce" fallback="Workforce" />
             </div>
-            <div className="dashboard-stat-card__label">Active Employees</div>
+            <div className="dashboard-stat-card__label"><Translate textKey="activeEmployees" fallback="Active Employees" /></div>
             <div className="dashboard-stat-card__value">{employeeCount}</div>
             <div className="dashboard-stat-card__trend">
-              <i className="bi bi-person-check"></i> {translatedAttendance.present} present
+              <i className="bi bi-person-check"></i> {translatedAttendance.present} <Translate textKey="present" fallback="present" />
             </div>
           </div>
           <div className="dashboard-stat-card">
             <div className="stat-chip">
               <i className="bi bi-graph-up"></i>
-              Profit
+              <Translate textKey="profit" fallback="Profit" />
             </div>
-            <div className="dashboard-stat-card__label">Today's Profit</div>
+            <div className="dashboard-stat-card__label"><Translate textKey="todaysProfit" fallback="Today's Profit" /></div>
             <div className="dashboard-stat-card__value">
-              {salesLoading ? 'Loading…' : todaySales ? formatCurrency(todaySales.profit) : formatCurrency(0)}
+              {salesLoading ? <Translate textKey="loading" fallback="Loading..." /> : todaySales ? formatCurrency(todaySales.profit) : formatCurrency(0)}
             </div>
             <div className="dashboard-stat-card__trend">
               {todaySales && todaySales.sales > 0 ? (
                 <>
                   <i className="bi bi-activity"></i>{' '}
-                  {((todaySales.profit / todaySales.sales) * 100).toFixed(1)}% margin
+                  {((todaySales.profit / todaySales.sales) * 100).toFixed(1)}% <Translate textKey="profitMargin" fallback="margin" />
                 </>
               ) : (
                 <span className="dashboard-stat-card__trend danger">
-                  <i className="bi bi-exclamation-circle"></i> Awaiting sales
+                  <i className="bi bi-exclamation-circle"></i> <Translate textKey="awaitingSales" fallback="Awaiting sales" />
                 </span>
               )}
             </div>
@@ -424,26 +432,26 @@ const Dashboard = () => {
                     <i className="bi bi-shop text-primary"></i>
                     {translatedShopData.shopName}
                   </h5>
-                  <p className="text-muted mb-0">Centralized overview for your store profile.</p>
+                  <p className="text-muted mb-0"><Translate textKey="storeOverviewDesc" fallback="Centralized overview for your store profile." /></p>
                 </div>
-                <span className="pos-badge">Store Overview</span>
+                <span className="pos-badge"><Translate textKey="storeOverview" fallback="Store Overview" /></span>
               </div>
               <Row className="g-4">
                 <Col md={4}>
                   <div className="d-flex flex-column">
-                    <span className="text-uppercase text-muted fw-semibold small">Address</span>
-                    <span className="fw-semibold text-primary mt-1">{translatedShopData.address || 'Not set'}</span>
+                    <span className="text-uppercase text-muted fw-semibold small"><Translate textKey="address" fallback="Address" /></span>
+                    <span className="fw-semibold text-primary mt-1">{translatedShopData.address || <Translate textKey="notSet" fallback="Not set" />}</span>
                   </div>
                 </Col>
                 <Col md={4}>
                   <div className="d-flex flex-column">
-                    <span className="text-uppercase text-muted fw-semibold small">Phone</span>
+                    <span className="text-uppercase text-muted fw-semibold small"><Translate textKey="phone" fallback="Phone" /></span>
                     <span className="fw-semibold text-primary mt-1">{translatedShopData.phoneNumber || '-'}</span>
                   </div>
                 </Col>
                 <Col md={4}>
                   <div className="d-flex flex-column">
-                    <span className="text-uppercase text-muted fw-semibold small">Owner</span>
+                    <span className="text-uppercase text-muted fw-semibold small"><Translate textKey="owner" fallback="Owner" /></span>
                     <span className="fw-semibold text-primary mt-1">{currentUser?.email}</span>
                   </div>
                 </Col>
@@ -458,63 +466,63 @@ const Dashboard = () => {
               <div>
                 <h5 className="mb-1 d-flex align-items-center gap-2">
                   <i className="bi bi-graph-up-arrow text-primary"></i>
-                  Today's Performance
+                  <Translate textKey="todaysPerformance" fallback="Today's Performance" />
                 </h5>
-                <p className="text-muted mb-0">Sales, profit and activity for the current day.</p>
+                <p className="text-muted mb-0"><Translate textKey="todaysPerformanceDesc" fallback="Sales, profit and activity for the current day." /></p>
               </div>
               <Button variant="primary" size="sm" onClick={() => navigate('/sales-analytics')}>
-                View Analytics
+                <Translate textKey="viewAnalytics" fallback="View Analytics" />
               </Button>
             </div>
             {salesLoading ? (
               <div className="text-center py-4">
                 <Spinner animation="border" />
-                <p className="text-muted mt-3 mb-0">Loading sales data...</p>
+                <p className="text-muted mt-3 mb-0"><Translate textKey="loadingSalesData" fallback="Loading sales data..." /></p>
               </div>
             ) : todaySales ? (
               <Row className="g-3">
                 <Col xs={12} md={3}>
                   <div className="dashboard-stat-card">
-                    <div className="dashboard-stat-card__label">Sales</div>
+                    <div className="dashboard-stat-card__label"><Translate textKey="sales" fallback="Sales" /></div>
                     <div className="dashboard-stat-card__value">{formatCurrency(todaySales.sales)}</div>
                     <div className="dashboard-stat-card__trend">
-                      <i className="bi bi-receipt"></i> {todaySales.transactionCount} transactions
+                      <i className="bi bi-receipt"></i> {todaySales.transactionCount} <Translate textKey="transactionsCount" fallback="transactions" />
                     </div>
                   </div>
                 </Col>
                 <Col xs={12} md={3}>
                   <div className="dashboard-stat-card">
-                    <div className="dashboard-stat-card__label">Profit</div>
+                    <div className="dashboard-stat-card__label"><Translate textKey="profit" fallback="Profit" /></div>
                     <div className="dashboard-stat-card__value">{formatCurrency(todaySales.profit)}</div>
                     <div className="dashboard-stat-card__trend">
                       <i className="bi bi-graph-up"></i>{' '}
                       {todaySales.sales > 0
-                        ? `${((todaySales.profit / todaySales.sales) * 100).toFixed(1)}% margin`
-                        : 'No sales yet'}
+                        ? <>{((todaySales.profit / todaySales.sales) * 100).toFixed(1)}% <Translate textKey="profitMargin" fallback="margin" /></>
+                        : <Translate textKey="noSalesYet" fallback="No sales yet" />}
                     </div>
                   </div>
                 </Col>
                 <Col xs={12} md={3}>
                   <div className="dashboard-stat-card">
-                    <div className="dashboard-stat-card__label">Average Ticket</div>
+                    <div className="dashboard-stat-card__label"><Translate textKey="averageTicket" fallback="Average Ticket" /></div>
                     <div className="dashboard-stat-card__value">
                       {todaySales.transactionCount > 0
                         ? formatCurrency(todaySales.sales / todaySales.transactionCount)
                         : formatCurrency(0)}
                     </div>
                     <div className="dashboard-stat-card__trend">
-                      <i className="bi bi-basket3"></i> Per receipt
+                      <i className="bi bi-basket3"></i> <Translate textKey="perReceipt" fallback="Per receipt" />
                     </div>
                   </div>
                 </Col>
                 <Col xs={12} md={3}>
                   <div className="dashboard-stat-card">
-                    <div className="dashboard-stat-card__label">Attendance</div>
+                    <div className="dashboard-stat-card__label"><Translate textKey="attendance" fallback="Attendance" /></div>
                     <div className="dashboard-stat-card__value">
                       {translatedAttendance.present}/{translatedAttendance.total}
                     </div>
                     <div className="dashboard-stat-card__trend">
-                      <i className="bi bi-people"></i> On duty today
+                      <i className="bi bi-people"></i> <Translate textKey="onDutyToday" fallback="On duty today" />
                     </div>
                   </div>
                 </Col>
@@ -522,7 +530,7 @@ const Dashboard = () => {
             ) : (
               <div className="text-center py-4">
                 <i className="bi bi-graph-down text-muted fs-1"></i>
-                <p className="text-muted mt-3 mb-0">No sales recorded for today yet.</p>
+                <p className="text-muted mt-3 mb-0"><Translate textKey="noSalesRecorded" fallback="No sales recorded for today yet." /></p>
               </div>
             )}
           </Card.Body>
@@ -533,7 +541,7 @@ const Dashboard = () => {
             <Card className="h-100 dashboard-card slide-in-up">
               <Card.Header className="d-flex align-items-center">
                 <i className="bi bi-receipt me-2"></i>
-                <span>Receipts</span>
+                <span><Translate textKey="receipts" fallback="Receipts" /></span>
               </Card.Header>
               <Card.Body className="d-flex flex-column">
                 <div className="text-center mb-4">
@@ -542,7 +550,7 @@ const Dashboard = () => {
                   </div>
                   <h2 className="text-primary fw-bold mb-2">{receiptCount}</h2>
                   <p className="text-muted mb-0">
-                    Total receipts generated
+                    <Translate textKey="totalReceiptsGenerated" fallback="Total receipts generated" />
                   </p>
                 </div>
                 <div className="mt-auto">
@@ -553,7 +561,7 @@ const Dashboard = () => {
                       className="flex-grow-1"
                     >
                       <i className="bi bi-eye me-1"></i>
-                      View
+                      <Translate textKey="view" fallback="View" />
                     </Button>
                     <Button 
                       variant="success" 
@@ -561,7 +569,7 @@ const Dashboard = () => {
                       className="flex-grow-1"
                     >
                       <i className="bi bi-plus me-1"></i>
-                      Add
+                      <Translate textKey="add" fallback="Add" />
                     </Button>
                   </Stack>
                 </div>
@@ -573,7 +581,7 @@ const Dashboard = () => {
             <Card className="h-100 dashboard-card slide-in-up">
               <Card.Header className="d-flex align-items-center">
                 <i className="bi bi-people me-2"></i>
-                <span>Employees</span>
+                <span><Translate textKey="employees" fallback="Employees" /></span>
               </Card.Header>
               <Card.Body className="d-flex flex-column">
                 <div className="text-center mb-4">
@@ -582,20 +590,20 @@ const Dashboard = () => {
                   </div>
                   <h2 className="text-success fw-bold mb-2">{employeeCount}</h2>
                   <p className="text-muted mb-0">
-                    Total employees
+                    <Translate textKey="totalEmployees" fallback="Total employees" />
                   </p>
                   
                   {todayAttendance.total > 0 && (
                     <div className="mt-3 p-3 bg-light rounded-3">
-                      <h6 className="text-primary mb-2"><i className="bi bi-calendar-check me-1"></i>Today's Attendance</h6>
+                      <h6 className="text-primary mb-2"><i className="bi bi-calendar-check me-1"></i><Translate textKey="todaysAttendance" fallback="Today's Attendance" /></h6>
                       <div className="row text-center">
                         <div className="col-6">
                           <div className="text-success fw-bold fs-5">{translatedAttendance.present}</div>
-                          <small className="text-muted">Present</small>
+                          <small className="text-muted"><Translate textKey="present" fallback="Present" /></small>
                         </div>
                         <div className="col-6">
                           <div className="text-danger fw-bold fs-5">{translatedAttendance.absent}</div>
-                          <small className="text-muted">Absent</small>
+                          <small className="text-muted"><Translate textKey="absent" fallback="Absent" /></small>
                         </div>
                       </div>
                     </div>
@@ -609,7 +617,7 @@ const Dashboard = () => {
                       className="flex-grow-1"
                     >
                       <i className="bi bi-eye me-1"></i>
-                      View Employees
+                      <Translate textKey="viewEmployees" fallback="View Employees" />
                     </Button>
                     <Button 
                       variant="success" 
@@ -617,7 +625,7 @@ const Dashboard = () => {
                       className="flex-grow-1"
                     >
                       <i className="bi bi-check-circle me-1"></i>
-                      Mark Attendance
+                      <Translate textKey="markAttendance" fallback="Mark Attendance" />
                     </Button>
                   </Stack>
                 </div>
@@ -630,7 +638,7 @@ const Dashboard = () => {
             <Card className="h-100 dashboard-card slide-in-up">
               <Card.Header className="d-flex align-items-center">
                 <i className="bi bi-cash-coin me-2"></i>
-                <span>Salary Management</span>
+                <span><Translate textKey="salaryManagement" fallback="Salary Management" /></span>
               </Card.Header>
               <Card.Body className="d-flex flex-column">
                 <div className="text-center mb-4">
@@ -638,7 +646,7 @@ const Dashboard = () => {
                     <i className="bi bi-cash-coin text-warning fs-1"></i>
                   </div>
                   <h6 className="text-muted mb-3">
-                    Manage employee salary payments and generate detailed reports.
+                    <Translate textKey="salaryManagementDesc" fallback="Manage employee salary payments and generate detailed reports." />
                   </h6>
                 </div>
                 <div className="mt-auto">
@@ -649,7 +657,7 @@ const Dashboard = () => {
                       className="flex-grow-1"
                     >
                       <i className="bi bi-gear me-1"></i>
-                      Manage Salaries
+                      <Translate textKey="manageSalaries" fallback="Manage Salaries" />
                     </Button>
                     <Button 
                       variant="success" 
@@ -657,7 +665,7 @@ const Dashboard = () => {
                       className="flex-grow-1"
                     >
                       <i className="bi bi-plus me-1"></i>
-                      Add Payment
+                      <Translate textKey="addPayment" fallback="Add Payment" />
                     </Button>
                   </Stack>
                 </div>
@@ -670,7 +678,7 @@ const Dashboard = () => {
             <Card className="h-100 dashboard-card slide-in-up">
               <Card.Header className="d-flex align-items-center">
                 <i className="bi bi-graph-down me-2"></i>
-                <span>Expense Management</span>
+                <span><Translate textKey="expenseManagement" fallback="Expense Management" /></span>
               </Card.Header>
               <Card.Body className="d-flex flex-column">
                 <div className="text-center mb-4">
@@ -678,7 +686,7 @@ const Dashboard = () => {
                     <i className="bi bi-graph-down text-info fs-1"></i>
                   </div>
                   <h6 className="text-muted mb-3">
-                    Track and manage business expenses, categorize spending, and monitor trends.
+                    <Translate textKey="expenseManagementDescription" fallback="Track and manage business expenses, categorize spending, and monitor trends." />
                   </h6>
                 </div>
                 <div className="mt-auto">
@@ -689,7 +697,7 @@ const Dashboard = () => {
                       className="flex-grow-1"
                     >
                       <i className="bi bi-eye me-1"></i>
-                      View Expenses
+                      <Translate textKey="viewExpenses" fallback="View Expenses" />
                     </Button>
                     <Button 
                       variant="success" 
@@ -697,7 +705,7 @@ const Dashboard = () => {
                       className="flex-grow-1"
                     >
                       <i className="bi bi-plus me-1"></i>
-                      Add Expense
+                      <Translate textKey="addExpense" fallback="Add Expense" />
                     </Button>
                   </Stack>
                 </div>
@@ -709,7 +717,7 @@ const Dashboard = () => {
             <Card className="h-100 dashboard-card slide-in-up">
               <Card.Header className="d-flex align-items-center">
                 <i className="bi bi-graph-up me-2"></i>
-                <span>Sales & Profit</span>
+                <span><Translate textKey="salesAndProfit" fallback="Sales & Profit" /></span>
               </Card.Header>
               <Card.Body className="d-flex flex-column">
                 <div className="text-center mb-4">
@@ -717,7 +725,7 @@ const Dashboard = () => {
                     <i className="bi bi-graph-up text-danger fs-1"></i>
                   </div>
                   <h6 className="text-muted mb-3">
-                    View detailed sales and profit analytics on daily, monthly and yearly basis.
+                    <Translate textKey="salesAnalyticsDescription" fallback="View detailed sales and profit analytics on daily, monthly and yearly basis." />
                   </h6>
                 </div>
                 <div className="mt-auto">
@@ -727,7 +735,7 @@ const Dashboard = () => {
                     className="w-100"
                   >
                     <i className="bi bi-bar-chart me-1"></i>
-                    View Analytics
+                    <Translate textKey="viewAnalytics" fallback="View Analytics" />
                   </Button>
                 </div>
               </Card.Body>
@@ -738,7 +746,7 @@ const Dashboard = () => {
             <Card className="h-100 dashboard-card slide-in-up">
               <Card.Header className="d-flex align-items-center">
                 <i className="bi bi-clock-history me-2"></i>
-                <span>Recent Receipts</span>
+                <span><Translate textKey="recentReceipts" fallback="Recent Receipts" /></span>
               </Card.Header>
               <Card.Body>
                 {recentReceipts.length > 0 ? (
@@ -746,10 +754,10 @@ const Dashboard = () => {
                     <table className="table table-sm table-hover">
                       <thead>
                         <tr>
-                          <th>Date</th>
-                          <th>Receipt ID</th>
-                          <th>Total</th>
-                          <th>Action</th>
+                          <th><Translate textKey="date" fallback="Date" /></th>
+                          <th><Translate textKey="receiptId" fallback="Receipt ID" /></th>
+                          <th><Translate textKey="total" fallback="Total" /></th>
+                          <th><Translate textKey="action" fallback="Action" /></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -774,7 +782,7 @@ const Dashboard = () => {
                   </div>
                 ) : (
                   <p className="text-center mt-4">
-                    {loading ? "Loading..." : "No receipts yet. Start creating receipts!"}
+                    {loading ? <Translate textKey="loading" fallback="Loading..." /> : <Translate textKey="noReceiptsYet" fallback="No receipts yet. Start creating receipts!" />}
                   </p>
                 )}
               </Card.Body>

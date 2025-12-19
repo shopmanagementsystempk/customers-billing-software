@@ -52,6 +52,12 @@ import ShopProfile from './pages/ShopProfile';
 import CustomerInformation from './pages/CustomerInformation';
 import SupplierInformation from './pages/SupplierInformation';
 import ManagePasswords from './pages/ManagePasswords';
+import LedgerAccounts from './pages/LedgerAccounts';
+import LedgerEntries from './pages/LedgerEntries';
+import AddLedgerEntry from './pages/AddLedgerEntry';
+import EditLedgerEntry from './pages/EditLedgerEntry';
+import DailyClosing from './pages/DailyClosing';
+import AccountingReports from './pages/AccountingReports';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
@@ -348,6 +354,50 @@ function AppContent() {
             <ErrorBoundary>
               <PrivateRoute>
                 <StaffManagement />
+              </PrivateRoute>
+            </ErrorBoundary>
+          } />
+          
+          {/* Ledger Routes */}
+          <Route path="/ledger-accounts" element={
+            <ErrorBoundary>
+              <PrivateRoute>
+                <LedgerAccounts />
+              </PrivateRoute>
+            </ErrorBoundary>
+          } />
+          <Route path="/ledger-entries" element={
+            <ErrorBoundary>
+              <PrivateRoute>
+                <LedgerEntries />
+              </PrivateRoute>
+            </ErrorBoundary>
+          } />
+          <Route path="/add-ledger-entry" element={
+            <ErrorBoundary>
+              <PrivateRoute>
+                <AddLedgerEntry />
+              </PrivateRoute>
+            </ErrorBoundary>
+          } />
+          <Route path="/edit-ledger-entry/:id" element={
+            <ErrorBoundary>
+              <PrivateRoute>
+                <EditLedgerEntry />
+              </PrivateRoute>
+            </ErrorBoundary>
+          } />
+          <Route path="/daily-closing" element={
+            <ErrorBoundary>
+              <PrivateRoute>
+                <DailyClosing />
+              </PrivateRoute>
+            </ErrorBoundary>
+          } />
+          <Route path="/accounting-reports" element={
+            <ErrorBoundary>
+              <PrivateRoute>
+                <AccountingReports />
               </PrivateRoute>
             </ErrorBoundary>
           } />

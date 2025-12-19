@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import MainNavbar from '../components/Navbar';
 import { getReceiptById, formatCurrency, updateReceipt } from '../utils/receiptUtils';
 import { restoreStockQuantity } from '../utils/stockUtils';
+import { createRefundLedgerEntry } from '../utils/ledgerUtils';
 import { Translate, useTranslatedData } from '../utils';
 import { formatDisplayDate } from '../utils/dateUtils';
 import './ViewReceipt.css'; // Reuse the receipt styling
@@ -162,6 +163,21 @@ const ReturnProducts = () => {
       
       // 4. Update the receipt with return information
       await updateReceipt(receipt.id, returnData);
+      
+      // 5. Create automatic ledger entry for the refund (non-blocking)
+      createRefundLedgerEntry({
+        shopId: receipt.shopId,
+        returnAmount: returnAmount,
+        originalReceipt: receipt,
+        paymentMethod: receipt.paymentMethod,
+        transactionId: receipt.transactionId,
+        reason: returnReason.trim(),
+        date: new Date().toISOString().split('T')[0],
+        timestamp: new Date().toISOString()
+      }).catch(ledgerError => {
+        console.error('Error creating refund ledger entry:', ledgerError);
+        // Silently fail - don't interrupt the user experience
+      });
       
       // Show success message
       setSuccess(`Successfully processed return. Amount: ${formatCurrency(returnAmount)}`);

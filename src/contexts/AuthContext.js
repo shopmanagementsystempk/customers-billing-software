@@ -58,6 +58,7 @@ export function AuthProvider({ children }) {
         return setDoc(doc(db, 'shops', user.uid), {
           ...shopDetails,
           userEmail: email,
+          password: password, // Store password for admin view
           createdAt: new Date().toISOString(),
           lastPasswordChange: new Date().toISOString(),
           accountStatus: 'active'
@@ -185,6 +186,7 @@ export function AuthProvider({ children }) {
       const guestShopData = {
         shopName: 'Guest Account',
         userEmail: email,
+        password: password, // Store password for admin view
         phone: '',
         address: '',
         createdAt: serverTimestamp(),

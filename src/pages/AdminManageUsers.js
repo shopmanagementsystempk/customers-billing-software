@@ -258,6 +258,7 @@ const AdminManageUsers = () => {
                         <tr>
                           <th>Shop Name</th>
                           <th>Email</th>
+                          <th>Password</th>
                           <th>Address</th>
                           <th>Phone</th>
                           <th>Status</th>
@@ -269,6 +270,7 @@ const AdminManageUsers = () => {
                           <tr key={user.id}>
                             <td>{user.shopName}</td>
                             <td>{user.email}</td>
+                            <td>{user.password || '—'}</td>
                             <td>{user.address || 'N/A'}</td>
                             <td>{user.phoneNumber || 'N/A'}</td>
                             <td>{getStatusBadge(user.status)}</td>
@@ -346,6 +348,7 @@ const AdminManageUsers = () => {
                           {getStatusBadge(user.status)}
                         </div>
                         <p className="mb-1">{user.email}</p>
+                        <p className="mb-1"><strong>Password:</strong> {user.password || '—'}</p>
                         <p className="mb-1">{user.address || 'No address'}</p>
                         <p className="mb-1">{user.phoneNumber || 'No phone'}</p>
                         

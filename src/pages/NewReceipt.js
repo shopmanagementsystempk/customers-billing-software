@@ -6,9 +6,11 @@ import Select from 'react-select';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { calculateTotal, generateTransactionId, saveReceipt, formatCurrency } from '../utils/receiptUtils';
 import { getShopStock, updateStockQuantity } from '../utils/stockUtils';
-import { Translate, useTranslatedData } from '../utils';
+import { createSaleLedgerEntry } from '../utils/ledgerUtils';
+import { Translate, useTranslatedData, translations } from '../utils';
 import { formatDisplayDate } from '../utils/dateUtils';
 import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
@@ -18,6 +20,7 @@ import '../styles/select.css';
 
 const NewReceipt = () => {
   const { currentUser, shopData, activeShopId } = useAuth();
+  const { language } = useLanguage();
   const [items, setItems] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState('');
   const [productCode, setProductCode] = useState('');
@@ -404,7 +407,7 @@ const NewReceipt = () => {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Receipt - ${shopData?.shopName || 'Shop'}</title>
+          <title>${translations[language]?.receiptTitle || 'Receipt'} - ${shopData?.shopName || 'Shop'}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             @media print { body { margin: 0; padding: 0; } }
@@ -462,12 +465,12 @@ const NewReceipt = () => {
             ${shopData?.logoUrl ? `<img class="header-logo" src="${shopData.logoUrl}" alt="logo" onerror='this.style.display="none"' />` : ''}
             <div class="shop-name">${shopData?.shopName || 'Shop Name'}</div>
             ${shopData?.address ? `<div class="shop-address">${shopData.address}</div>` : ''}
-            <div class="shop-phone">Phone # ${shopData?.phoneNumbers?.[0] || shopData?.phoneNumber || ''}</div>
+            <div class="shop-phone">${translations[language]?.phone || 'Phone'} # ${shopData?.phoneNumbers?.[0] || shopData?.phoneNumber || ''}</div>
           </div>
 
           <div class="sep"></div>
           <div class="meta">
-            <div>Invoice: ${transactionId}</div>
+            <div>${translations[language]?.invoice || 'Invoice'}: ${transactionId}</div>
             <div class="meta-right">${currentDate} ${currentTime}</div>
           </div>
           <div class="sep"></div>
@@ -482,11 +485,11 @@ const NewReceipt = () => {
             </colgroup>
             <thead>
               <tr>
-                <th class="c">Sr</th>
-                <th class="c">Item / Product</th>
-                <th class="c">Qty</th>
-                <th class="r">Rate</th>
-                <th class="r">Amnt</th>
+                <th class="c">${translations[language]?.sr || 'Sr'}</th>
+                <th class="c">${translations[language]?.itemProduct || 'Item / Product'}</th>
+                <th class="c">${translations[language]?.qty || 'Qty'}</th>
+                <th class="r">${translations[language]?.rate || 'Rate'}</th>
+                <th class="r">${translations[language]?.amnt || 'Amnt'}</th>
               </tr>
             </thead>
             <tbody>
@@ -510,16 +513,16 @@ const NewReceipt = () => {
           </table>
 
             <div class="totals">
-            <div class="line"><span>Total</span><span>${parseFloat(totals.totalQuantities).toFixed(2)}</span></div>
-            ${parseFloat(discount) > 0 ? `<div class="line"><span>Discount</span><span>${Math.round(parseFloat(discount))}</span></div>` : ''}
-            ${parseFloat(totals.taxAmount) > 0 ? `<div class="line"><span>Tax (${tax || 0}%)</span><span>${Math.round(parseFloat(totals.taxAmount))}</span></div>` : ''}
-            <div class="line"><span>Net Total</span><span>${Math.round(parseFloat(totals.payable))}</span></div>
-            ${parseFloat(totals.loanAmount) > 0 ? `<div class="line"><span>Loan</span><span>${Math.round(parseFloat(totals.loanAmount))}</span></div>` : ''}
+            <div class="line"><span>${translations[language]?.total || 'Total'}</span><span>${parseFloat(totals.totalQuantities).toFixed(2)}</span></div>
+            ${parseFloat(discount) > 0 ? `<div class="line"><span>${translations[language]?.discount || 'Discount'}</span><span>${Math.round(parseFloat(discount))}</span></div>` : ''}
+            ${parseFloat(totals.taxAmount) > 0 ? `<div class="line"><span>${translations[language]?.tax || 'Tax'} (${tax || 0}%)</span><span>${Math.round(parseFloat(totals.taxAmount))}</span></div>` : ''}
+            <div class="line"><span>${translations[language]?.netTotal || 'Net Total'}</span><span>${Math.round(parseFloat(totals.payable))}</span></div>
+            ${parseFloat(totals.loanAmount) > 0 ? `<div class="line"><span>${translations[language]?.loan || 'Loan'}</span><span>${Math.round(parseFloat(totals.loanAmount))}</span></div>` : ''}
           </div>
 
           <div class="net">${Math.round(parseFloat(totals.payable))}</div>
-          <div class="thanks">Thank you For Shoping !</div>
-          <div class="dev">software developed by SARMAD 03425050007</div>
+          <div class="thanks">${translations[language]?.thankYouShopping || 'Thank you For Shoping !'}</div>
+          <div class="dev">${translations[language]?.softwareDevelopedBy || 'software developed by'} Soft Verse 03311041968</div>
         </body>
       </html>
     `;
@@ -539,7 +542,7 @@ const NewReceipt = () => {
         }
       }, 1000);
     }, 250);
-  }, [discount, items, shopData, tax, totals, transactionId]);
+  }, [discount, items, shopData, tax, totals, transactionId, language]);
 
   // Handle form submission
   const handleSubmit = useCallback(async (e) => {
@@ -548,7 +551,7 @@ const NewReceipt = () => {
     setLoading(true);
     
     if (items.length === 0) {
-      setError('Please add at least one item');
+      setError(translations[language]?.pleaseAddOneItem || 'Please add at least one item');
       setLoading(false);
       return;
     }
@@ -577,6 +580,7 @@ const NewReceipt = () => {
       transactionId,
         cashierName: 'Cashier',
         managerName: 'Manager',
+        createdBy: currentUser.uid,
         items: receiptItems,
         totalAmount: calculateTotal(receiptItems, discount),
         discount: parseFloat(discount) || 0,
@@ -590,10 +594,43 @@ const NewReceipt = () => {
         loanAmount: Math.max(parseFloat(loanAmount || 0) || 0, 0)
       };
       
+      // Save receipt (this is the only blocking operation)
       const receiptId = await saveReceipt(receiptData);
+      
+      // Show success immediately - don't wait for background operations
+      setSuccess(translations[language]?.receiptSavedSuccess || 'Receipt saved successfully');
+      setSavedReceiptId(receiptId);
+      
+      // All background operations run in parallel (non-blocking)
+      const backgroundOperations = [];
+      
+      // 1. Create automatic ledger entry (non-blocking)
+      backgroundOperations.push(
+        createSaleLedgerEntry({
+          ...receiptData,
+          id: receiptId,
+          receiptId: receiptId,
+          date: new Date().toISOString().split('T')[0]
+        }).catch(ledgerError => {
+          console.error('Error creating ledger entry:', ledgerError);
+        })
+      );
+      
+      // 2. Update stock (non-blocking)
+      backgroundOperations.push(
+        updateStockQuantity(activeShopId, receiptItems.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          quantityUnit: item.quantityUnit
+        }))).catch(stockError => {
+          console.error('Error updating stock:', stockError);
+        })
+      );
+      
+      // 3. Create customer loan if needed (non-blocking)
       if ((parseFloat(loanAmount || 0) || 0) > 0 && customer && customer !== 'Walk-in Customer') {
-        try {
-          await addDoc(collection(db, 'customerLoans'), {
+        backgroundOperations.push(
+          addDoc(collection(db, 'customerLoans'), {
             shopId: activeShopId,
             customerName: customer,
             receiptId,
@@ -601,21 +638,16 @@ const NewReceipt = () => {
             amount: Math.max(parseFloat(loanAmount || 0) || 0, 0),
             timestamp: new Date().toISOString(),
             status: 'outstanding'
-          });
-        } catch (e) {
-          console.error('Failed to record customer loan', e);
-        }
+          }).catch(loanError => {
+            console.error('Failed to record customer loan:', loanError);
+          })
+        );
       }
       
-      // Update stock
-      await updateStockQuantity(activeShopId, receiptItems.map(item => ({
-          name: item.name,
-        quantity: item.quantity,
-        quantityUnit: item.quantityUnit
-        })));
-      
-      setSuccess('Receipt saved successfully');
-      setSavedReceiptId(receiptId);
+      // Run all background operations in parallel (fire and forget)
+      Promise.all(backgroundOperations).catch(err => {
+        console.error('Error in background operations:', err);
+      });
       
       // Auto print if enabled
       if (autoPrint) {
@@ -637,15 +669,18 @@ const NewReceipt = () => {
   }, [
     activeShopId,
     autoPrint,
+    customer,
     discount,
     enterAmount,
     items,
+    loanAmount,
     printReceipt,
     resetForm,
     selectedEmployee,
     shopData,
     totals,
-    transactionId
+    transactionId,
+    language
   ]);
 
   // Handle Enter key to save and print receipt
@@ -703,25 +738,25 @@ const NewReceipt = () => {
       <MainNavbar />
       <Container fluid className="pos-content" style={{ padding: '0.5rem 1rem' }}>
         <PageHeader
-          title="New Receipt"
+          title={<Translate textKey="newReceipt" fallback="New Receipt" />}
           icon="bi-receipt"
-          subtitle={`Create a new sale invoice. Transaction ID: ${transactionId}`}
+          subtitle={<><Translate textKey="newReceiptSubtitle" fallback="Create a new sale invoice. Transaction ID: " /> {transactionId}</>}
           style={{ marginBottom: '0.5rem' }}
         >
           <div className="hero-metrics__item">
-            <span className="hero-metrics__label">Items</span>
+            <span className="hero-metrics__label"><Translate textKey="items" fallback="Items" /></span>
             <span className="hero-metrics__value">{items.length}</span>
           </div>
           <div className="hero-metrics__item">
-            <span className="hero-metrics__label">Total</span>
+            <span className="hero-metrics__label"><Translate textKey="total" fallback="Total" /></span>
             <span className="hero-metrics__value">{formatCurrency(totals.totalAmount)}</span>
           </div>
           <div className="hero-metrics__item">
-            <span className="hero-metrics__label">Payable</span>
+            <span className="hero-metrics__label"><Translate textKey="payable" fallback="Payable" /></span>
             <span className="hero-metrics__value">{formatCurrency(totals.payable)}</span>
           </div>
           <div className="hero-metrics__item">
-            <span className="hero-metrics__label">Balance</span>
+            <span className="hero-metrics__label"><Translate textKey="balance" fallback="Balance" /></span>
             <span className="hero-metrics__value">{formatCurrency(totals.balance)}</span>
           </div>
         </PageHeader>
@@ -737,17 +772,17 @@ const NewReceipt = () => {
               <Card.Body className="p-3">
                 <h6 className="mb-2 d-flex align-items-center gap-2">
                   <i className="bi bi-cart-plus text-primary"></i>
-                  Add Products
+                  <Translate textKey="addProducts" fallback="Add Products" />
                 </h6>
                 <Row className="g-2">
                   <Col md={6}>
                     <Form.Group className="mb-2">
-                      <Form.Label className="mb-1" style={{ fontSize: '0.875rem' }}>Product</Form.Label>
+                      <Form.Label className="mb-1" style={{ fontSize: '0.875rem' }}><Translate textKey="product" fallback="Product" /></Form.Label>
                       <Select
                         value={productOptions.find(opt => opt.value === selectedProduct)}
                         onChange={handleProductSelect}
                         options={productOptions}
-                        placeholder="Search or select product..."
+                        placeholder={translations[language]?.searchProductPlaceholder || "Search or select product..."}
                         className="basic-single"
                         classNamePrefix="select"
                         menuPortalTarget={document.body}
@@ -765,11 +800,11 @@ const NewReceipt = () => {
                   </Col>
                   <Col md={6}>
                     <Form.Group className="mb-2">
-                      <Form.Label className="mb-1" style={{ fontSize: '0.875rem' }}>Barcode / SKU</Form.Label>
+                      <Form.Label className="mb-1" style={{ fontSize: '0.875rem' }}><Translate textKey="barcodeSku" fallback="Barcode / SKU" /></Form.Label>
                       <Form.Control
                         ref={barcodeInputRef}
                         type="text"
-                        placeholder="Scan or enter barcode"
+                        placeholder={translations[language]?.scanBarcodePlaceholder || "Scan or enter barcode"}
                         value={productCode}
                         onChange={handleCodeInput}
                         onKeyDown={(e) => {
@@ -783,12 +818,12 @@ const NewReceipt = () => {
                   </Col>
                   <Col md={6}>
                     <Form.Group className="mb-2">
-                      <Form.Label className="mb-1" style={{ fontSize: '0.875rem' }}>Customer Name</Form.Label>
+                      <Form.Label className="mb-1" style={{ fontSize: '0.875rem' }}><Translate textKey="customerName" fallback="Customer Name" /></Form.Label>
                       <Select
                         value={customerOptions.find(opt => opt.value === customer) || null}
                         onChange={(option) => setCustomer(option ? option.value : 'Walk-in Customer')}
                         options={customerOptions}
-                        placeholder="Walk-in Customer"
+                        placeholder={translations[language]?.walkInCustomer || "Walk-in Customer"}
                         isClearable
                         className="basic-single"
                         classNamePrefix="select"
@@ -801,12 +836,12 @@ const NewReceipt = () => {
                   </Col>
                   <Col md={6}>
                     <Form.Group className="mb-2">
-                      <Form.Label className="mb-1" style={{ fontSize: '0.875rem' }}>Employee (Optional)</Form.Label>
+                      <Form.Label className="mb-1" style={{ fontSize: '0.875rem' }}><Translate textKey="employeeOptional" fallback="Employee (Optional)" /></Form.Label>
                       <Select
                         value={selectedEmployee ? employeeOptions.find(opt => opt.value === selectedEmployee.id) : null}
                         onChange={(option) => setSelectedEmployee(option ? employees.find(emp => emp.id === option.value) : null)}
                         options={employeeOptions}
-                        placeholder="Select employee..."
+                        placeholder={translations[language]?.selectEmployeePlaceholder || "Select employee..."}
                         isClearable
                         className="basic-single"
                         classNamePrefix="select"
@@ -822,7 +857,7 @@ const NewReceipt = () => {
                   <Form.Check
                     type="checkbox"
                     id="autoPrint"
-                    label="Auto Print"
+                    label={<Translate textKey="autoPrint" fallback="Auto Print" />}
                     checked={autoPrint}
                     onChange={(e) => setAutoPrint(e.target.checked)}
                     style={{ fontSize: '0.875rem' }}
@@ -837,14 +872,14 @@ const NewReceipt = () => {
                 <div className="d-flex justify-content-between align-items-center mb-2">
                   <h6 className="mb-0 d-flex align-items-center gap-2">
                     <i className="bi bi-cart-check text-primary"></i>
-                    Cart Items
+                    <Translate textKey="cartItems" fallback="Cart Items" />
                   </h6>
-                  <Badge bg="primary" style={{ fontSize: '0.75rem' }}>{items.length} items</Badge>
+                  <Badge bg="primary" style={{ fontSize: '0.75rem' }}>{items.length} <Translate textKey="items" fallback="items" /></Badge>
                 </div>
                 {items.length === 0 ? (
                   <div className="text-center py-3">
                     <i className="bi bi-cart-x text-muted" style={{ fontSize: '2rem' }}></i>
-                    <p className="text-muted mt-2 mb-0" style={{ fontSize: '0.875rem' }}>No items in cart. Add products to get started.</p>
+                    <p className="text-muted mt-2 mb-0" style={{ fontSize: '0.875rem' }}><Translate textKey="noItemsInCart" fallback="No items in cart. Add products to get started." /></p>
                   </div>
                 ) : (
                   <div className="table-responsive" style={{ maxHeight: '300px', overflowY: 'auto' }}>
@@ -852,13 +887,13 @@ const NewReceipt = () => {
                       <thead>
                         <tr>
                           <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}>#</th>
-                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}>Product</th>
-                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}>Stock</th>
-                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}>Unit Price</th>
-                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}>Price (RS)</th>
-                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}>Qty</th>
-                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}>Total</th>
-                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}>Action</th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="product" fallback="Product" /></th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="stock" fallback="Stock" /></th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="unitPrice" fallback="Unit Price" /></th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="priceRs" fallback="Price (RS)" /></th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="qty" fallback="Qty" /></th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="total" fallback="Total" /></th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="action" fallback="Action" /></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -941,12 +976,12 @@ const NewReceipt = () => {
               <Card.Body className="p-3">
                 <h6 className="mb-2 d-flex align-items-center gap-2">
                   <i className="bi bi-cash-stack text-success"></i>
-                  Payment Summary
+                  <Translate textKey="paymentSummary" fallback="Payment Summary" />
                 </h6>
 
                 <div className="mb-2">
                   <Form.Group className="mb-2">
-                    <Form.Label className="mb-1" style={{ fontSize: '0.875rem' }}>Loan Amount (RS)</Form.Label>
+                    <Form.Label className="mb-1" style={{ fontSize: '0.875rem' }}><Translate textKey="loanAmountRs" fallback="Loan Amount (RS)" /></Form.Label>
                     <Form.Control
                       type="number"
                       value={loanAmount}
@@ -955,13 +990,13 @@ const NewReceipt = () => {
                       min="0"
                       step="0.01"
                     />
-                    <Form.Text className="text-muted" style={{ fontSize: '0.7rem' }}>Optional. If provided, cash change is computed on payable minus loan.</Form.Text>
+                    <Form.Text className="text-muted" style={{ fontSize: '0.7rem' }}><Translate textKey="loanOptionalText" fallback="Optional. If provided, cash change is computed on payable minus loan." /></Form.Text>
                   </Form.Group>
                 </div>
 
                 <div className="mb-2">
                   <Form.Group className="mb-2">
-                    <Form.Label className="mb-1" style={{ fontSize: '0.875rem' }}>Discount (RS)</Form.Label>
+                    <Form.Label className="mb-1" style={{ fontSize: '0.875rem' }}><Translate textKey="discountAmount" fallback="Discount (Amount)" /></Form.Label>
                     <Form.Control
                       type="number"
                       value={discount}
@@ -972,7 +1007,7 @@ const NewReceipt = () => {
                     />
                   </Form.Group>
                   <Form.Group className="mb-2">
-                    <Form.Label className="mb-1" style={{ fontSize: '0.875rem' }}>Tax (%)</Form.Label>
+                    <Form.Label className="mb-1" style={{ fontSize: '0.875rem' }}><Translate textKey="taxPercentage" fallback="Tax (%)" /></Form.Label>
                     <Form.Control
                       type="number"
                       value={tax}
@@ -983,32 +1018,32 @@ const NewReceipt = () => {
                       step="0.01"
                     />
                     <Form.Text className="text-muted" style={{ fontSize: '0.7rem' }}>
-                      Tax percentage will be calculated on the subtotal (after discount)
+                      <Translate textKey="taxHelpText" fallback="Tax percentage will be calculated on the subtotal (after discount)" />
                     </Form.Text>
                   </Form.Group>
                 </div>
 
                 <div className="border-top pt-2 mb-2">
                   <div className="d-flex justify-content-between mb-1">
-                    <span className="text-muted" style={{ fontSize: '0.8rem' }}>Subtotal:</span>
+                    <span className="text-muted" style={{ fontSize: '0.8rem' }}><Translate textKey="subtotal" fallback="Subtotal" />:</span>
                     <strong style={{ fontSize: '0.8rem' }}>{formatCurrency(totals.totalAmount)}</strong>
                   </div>
                   <div className="d-flex justify-content-between mb-1">
-                    <span className="text-muted" style={{ fontSize: '0.8rem' }}>Discount:</span>
+                    <span className="text-muted" style={{ fontSize: '0.8rem' }}><Translate textKey="discount" fallback="Discount" />:</span>
                     <span className="text-danger" style={{ fontSize: '0.8rem' }}>-{formatCurrency(discount)}</span>
                   </div>
                   <div className="d-flex justify-content-between mb-1">
-                    <span className="text-muted" style={{ fontSize: '0.8rem' }}>Tax ({tax || 0}%):</span>
+                    <span className="text-muted" style={{ fontSize: '0.8rem' }}><Translate textKey="tax" fallback="Tax" /> ({tax || 0}%):</span>
                     <span style={{ fontSize: '0.8rem' }}>+{formatCurrency(totals.taxAmount)}</span>
                   </div>
                   <div className="d-flex justify-content-between mb-2 pt-1 border-top">
-                    <span className="fw-bold" style={{ fontSize: '0.9rem' }}>Total Payable:</span>
+                    <span className="fw-bold" style={{ fontSize: '0.9rem' }}><Translate textKey="totalPayable" fallback="Total Payable" />:</span>
                     <strong className="text-primary" style={{ fontSize: '1rem' }}>{formatCurrency(totals.payable)}</strong>
                   </div>
                 </div>
 
                 <Form.Group className="mb-2">
-                  <Form.Label className="mb-1" style={{ fontSize: '0.875rem' }}>Amount Received</Form.Label>
+                  <Form.Label className="mb-1" style={{ fontSize: '0.875rem' }}><Translate textKey="receivedAmountRs" fallback="Received Amount (RS)" /></Form.Label>
                   <Form.Control
                     type="number"
                     value={enterAmount}
@@ -1022,18 +1057,18 @@ const NewReceipt = () => {
 
                 <div className="border-top pt-2 mb-2">
                   <div className="d-flex justify-content-between mb-1">
-                    <span className="text-muted" style={{ fontSize: '0.8rem' }}>Received:</span>
+                    <span className="text-muted" style={{ fontSize: '0.8rem' }}><Translate textKey="received" fallback="Received" />:</span>
                     <strong style={{ fontSize: '0.8rem' }}>{formatCurrency(totals.receivedAmount)}</strong>
                   </div>
                   <div className="d-flex justify-content-between">
-                    <span className="fw-bold" style={{ fontSize: '0.9rem' }}>Change:</span>
+                    <span className="fw-bold" style={{ fontSize: '0.9rem' }}><Translate textKey="change" fallback="Change" />:</span>
                     <strong className={`${parseFloat(totals.balance) >= 0 ? 'text-success' : 'text-danger'}`} style={{ fontSize: '1rem' }}>
                       {formatCurrency(totals.balance)}
                     </strong>
                   </div>
                   {parseFloat(totals.loanAmount) > 0 && (
                     <div className="d-flex justify-content-between mt-1">
-                      <span className="fw-bold" style={{ fontSize: '0.9rem' }}>Loan:</span>
+                      <span className="fw-bold" style={{ fontSize: '0.9rem' }}><Translate textKey="loan" fallback="Loan" />:</span>
                       <strong className="text-danger" style={{ fontSize: '0.9rem' }}>
                         {formatCurrency(totals.loanAmount)}
                       </strong>
@@ -1052,12 +1087,12 @@ const NewReceipt = () => {
                     {loading ? (
                       <>
                         <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-                        Processing...
+                        <Translate textKey="processing" fallback="Processing..." />
                       </>
                     ) : (
                       <>
                         <i className="bi bi-check-circle me-2"></i>
-                        Pay & Save
+                        <Translate textKey="payAndSave" fallback="Pay & Save" />
                       </>
                     )}
                   </Button>
@@ -1068,7 +1103,7 @@ const NewReceipt = () => {
                     disabled={loading}
                   >
                     <i className="bi bi-arrow-clockwise me-2"></i>
-                    Reset
+                    <Translate textKey="reset" fallback="Reset" />
                   </Button>
                   <Button
                     variant="outline-primary"
@@ -1076,7 +1111,7 @@ const NewReceipt = () => {
                     onClick={() => navigate('/receipts')}
                   >
                     <i className="bi bi-list-ul me-2"></i>
-                    View Receipts
+                    <Translate textKey="viewReceipts" fallback="View Receipts" />
                   </Button>
                 </div>
               </Card.Body>

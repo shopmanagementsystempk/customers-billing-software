@@ -53,6 +53,11 @@ const MainNavbar = () => {
   const [contactsOpen, setContactsOpen] = useState(isContactsPage);
   const [contactsOpenMobile, setContactsOpenMobile] = useState(isContactsPage);
 
+  // Check if we're on a ledger page to auto-open the menu
+  const isLedgerPage = location.pathname === '/ledger-accounts' || location.pathname === '/ledger-entries' || location.pathname === '/add-ledger-entry' || location.pathname === '/daily-closing' || location.pathname === '/accounting-reports' || location.pathname.startsWith('/edit-ledger-entry');
+  const [ledgerOpen, setLedgerOpen] = useState(isLedgerPage);
+  const [ledgerOpenMobile, setLedgerOpenMobile] = useState(isLedgerPage);
+
   // Auto-open expenses menu when on expenses pages
   useEffect(() => {
     if (isExpensesPage) {
@@ -84,6 +89,14 @@ const MainNavbar = () => {
       setContactsOpenMobile(true);
     }
   }, [isContactsPage]);
+
+  // Auto-open ledger menu when on ledger pages
+  useEffect(() => {
+    if (isLedgerPage) {
+      setLedgerOpen(true);
+      setLedgerOpenMobile(true);
+    }
+  }, [isLedgerPage]);
 
   const handleLogout = () => {
     logout()
@@ -187,6 +200,10 @@ const MainNavbar = () => {
     contacts: {
       background: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)',
       color: '#ffffff'
+    },
+    account_balance: {
+      background: 'linear-gradient(135deg, #9C27B0 0%, #673AB7 100%)',
+      color: '#ffffff'
     }
   };
 
@@ -244,7 +261,7 @@ const MainNavbar = () => {
           <span className="sidebar-icon" style={iconStyle}>
             <span className="material-icons-outlined google-icon">payments</span>
           </span>
-          <span className="sidebar-text">Expenses</span>
+          <span className="sidebar-text"><Translate textKey="expenses" fallback="Expenses" /></span>
           <i className={`bi ${isOpen ? 'bi-chevron-down' : 'bi-chevron-right'} ms-auto`} style={{ fontSize: '0.8rem' }}></i>
         </div>
         <Collapse in={isOpen}>
@@ -278,7 +295,7 @@ const MainNavbar = () => {
           <span className="sidebar-icon" style={iconStyle}>
             <span className="material-icons-outlined google-icon">event_available</span>
           </span>
-          <span className="sidebar-text">Attendance</span>
+          <span className="sidebar-text"><Translate textKey="attendance" fallback="Attendance" /></span>
           <i className={`bi ${isOpen ? 'bi-chevron-down' : 'bi-chevron-right'} ms-auto`} style={{ fontSize: '0.8rem' }}></i>
         </div>
         <Collapse in={isOpen}>
@@ -310,7 +327,7 @@ const MainNavbar = () => {
           <span className="sidebar-icon" style={iconStyle}>
             <span className="material-icons-outlined google-icon">groups</span>
           </span>
-          <span className="sidebar-text">Employees</span>
+          <span className="sidebar-text"><Translate textKey="employees" fallback="Employees" /></span>
           <i className={`bi ${isOpen ? 'bi-chevron-down' : 'bi-chevron-right'} ms-auto`} style={{ fontSize: '0.8rem' }}></i>
         </div>
         <Collapse in={isOpen}>
@@ -341,13 +358,47 @@ const MainNavbar = () => {
           <span className="sidebar-icon" style={iconStyle}>
             <span className="material-icons-outlined google-icon">contacts</span>
           </span>
-          <span className="sidebar-text">Contacts</span>
+          <span className="sidebar-text"><Translate textKey="contacts" fallback="Contacts" /></span>
           <i className={`bi ${isOpen ? 'bi-chevron-down' : 'bi-chevron-right'} ms-auto`} style={{ fontSize: '0.8rem' }}></i>
         </div>
         <Collapse in={isOpen}>
           <div className="sidebar-submenu">
-            {renderSubNavItem('/customer-information', 'Customer Information', closeSidebar)}
-            {renderSubNavItem('/supplier-information', 'Supplier Information', closeSidebar)}
+            {renderSubNavItem('/customer-information', <Translate textKey="customerInformation" fallback="Customer Information" />, closeSidebar)}
+            {renderSubNavItem('/supplier-information', <Translate textKey="supplierInformation" fallback="Supplier Information" />, closeSidebar)}
+          </div>
+        </Collapse>
+      </>
+    );
+  };
+
+  const renderLedgerMenu = (closeSidebar = false, isMobile = false) => {
+    const isOpen = isMobile ? ledgerOpenMobile : ledgerOpen;
+    const setIsOpen = isMobile ? setLedgerOpenMobile : setLedgerOpen;
+    const iconStyle = googleIconPalette['account_balance'] || defaultGoogleIconStyle;
+    const isLedgerActive = isActive('/ledger-accounts') || isActive('/ledger-entries') || isActive('/add-ledger-entry') || isActive('/daily-closing') || isActive('/accounting-reports') || location.pathname.startsWith('/edit-ledger-entry');
+
+    return (
+      <>
+        <div 
+          className={`sidebar-link ${isLedgerActive ? 'active' : ''}`}
+          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+          onClick={() => setIsOpen(!isOpen)}
+        >
+          <span className="sidebar-icon" style={iconStyle}>
+            <span className="material-icons-outlined google-icon">account_balance</span>
+          </span>
+          <span className="sidebar-text"><Translate textKey="ledger" fallback="Ledger" /></span>
+          <i className={`bi ${isOpen ? 'bi-chevron-down' : 'bi-chevron-right'} ms-auto`} style={{ fontSize: '0.8rem' }}></i>
+        </div>
+        <Collapse in={isOpen}>
+          <div className="sidebar-submenu">
+            {renderSubNavItem('/ledger-accounts', <Translate textKey="ledgerAccounts" fallback="Accounts" />, closeSidebar)}
+            {renderSubNavItem('/ledger-entries', <Translate textKey="ledgerEntries" fallback="Entries" />, closeSidebar)}
+            {renderSubNavItem('/daily-closing', <Translate textKey="dailyClosing" fallback="Daily Closing" />, closeSidebar)}
+            {renderSubNavItem('/accounting-reports', <Translate textKey="reports" fallback="Reports" />, closeSidebar)}
+            {!isStaff && (
+              renderSubNavItem('/add-ledger-entry', <Translate textKey="add" fallback="Add Entry" />, closeSidebar)
+            )}
           </div>
         </Collapse>
       </>
@@ -394,12 +445,12 @@ const MainNavbar = () => {
   const renderBranchManager = (closeSidebar = false) => (
     <>
       <div className="sidebar-branch-manager mb-3">
-        <div className="d-flex justify-content-between align-items-center mb-2">
+        <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap">
           <div className="sidebar-branch-title">
             <i className="bi bi-diagram-3 me-2"></i>
             Branch
           </div>
-          <span className="text-muted small">{branches?.length || 0} total</span>
+          <span className="text-muted small ms-auto ms-md-0">{branches?.length || 0} total</span>
         </div>
         <Form.Select
           size="sm"
@@ -430,7 +481,7 @@ const MainNavbar = () => {
                   className={`d-flex justify-content-between align-items-center mb-1 p-1 rounded ${isActive ? 'bg-light' : ''}`}
                   style={{ fontSize: '0.85rem' }}
                 >
-                  <span className="text-truncate flex-grow-1 me-2" style={{ maxWidth: '70%' }}>
+                  <span className="text-truncate flex-grow-1 me-2" style={{ maxWidth: '70%', minWidth: 0 }}>
                     {branch.name || 'Unnamed branch'}
                     {isMainBranch && <span className="text-muted ms-1">(Main)</span>}
                   </span>
@@ -438,8 +489,8 @@ const MainNavbar = () => {
                     <Button
                       variant="link"
                       size="sm"
-                      className="text-danger p-0"
-                      style={{ fontSize: '0.75rem', minWidth: 'auto' }}
+                      className="text-danger p-0 flex-shrink-0"
+                      style={{ fontSize: '0.75rem', minWidth: '32px', minHeight: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       onClick={() => handleDeleteClick(branch)}
                       title="Delete branch"
                     >
@@ -453,17 +504,20 @@ const MainNavbar = () => {
         )}
         {!isStaff && !isGuest && (
           <Form onSubmit={handleAddBranch} className="mt-2">
-            <InputGroup size="sm">
+            <InputGroup size="sm" className="flex-nowrap">
               <Form.Control
                 type="text"
                 placeholder="New branch name"
                 value={newBranchName}
                 onChange={(e) => setNewBranchName(e.target.value)}
+                className="flex-grow-1"
+                style={{ minWidth: 0 }}
               />
               <Button
                 type="submit"
                 variant="primary"
                 disabled={addingBranch || !newBranchName.trim()}
+                className="flex-shrink-0"
               >
                 {addingBranch ? 'Adding...' : 'Add'}
               </Button>
@@ -595,21 +649,22 @@ const MainNavbar = () => {
                 {hasPermission('canManageExpenses') && (
                   renderExpensesMenu(true, true)
                 )}
-                {hasPermission('canMarkAttendance') && (
-                  renderAttendanceMenu(true, true)
-                )}
-                {renderContactsMenu(true, true)}
-                {!isStaff && !isGuest && (
+              {hasPermission('canMarkAttendance') && (
+                renderAttendanceMenu(true, true)
+              )}
+              {renderContactsMenu(true, true)}
+              {renderLedgerMenu(true, true)}
+              {!isStaff && !isGuest && (
                   renderNavItem('/settings', 'settings', <Translate textKey="settings" />, true)
                 )}
                 {!isStaff && !isGuest && (
-                  renderNavItem('/manage-passwords', 'lock_reset', 'Manage Passwords', true)
+                  renderNavItem('/manage-passwords', 'lock_reset', <Translate textKey="managePasswords" fallback="Manage Passwords" />, true)
                 )}
                 {!isStaff && !isGuest && (
-                  renderNavItem('/shop-profile', 'badge', 'Shop Profile', true)
+                  renderNavItem('/shop-profile', 'badge', <Translate textKey="shopProfile" fallback="Shop Profile" />, true)
                 )}
                 {!isStaff && !isGuest && (
-                  renderNavItem('/staff-management', 'admin_panel_settings', 'Staff Management', true)
+                  renderNavItem('/staff-management', 'admin_panel_settings', <Translate textKey="staffManagement" fallback="Staff Management" />, true)
                 )}
                 <div className="d-flex mt-3">
                   <LanguageToggle />
@@ -676,17 +731,18 @@ const MainNavbar = () => {
                 renderAttendanceMenu(false, false)
               )}
               {renderContactsMenu(false, false)}
+              {renderLedgerMenu(false, false)}
               {!isStaff && !isGuest && (
                 renderNavItem('/settings', 'settings', <Translate textKey="settings" />)
               )}
               {!isStaff && !isGuest && (
-                renderNavItem('/manage-passwords', 'lock_reset', 'Manage Passwords')
+                renderNavItem('/manage-passwords', 'lock_reset', <Translate textKey="managePasswords" fallback="Manage Passwords" />)
               )}
               {!isStaff && !isGuest && (
-                renderNavItem('/shop-profile', 'badge', 'Shop Profile')
+                renderNavItem('/shop-profile', 'badge', <Translate textKey="shopProfile" fallback="Shop Profile" />)
               )}
               {!isStaff && !isGuest && (
-                renderNavItem('/staff-management', 'admin_panel_settings', 'Staff Management')
+                renderNavItem('/staff-management', 'admin_panel_settings', <Translate textKey="staffManagement" fallback="Staff Management" />)
               )}
             </>
           )}

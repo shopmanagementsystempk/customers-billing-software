@@ -134,9 +134,13 @@ export const deleteStockItem = async (itemId) => {
   }
 };
 
-// Update stock quantity when a sale is made
+// Update stock quantity when a sale is made (optimized)
 export const updateStockQuantity = async (shopId, items) => {
   try {
+    if (!items || items.length === 0) {
+      return true; // Nothing to update
+    }
+    
     const stockRef = collection(db, 'stock');
     const q = query(stockRef, where('shopId', '==', shopId));
     const querySnapshot = await getDocs(q);
@@ -146,23 +150,32 @@ export const updateStockQuantity = async (shopId, items) => {
       ...doc.data()
     }));
     
-    // Process each sold item
-    const updates = items.map(soldItem => {
-      const stockItem = stockItems.find(item => item.name === soldItem.name);
+    // Create a map for faster lookup (O(1) instead of O(n))
+    const stockMap = {};
+    stockItems.forEach(item => {
+      stockMap[item.name] = item;
+    });
+    
+    // Process each sold item and prepare updates
+    const updates = [];
+    items.forEach(soldItem => {
+      const stockItem = stockMap[soldItem.name];
       
       if (stockItem) {
         // Make sure units match before deducting (both should be in the same unit)
         // If units don't match, we can't properly deduct
         if (!soldItem.quantityUnit || soldItem.quantityUnit === stockItem.quantityUnit) {
-          const newQuantity = Math.max(0, stockItem.quantity - soldItem.quantity);
-          return updateStockItem(stockItem.id, { quantity: newQuantity });
+          const newQuantity = Math.max(0, (stockItem.quantity || 0) - (soldItem.quantity || 0));
+          updates.push(updateStockItem(stockItem.id, { quantity: newQuantity }));
         }
       }
-      
-      return Promise.resolve();
     });
     
-    await Promise.all(updates);
+    // Execute all updates in parallel
+    if (updates.length > 0) {
+      await Promise.all(updates);
+    }
+    
     return true;
   } catch (error) {
     console.error('Error updating stock quantities:', error);

@@ -69,7 +69,7 @@ function GuestNewReceipt() {
     };
     
     loadShopData();
-  }, [isGuest, currentUser, navigate]);
+  }, [isGuest, currentUser, navigate, activeShopId]);
 
   // Fetch employees
   useEffect(() => {

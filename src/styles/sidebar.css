@@ -349,6 +349,26 @@
   color: #ffffff !important;
 }
 
+.sidebar-branch-manager .form-control::placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
+  opacity: 1;
+}
+
+.sidebar-branch-manager .form-control::-webkit-input-placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
+  opacity: 1;
+}
+
+.sidebar-branch-manager .form-control::-moz-placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
+  opacity: 1;
+}
+
+.sidebar-branch-manager .form-control:-ms-input-placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
+  opacity: 1;
+}
+
 .sidebar-branch-manager .form-select option {
   color: #0b1f4e;
 }
@@ -380,5 +400,181 @@
 
 .sidebar-branch-manager .bg-light {
   background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Mobile Responsive Styles for Branch Manager */
+@media (max-width: 991.98px) {
+  .sidebar-branch-manager {
+    padding: 0.6rem;
+    margin: 0 0.5rem 0.75rem 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .sidebar-branch-title {
+    font-size: 0.9rem;
+  }
+
+  .sidebar-branch-title i {
+    font-size: 0.9rem;
+  }
+
+  .sidebar-branch-manager .form-select,
+  .sidebar-branch-manager .form-control {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.5rem;
+  }
+
+  .sidebar-branch-manager .input-group {
+    flex-wrap: nowrap;
+  }
+
+  .sidebar-branch-manager .input-group .form-control {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.5rem;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .sidebar-branch-manager .input-group .btn {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .sidebar-branch-manager .text-muted {
+    font-size: 0.75rem;
+  }
+
+  .sidebar-branch-manager .d-flex.justify-content-between {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .sidebar-branch-manager .d-flex.justify-content-between .text-muted {
+    width: auto;
+    text-align: right;
+    margin-top: 0;
+    margin-left: auto;
+  }
+
+  .sidebar-branch-manager .d-flex.justify-content-between.flex-wrap {
+    gap: 0.25rem;
+  }
+
+  /* Branch list items */
+  .sidebar-branch-manager .mt-2 > div {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.5rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .sidebar-branch-manager .mt-2 > div span {
+    font-size: 0.8rem;
+    max-width: 65%;
+  }
+
+  .sidebar-branch-manager .btn-link {
+    padding: 0.3rem 0.4rem;
+    font-size: 0.85rem;
+    min-width: 32px;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sidebar-branch-manager .btn-link i {
+    font-size: 0.9rem;
+  }
+
+  /* Make branch list scrollable on mobile if too long */
+  .sidebar-branch-manager .mt-2 {
+    max-height: 150px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 0.25rem;
+  }
+
+  .sidebar-branch-manager .mt-2::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .sidebar-branch-manager .mt-2::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+  }
+
+  /* Ensure form doesn't overflow */
+  .sidebar-branch-manager form {
+    width: 100%;
+  }
+
+  .sidebar-branch-manager .input-group {
+    width: 100%;
+  }
+}
+
+/* Extra small mobile devices */
+@media (max-width: 575.98px) {
+  .sidebar-branch-manager {
+    padding: 0.5rem;
+    margin: 0 0.25rem 0.5rem 0.25rem;
+  }
+
+  .sidebar-branch-title {
+    font-size: 0.85rem;
+  }
+
+  .sidebar-branch-manager .form-select {
+    font-size: 0.8rem;
+    padding: 0.35rem 0.4rem;
+  }
+
+  .sidebar-branch-manager .input-group .form-control {
+    font-size: 0.8rem;
+    padding: 0.35rem 0.4rem;
+  }
+
+  .sidebar-branch-manager .input-group .btn {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.5rem;
+  }
+
+  .sidebar-branch-manager .mt-2 > div {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.4rem;
+  }
+
+  .sidebar-branch-manager .mt-2 > div span {
+    font-size: 0.75rem;
+    max-width: 60%;
+  }
+
+  /* Ensure select dropdown is touch-friendly */
+  .sidebar-branch-manager .form-select {
+    min-height: 38px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+}
+
+/* Touch-friendly improvements for all mobile devices */
+@media (hover: none) and (pointer: coarse) {
+  .sidebar-branch-manager .btn-link {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .sidebar-branch-manager .input-group .btn {
+    min-height: 38px;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .sidebar-branch-manager .form-select,
+  .sidebar-branch-manager .form-control {
+    min-height: 38px;
+  }
 }
 

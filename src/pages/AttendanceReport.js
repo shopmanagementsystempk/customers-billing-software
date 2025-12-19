@@ -186,7 +186,7 @@ const AttendanceReport = () => {
     };
     
     generateReport();
-  }, [currentUser, employees, selectedMonth, selectedYear, selectedEmployee, reportType, startDate, endDate, selectedEmployeeRange]);
+  }, [currentUser, employees, selectedMonth, selectedYear, selectedEmployee, reportType, startDate, endDate, selectedEmployeeRange, activeShopId]);
   
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',

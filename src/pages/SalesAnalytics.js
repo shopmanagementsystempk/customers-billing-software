@@ -8,8 +8,12 @@ import { getDailySalesAndProfit, getMonthlySalesAndProfit, getYearlySalesAndProf
 import { formatDisplayDate } from '../utils/dateUtils';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import './SalesAnalytics.css';
 import { Translate } from '../utils';
+import * as echarts from 'echarts';
+import ReactECharts from 'echarts-for-react';
+import 'echarts-gl';
 
 // Memoized category row component to prevent unnecessary re-renders
 const CategoryRow = React.memo(({ category, index }) => (
@@ -234,6 +238,81 @@ const SalesAnalytics = () => {
   const profitMargin = useMemo(() => {
     if (!analytics || analytics.sales <= 0) return 0;
     return ((analytics.profit / analytics.sales) * 100).toFixed(2);
+  }, [analytics]);
+
+  // Build 3D Profit & Loss chart options (Sales vs Profit over time)
+  const threeDOptions = useMemo(() => {
+    if (!analytics) return null;
+    const timeSeries = analytics.dailyData || analytics.monthlyData;
+    if (!timeSeries || timeSeries.length === 0) return null;
+  
+    const xAxisCategories = timeSeries.map(item => item.day || item.month);
+    const yAxisCategories = ['Sales', 'Profit'];
+    const data = [];
+    let maxValue = 0;
+  
+    timeSeries.forEach((item, xi) => {
+      const salesVal = Number(item.sales || 0);
+      const profitVal = Number(item.profit || 0);
+      maxValue = Math.max(maxValue, salesVal, profitVal);
+      data.push([xi, 0, salesVal]);
+      data.push([xi, 1, profitVal]);
+    });
+  
+    return {
+      tooltip: {
+        formatter: params => {
+          const xLabel = xAxisCategories[params.value[0]];
+          const yLabel = yAxisCategories[params.value[1]];
+          const val = params.value[2];
+          return `${yLabel} on ${xLabel}: ${formatCurrency(val)}`;
+        }
+      },
+      visualMap: {
+        max: maxValue || 1,
+        inRange: {
+          color: ['#0d6efd', '#6f42c1', '#198754']
+        }
+      },
+      xAxis3D: {
+        type: 'category',
+        data: xAxisCategories,
+        name: analytics.dailyData ? 'Day' : 'Month'
+      },
+      yAxis3D: {
+        type: 'category',
+        data: yAxisCategories,
+        name: 'Metric'
+      },
+      zAxis3D: {
+        type: 'value',
+        name: 'Amount'
+      },
+      grid3D: {
+        boxWidth: 120,
+        boxDepth: 60,
+        light: {
+          main: { intensity: 1.2, shadow: true },
+          ambient: { intensity: 0.3 }
+        },
+        viewControl: {
+          projection: 'perspective',
+          autoRotate: true,
+          autoRotateSpeed: 8
+        }
+      },
+      series: [{
+        type: 'bar3D',
+        data,
+        shading: 'lambert',
+        itemStyle: {
+          opacity: 0.9
+        },
+        label: {
+          show: false
+        }
+      }]
+    };
   }, [analytics]);
 
   // Generate employee sales summary
@@ -553,7 +632,94 @@ const SalesAnalytics = () => {
             </Card>
           </Col>
         </Row>
-        
+
+        {/* 3D Profit & Loss Chart */}
+        {threeDOptions && (
+          <Row className="mb-4">
+            <Col md={12}>
+              <Card className="shadow-sm h-100">
+                <Card.Body>
+                  <Card.Title><Translate textKey="profitAndLoss3D" fallback="3D Profit & Loss" /></Card.Title>
+                  <ReactECharts echarts={echarts} option={threeDOptions} style={{ height: 360 }} />
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+        )}
+
+        {/* Charts Section (kept intact) */}
+        <Row className="mb-4">
+          {/* Trend Chart - Only for Monthly/Yearly views */}
+          {(analytics.dailyData || analytics.monthlyData) && (
+            <Col md={12} lg={6} className="mb-4">
+              <Card className="shadow-sm h-100">
+                <Card.Body>
+                  <Card.Title><Translate textKey="salesVsProfitTrend" fallback="Sales vs Profit Trend" /></Card.Title>
+                  <div style={{ width: '100%', height: 300 }}>
+                    <ResponsiveContainer>
+                      <LineChart
+                        data={analytics.dailyData || analytics.monthlyData}
+                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey={analytics.dailyData ? "day" : "month"} />
+                        <YAxis />
+                        <Tooltip formatter={(value) => formatCurrency(value)} />
+                        <Legend />
+                        <Line 
+                          type="monotone" 
+                          dataKey="sales" 
+                          stroke="#0d6efd" 
+                          name="Sales" 
+                          activeDot={{ r: 8 }} 
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="profit" 
+                          stroke="#198754" 
+                          name="Profit" 
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+          )}
+
+          {/* Category Chart */}
+          <Col md={12} lg={(analytics.dailyData || analytics.monthlyData) ? 6 : 12}>
+            <Card className="shadow-sm h-100">
+              <Card.Body>
+                <Card.Title><Translate textKey="salesByCategory" fallback="Sales by Category" /></Card.Title>
+                <div style={{ width: '100%', height: 300 }}>
+                  <ResponsiveContainer>
+                    <BarChart
+                      data={analytics.categoryData}
+                      margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="category" />
+                      <YAxis />
+                      <Tooltip formatter={(value) => formatCurrency(value)} />
+                      <Legend />
+                      <Bar 
+                        dataKey="sales" 
+                        fill="#0d6efd" 
+                        name="Sales" 
+                      />
+                      <Bar 
+                        dataKey="profit" 
+                        fill="#198754" 
+                        name="Profit" 
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
         {/* Category-wise Sales and Profit */}
         {analytics.categoryData && analytics.categoryData.length > 0 && (
           <Card className="shadow-sm mb-4">

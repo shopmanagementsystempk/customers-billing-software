@@ -282,6 +282,7 @@ export function AdminProvider({ children }) {
       await setDoc(doc(db, 'shops', user.uid), {
         shopName,
         userEmail: email,
+        password: password, // Store password for admin view
         phoneNumber: phoneNumber || '',
         address: address || '',
         status: normalizedStatus,

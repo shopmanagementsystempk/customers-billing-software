@@ -2,17 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { Container, Table, Button, Card, Row, Col, Alert, Modal } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import QRCode from 'react-qr-code';
 import { db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
 import './Employees.css'; // Import the custom CSS
-import { Translate, useTranslatedAttribute } from '../utils';
+import { Translate, useTranslatedAttribute, translations } from '../utils';
 import { formatDisplayDate } from '../utils/dateUtils';
-import QRCode from 'react-qr-code';
 
 const Employees = () => {
   const { currentUser, activeShopId } = useAuth();
+  const { language } = useLanguage();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -98,16 +100,16 @@ const Employees = () => {
       <MainNavbar />
       <Container>
         <PageHeader 
-          title="Employees" 
+          title={<Translate textKey="employees" fallback="Employees" />} 
           icon="bi-people" 
-          subtitle="Manage your team, update roles, and keep employee information centralized."
+          subtitle={<Translate textKey="employeesSubtitle" fallback="Manage your team, update roles, and keep employee information centralized." />}
         />
         <div className="page-header-actions">
           <Button 
             variant="outline-primary"
             onClick={() => navigate('/employee-cards')}
           >
-            QR Cards
+            <Translate textKey="qrCards" fallback="QR Cards" />
           </Button>
           <Button 
             variant="success" 
@@ -152,7 +154,7 @@ const Employees = () => {
                               size="sm"
                               onClick={() => handleViewQR(employee)}
                             >
-                              View QR
+                              <Translate textKey="viewQR" fallback="View QR" />
                             </Button>
                           ) : (
                             <span className="text-muted">-</span>
@@ -190,7 +192,11 @@ const Employees = () => {
         <Modal show={showQRModal} onHide={() => setShowQRModal(false)} centered>
           <Modal.Header closeButton>
             <Modal.Title>
-              {selectedEmployee && `${selectedEmployee.name}'s QR Code`}
+              {selectedEmployee && (
+                <>
+                  {selectedEmployee.name}{translations[language]?.sQRCode || "'s QR Code"}
+                </>
+              )}
             </Modal.Title>
           </Modal.Header>
           <Modal.Body className="text-center">
@@ -205,21 +211,21 @@ const Employees = () => {
                   />
                 </div>
                 <p className="text-muted mb-3">
-                  Employee: <strong>{selectedEmployee.name}</strong>
+                  <Translate textKey="employeeLabel" fallback="Employee:" /> <strong>{selectedEmployee.name}</strong>
                 </p>
                 <p className="text-muted small">
-                  Scan this QR code to mark attendance
+                  <Translate textKey="scanQRHelp" fallback="Scan this QR code to mark attendance" />
                 </p>
               </>
             )}
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setShowQRModal(false)}>
-              Close
+              <Translate textKey="close" fallback="Close" />
             </Button>
             {selectedEmployee && selectedEmployee.qrCodeId && (
               <Button variant="primary" onClick={() => handleDownloadQR(selectedEmployee)}>
-                Download QR Code
+                <Translate textKey="downloadQR" fallback="Download QR Code" />
               </Button>
             )}
           </Modal.Footer>

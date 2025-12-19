@@ -19,6 +19,7 @@ const ViewStock = () => {
   const [sortField, setSortField] = useState('name');
   const [sortDirection, setSortDirection] = useState('asc');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
@@ -34,6 +35,8 @@ const ViewStock = () => {
   const [categoryToDelete, setCategoryToDelete] = useState(null);
   const [categoryError, setCategoryError] = useState('');
   const [categorySuccess, setCategorySuccess] = useState('');
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [alertItems, setAlertItems] = useState([]);
   const navigate = useNavigate();
   
   // Get translations for attributes
@@ -82,11 +85,35 @@ const ViewStock = () => {
     fetchCategories();
   }, [fetchCategories]);
 
+  useEffect(() => {
+    const lowStock = stockItems.filter(item => isLowStock(item));
+    const expired = stockItems.filter(item => isExpired(item));
+    const alerts = [...lowStock, ...expired];
+
+    if (alerts.length > 0) {
+      setAlertItems(alerts);
+      setShowAlertModal(true);
+    }
+  }, [stockItems]);
+
   // Get unique categories for filter dropdown (combine inventory categories with existing stock categories)
   const stockCategories = [...new Set(stockItems.map(item => item.category))].filter(Boolean);
   const allCategories = [...new Set([...inventoryCategories.map(cat => cat.name), ...stockCategories])].sort();
 
   // Handle search and filtering
+  // Helper functions for status filtering
+  const isExpired = (item) => {
+    if (!item?.expiryDate) return false;
+    const expiry = new Date(item.expiryDate);
+    const today = new Date();
+    return expiry < today;
+  };
+  
+  const isLowStock = (item) => {
+    const alert = parseFloat(item?.lowStockAlert);
+    const qty = parseFloat(item?.quantity);
+    return !isNaN(alert) && alert > 0 && !isNaN(qty) && qty <= alert;
+  };
   const filteredItems = stockItems
     .filter(item => {
       const matchesSearch = 
@@ -95,8 +122,16 @@ const ViewStock = () => {
         item.category?.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesCategory = categoryFilter ? item.category === categoryFilter : true;
+
+      const matchesStatus = statusFilter === ''
+        ? true
+        : statusFilter === 'low'
+          ? (isLowStock(item) || !!item.expiryDate)
+          : statusFilter === 'expired'
+            ? isExpired(item)
+            : true;
       
-      return matchesSearch && matchesCategory;
+      return matchesSearch && matchesCategory && matchesStatus;
     })
     .sort((a, b) => {
       // Handle client-side sorting
@@ -467,6 +502,19 @@ const ViewStock = () => {
                         {category}
                       </option>
                     ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={6} lg={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Filter by Status</Form.Label>
+                  <Form.Select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                  >
+                    <option value="">All items</option>
+                    <option value="low">Low Stock</option>
+                    <option value="expired">Expired</option>
                   </Form.Select>
                 </Form.Group>
               </Col>

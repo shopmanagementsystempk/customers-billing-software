@@ -9,6 +9,7 @@ import { getShopStock } from '../utils/stockUtils';
 import { getInventoryCategories, addInventoryCategory, updateInventoryCategory, deleteInventoryCategory } from '../utils/categoryUtils';
 import { db } from '../firebase/config';
 import { collection, query, where, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import Select from 'react-select';
 
 const defaultRow = {
   sourceItemId: '',
@@ -617,22 +618,27 @@ const PurchaseManagement = () => {
                         <Col md={4}>
                           <Form.Group>
                             <Form.Label>Existing Product</Form.Label>
-                            <Form.Select
-                              value={row.sourceItemId || ''}
-                              onChange={(e) => handleSelectExistingProduct(idx, e.target.value)}
-                              disabled={stockLoading || !stockItems.length}
-                            >
-                              <option value="">
-                                {stockLoading
-                                  ? 'Loading inventory...'
-                                  : 'Add as new product'}
-                              </option>
-                              {stockItems.map(item => (
-                                <option key={item.id} value={item.id}>
-                                  {item.name}
-                                </option>
-                              ))}
-                            </Form.Select>
+                            <Select
+                              isDisabled={stockLoading || !stockItems.length}
+                              isClearable
+                              placeholder={stockLoading ? 'Loading inventory...' : 'Search by name or barcode, or leave empty to add as new product'}
+                              options={stockItems.map(item => ({
+                                value: item.id,
+                                label: `${item.name}${item.barcode ? ` • ${item.barcode}` : ''}`,
+                                barcode: item.barcode || '',
+                                name: item.name || ''
+                              }))}
+                              value={(row.sourceItemId && stockItems.length) ? (() => {
+                                const it = stockItems.find(i => i.id === row.sourceItemId);
+                                return it ? { value: it.id, label: `${it.name}${it.barcode ? ` • ${it.barcode}` : ''}`, barcode: it.barcode || '', name: it.name || '' } : null;
+                              })() : null}
+                              onChange={(selected) => handleSelectExistingProduct(idx, selected ? selected.value : '')}
+                              filterOption={(candidate, input) => {
+                                const text = (input || '').toLowerCase();
+                                return candidate.label.toLowerCase().includes(text) ||
+                                  ((candidate.data && candidate.data.barcode) ? candidate.data.barcode.toLowerCase().includes(text) : false);
+                              }}
+                            />
                             <Form.Text className="text-muted">
                               {stockItems.length
                                 ? 'Select to auto-fill item details'

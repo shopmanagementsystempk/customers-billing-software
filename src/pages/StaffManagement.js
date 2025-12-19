@@ -8,9 +8,10 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { validatePassword } from '../utils/passwordPolicy';
 import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
+import { formatCurrency } from '../utils/receiptUtils';
 
 const StaffManagement = () => {
-  const { currentUser, shopData } = useAuth();
+  const { currentUser, shopData, activeShopId } = useAuth();
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -30,19 +31,25 @@ const StaffManagement = () => {
       canViewStock: false,
       canEditStock: false,
       canViewEmployees: false,
+      canManageEmployees: false,
       canMarkAttendance: false,
+      canManageSalary: false,
       canViewAnalytics: false,
-      canManageExpenses: false
+      canManageExpenses: false,
+      canManageContacts: false,
+      canManageLedger: false,
+      canManageSettings: false
     }
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [staffSales, setStaffSales] = useState({});
 
   const fetchStaffList = useCallback(async () => {
     if (!currentUser) return;
     
     try {
-      const q = query(collection(db, 'staff'), where('shopId', '==', currentUser.uid));
+      const q = query(collection(db, 'staff'), where('shopId', '==', activeShopId));
       const querySnapshot = await getDocs(q);
       const staff = [];
       querySnapshot.forEach((doc) => {
@@ -55,12 +62,36 @@ const StaffManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentUser]);
+  }, [currentUser, activeShopId]);
+
+  const fetchStaffSales = useCallback(async () => {
+    if (!activeShopId) return;
+    try {
+      const receiptRef = collection(db, 'receipts');
+      const q = query(receiptRef, where('shopId', '==', activeShopId));
+      const snapshot = await getDocs(q);
+      const salesMap = {};
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const creatorId = data.createdBy || data.userId || null;
+        if (!creatorId) return;
+        const amount = parseFloat(data.totalAmount || 0);
+        salesMap[creatorId] = (salesMap[creatorId] || 0) + amount;
+      });
+      setStaffSales(salesMap);
+    } catch (err) {
+      console.error('Error fetching receipts for staff sales:', err);
+    }
+  }, [activeShopId]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchStaffList();
   }, [fetchStaffList]);
+
+  useEffect(() => {
+    fetchStaffSales();
+  }, [fetchStaffSales]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -128,9 +159,14 @@ const StaffManagement = () => {
             canViewStock: false,
             canEditStock: false,
             canViewEmployees: false,
+            canManageEmployees: false,
             canMarkAttendance: false,
+            canManageSalary: false,
             canViewAnalytics: false,
-            canManageExpenses: false
+            canManageExpenses: false,
+            canManageContacts: false,
+            canManageLedger: false,
+            canManageSettings: false
           }
         });
         return;
@@ -162,7 +198,7 @@ const StaffManagement = () => {
       await setDoc(doc(db, 'staff', staffUserId), {
         name: formData.name,
         email: formData.email,
-        shopId: currentUser.uid,
+        shopId: activeShopId,
         permissions: formData.permissions,
         createdAt: new Date().toISOString(),
         status: 'active',
@@ -212,7 +248,31 @@ const StaffManagement = () => {
           subtitle="Control staff access, assign permissions, and oversee your team."
         />
         <div className="page-header-actions">
-          <Button variant="primary" onClick={() => setShowModal(true)}>
+          <Button variant="primary" onClick={() => {
+            setFormData({
+              name: '',
+              email: '',
+              password: '',
+              permissions: {
+                canViewReceipts: false,
+                canCreateReceipts: false,
+                canEditReceipts: false,
+                canDeleteReceipts: false,
+                canViewStock: false,
+                canEditStock: false,
+                canViewEmployees: false,
+                canManageEmployees: false,
+                canMarkAttendance: false,
+                canManageSalary: false,
+                canViewAnalytics: false,
+                canManageExpenses: false,
+                canManageContacts: false,
+                canManageLedger: false,
+                canManageSettings: false
+              }
+            });
+            setShowModal(true);
+          }}>
             + Add Staff
           </Button>
         </div>
@@ -235,6 +295,7 @@ const StaffManagement = () => {
                     <th>Name</th>
                     <th>Email</th>
                     <th>Permissions</th>
+                    <th>Sales</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
@@ -247,6 +308,7 @@ const StaffManagement = () => {
                       <td>
                         <Badge bg="info">{getPermissionCount(staff.permissions)} permissions</Badge>
                       </td>
+                      <td>{formatCurrency(staffSales[staff.id] || 0)}</td>
                       <td>
                         <Badge bg={staff.status === 'active' ? 'success' : 'secondary'}>
                           {staff.status}
@@ -295,9 +357,14 @@ const StaffManagement = () => {
               canViewStock: false,
               canEditStock: false,
               canViewEmployees: false,
+              canManageEmployees: false,
               canMarkAttendance: false,
+              canManageSalary: false,
               canViewAnalytics: false,
-              canManageExpenses: false
+              canManageExpenses: false,
+              canManageContacts: false,
+              canManageLedger: false,
+              canManageSettings: false
             }
           });
         }} size="lg">
@@ -325,6 +392,7 @@ const StaffManagement = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                   required
+                  autoComplete="off"
                 />
               </Form.Group>
 
@@ -336,6 +404,7 @@ const StaffManagement = () => {
                   value={formData.password}
                   onChange={handleInputChange}
                   required
+                  autoComplete="new-password"
                 />
                 <Form.Text className="text-muted">
                   Password must be at least 8 characters with uppercase, lowercase, number, and special character.
@@ -395,6 +464,14 @@ const StaffManagement = () => {
                     checked={formData.permissions.canEditStock}
                     onChange={handleInputChange}
                   />
+                  <Form.Check
+                    type="checkbox"
+                    id="permission_ManageLedger"
+                    name="permission_canManageLedger"
+                    label="Manage Ledger"
+                    checked={formData.permissions.canManageLedger}
+                    onChange={handleInputChange}
+                  />
                 </Col>
                 <Col md={6}>
                   <Form.Check
@@ -407,10 +484,26 @@ const StaffManagement = () => {
                   />
                   <Form.Check
                     type="checkbox"
+                    id="permission_ManageEmployees"
+                    name="permission_canManageEmployees"
+                    label="Manage Employees"
+                    checked={formData.permissions.canManageEmployees}
+                    onChange={handleInputChange}
+                  />
+                  <Form.Check
+                    type="checkbox"
                     id="permission_MarkAttendance"
                     name="permission_canMarkAttendance"
                     label="Mark Attendance"
                     checked={formData.permissions.canMarkAttendance}
+                    onChange={handleInputChange}
+                  />
+                  <Form.Check
+                    type="checkbox"
+                    id="permission_ManageSalary"
+                    name="permission_canManageSalary"
+                    label="Manage Salary"
+                    checked={formData.permissions.canManageSalary}
                     onChange={handleInputChange}
                   />
                   <Form.Check
@@ -427,6 +520,22 @@ const StaffManagement = () => {
                     name="permission_canManageExpenses"
                     label="Manage Expenses"
                     checked={formData.permissions.canManageExpenses}
+                    onChange={handleInputChange}
+                  />
+                  <Form.Check
+                    type="checkbox"
+                    id="permission_ManageContacts"
+                    name="permission_canManageContacts"
+                    label="Manage Contacts"
+                    checked={formData.permissions.canManageContacts}
+                    onChange={handleInputChange}
+                  />
+                  <Form.Check
+                    type="checkbox"
+                    id="permission_ManageSettings"
+                    name="permission_canManageSettings"
+                    label="Manage Settings"
+                    checked={formData.permissions.canManageSettings}
                     onChange={handleInputChange}
                   />
                 </Col>
@@ -531,6 +640,14 @@ const StaffManagement = () => {
                     checked={formData.permissions.canEditStock}
                     onChange={handleInputChange}
                   />
+                  <Form.Check
+                    type="checkbox"
+                    id="edit-permission_ManageLedger"
+                    name="permission_canManageLedger"
+                    label="Manage Ledger"
+                    checked={formData.permissions.canManageLedger}
+                    onChange={handleInputChange}
+                  />
                 </Col>
                 <Col md={6}>
                   <Form.Check
@@ -543,10 +660,26 @@ const StaffManagement = () => {
                   />
                   <Form.Check
                     type="checkbox"
+                    id="edit-permission_ManageEmployees"
+                    name="permission_canManageEmployees"
+                    label="Manage Employees"
+                    checked={formData.permissions.canManageEmployees}
+                    onChange={handleInputChange}
+                  />
+                  <Form.Check
+                    type="checkbox"
                     id="edit-permission_MarkAttendance"
                     name="permission_canMarkAttendance"
                     label="Mark Attendance"
                     checked={formData.permissions.canMarkAttendance}
+                    onChange={handleInputChange}
+                  />
+                  <Form.Check
+                    type="checkbox"
+                    id="edit-permission_ManageSalary"
+                    name="permission_canManageSalary"
+                    label="Manage Salary"
+                    checked={formData.permissions.canManageSalary}
                     onChange={handleInputChange}
                   />
                   <Form.Check
@@ -563,6 +696,22 @@ const StaffManagement = () => {
                     name="permission_canManageExpenses"
                     label="Manage Expenses"
                     checked={formData.permissions.canManageExpenses}
+                    onChange={handleInputChange}
+                  />
+                  <Form.Check
+                    type="checkbox"
+                    id="edit-permission_ManageContacts"
+                    name="permission_canManageContacts"
+                    label="Manage Contacts"
+                    checked={formData.permissions.canManageContacts}
+                    onChange={handleInputChange}
+                  />
+                  <Form.Check
+                    type="checkbox"
+                    id="edit-permission_ManageSettings"
+                    name="permission_canManageSettings"
+                    label="Manage Settings"
+                    checked={formData.permissions.canManageSettings}
                     onChange={handleInputChange}
                   />
                 </Col>

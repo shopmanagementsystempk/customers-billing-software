@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Table, Form, Spinner, Alert, Modal } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
-import { Translate } from '../utils';
+import { Translate, translations } from '../utils';
 import { getShopExpenseRecords, deleteExpense, getExpenseCategories, getExpenseStatistics } from '../utils/expenseUtils';
 import { formatCurrency } from '../utils/receiptUtils';
 import { formatDisplayDate } from '../utils/dateUtils';
@@ -12,6 +13,7 @@ import './Expenses.css';
 
 const Expenses = () => {
   const { currentUser, activeShopId } = useAuth();
+  const { language } = useLanguage();
   const navigate = useNavigate();
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -130,7 +132,7 @@ const Expenses = () => {
   // Get category name by ID
   const getCategoryName = (categoryId) => {
     const category = categories.find(cat => cat.id === categoryId);
-    return category ? category.name : 'Uncategorized';
+    return category ? category.name : (translations[language]?.uncategorized || 'Uncategorized');
   };
 
   return (

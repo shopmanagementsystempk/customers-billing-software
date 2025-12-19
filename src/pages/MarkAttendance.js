@@ -154,7 +154,7 @@ const MarkAttendance = () => {
     };
     
     checkExistingAttendance();
-  }, [currentUser, employees, selectedDate, getTranslatedAttr]);
+  }, [currentUser, employees, selectedDate, getTranslatedAttr, activeShopId]);
   
   // Handle status change
   const handleStatusChange = (index, value) => {
