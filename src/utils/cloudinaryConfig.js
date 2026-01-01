@@ -2,8 +2,8 @@ import { Cloudinary } from 'cloudinary-core';
 
 // Initialize Cloudinary with an unsigned upload preset
 const cloudinaryConfig = {
-  cloud_name: 'ducxbdmzv', // Replace with your Cloudinary cloud name
-  upload_preset: 'sarmad' // Create this unsigned upload preset in your Cloudinary dashboard
+  cloud_name: 'dvphmtd7t', // Replace with your Cloudinary cloud name
+  upload_preset: 'billing' // Create this unsigned upload preset in your Cloudinary dashboard
 };
 
 // Create a Cloudinary instance for frontend use
