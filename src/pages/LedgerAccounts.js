@@ -4,11 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
-import { Translate } from '../utils';
-import { 
-  getLedgerAccounts, 
-  addLedgerAccount, 
-  updateLedgerAccount, 
+import { Translate, useTranslatedAttribute } from '../utils';
+import {
+  getLedgerAccounts,
+  addLedgerAccount,
+  updateLedgerAccount,
   deleteLedgerAccount,
   initializeDefaultAccounts,
   calculateAccountBalance,
@@ -20,53 +20,54 @@ import { formatCurrency } from '../utils/receiptUtils';
 const LedgerAccounts = () => {
   const { currentUser, activeShopId } = useAuth();
   const navigate = useNavigate();
-  
+  const getTranslatedAttr = useTranslatedAttribute();
+
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [balances, setBalances] = useState({});
-  
+
   // New account form
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newAccount, setNewAccount] = useState({ 
-    accountName: '', 
-    accountType: 'Asset', 
-    openingBalance: 0, 
-    description: '' 
+  const [newAccount, setNewAccount] = useState({
+    accountName: '',
+    accountType: 'Asset',
+    openingBalance: 0,
+    description: ''
   });
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState('');
-  
+
   // Edit account form
   const [showEditForm, setShowEditForm] = useState(false);
-  const [editAccount, setEditAccount] = useState({ 
-    id: '', 
-    accountName: '', 
-    accountType: 'Asset', 
-    openingBalance: 0, 
-    description: '' 
+  const [editAccount, setEditAccount] = useState({
+    id: '',
+    accountName: '',
+    accountType: 'Asset',
+    openingBalance: 0,
+    description: ''
   });
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState('');
-  
+
   // Delete confirmation
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState(null);
-  
+
   // Initialize accounts
   const [initializing, setInitializing] = useState(false);
-  
+
   // Fetch accounts
   useEffect(() => {
     const fetchAccounts = async () => {
       if (!currentUser || !activeShopId) return;
-      
+
       setLoading(true);
       setError('');
-      
+
       try {
         const accountsData = await getLedgerAccounts(activeShopId);
-        
+
         if (accountsData.length === 0) {
           // Initialize default accounts
           setInitializing(true);
@@ -76,23 +77,23 @@ const LedgerAccounts = () => {
         } else {
           setAccounts(accountsData);
         }
-        
+
         // Calculate balances for all accounts in a single pass (optimized)
         const entriesData = await getLedgerEntries(activeShopId);
         const balanceMap = calculateAllAccountBalances(accountsData, entriesData);
         setBalances(balanceMap);
       } catch (error) {
         console.error('Error fetching ledger accounts:', error);
-        setError('Failed to load ledger accounts. Please try again.');
+        setError(getTranslatedAttr('failedToLoadAccounts'));
       } finally {
         setLoading(false);
         setInitializing(false);
       }
     };
-    
+
     fetchAccounts();
   }, [currentUser, activeShopId]);
-  
+
   // Handle new account form changes
   const handleNewAccountChange = (e) => {
     const { name, value } = e.target;
@@ -101,7 +102,7 @@ const LedgerAccounts = () => {
       [name]: name === 'openingBalance' ? parseFloat(value) || 0 : value
     }));
   };
-  
+
   // Handle edit account form changes
   const handleEditAccountChange = (e) => {
     const { name, value } = e.target;
@@ -110,22 +111,22 @@ const LedgerAccounts = () => {
       [name]: name === 'openingBalance' ? parseFloat(value) || 0 : value
     }));
   };
-  
+
   // Handle add account form submission
   const handleAddAccount = async (e) => {
     e.preventDefault();
-    
+
     if (!currentUser || !activeShopId) return;
-    
+
     // Validate account name
     if (!newAccount.accountName.trim()) {
-      setAddError('Account name is required');
+      setAddError(getTranslatedAttr('accountNameRequired'));
       return;
     }
-    
+
     setAddLoading(true);
     setAddError('');
-    
+
     try {
       // Prepare account data
       const accountData = {
@@ -133,48 +134,48 @@ const LedgerAccounts = () => {
         shopId: activeShopId,
         openingBalance: parseFloat(newAccount.openingBalance) || 0
       };
-      
+
       // Add account to database
       const accountId = await addLedgerAccount(accountData);
-      
+
       // Add new account to state
       const newAccountWithId = {
         id: accountId,
         ...accountData
       };
-      
+
       setAccounts(prev => [...prev, newAccountWithId]);
-      
+
       // Calculate balance for new account
       const balance = await calculateAccountBalance(accountId, activeShopId);
       setBalances(prev => ({ ...prev, [accountId]: balance }));
-      
+
       // Reset form and hide it
       setNewAccount({ accountName: '', accountType: 'Asset', openingBalance: 0, description: '' });
       setShowAddForm(false);
     } catch (error) {
       console.error('Error adding account:', error);
-      setAddError(error.message || 'Failed to add account. Please try again.');
+      setAddError(error.message || getTranslatedAttr('failedToSaveAccount'));
     } finally {
       setAddLoading(false);
     }
   };
-  
+
   // Handle edit account form submission
   const handleUpdateAccount = async (e) => {
     e.preventDefault();
-    
+
     if (!currentUser || !activeShopId || !editAccount.id) return;
-    
+
     // Validate account name
     if (!editAccount.accountName.trim()) {
-      setEditError('Account name is required');
+      setEditError(getTranslatedAttr('accountNameRequired'));
       return;
     }
-    
+
     setEditLoading(true);
     setEditError('');
-    
+
     try {
       // Prepare update data
       const updateData = {
@@ -183,44 +184,44 @@ const LedgerAccounts = () => {
         openingBalance: parseFloat(editAccount.openingBalance) || 0,
         description: editAccount.description
       };
-      
+
       // Update account in database
       await updateLedgerAccount(editAccount.id, updateData);
-      
+
       // Update account in state
-      setAccounts(prev => 
-        prev.map(acc => 
+      setAccounts(prev =>
+        prev.map(acc =>
           acc.id === editAccount.id ? { ...acc, ...updateData } : acc
         )
       );
-      
+
       // Recalculate balance
       const balance = await calculateAccountBalance(editAccount.id, activeShopId);
       setBalances(prev => ({ ...prev, [editAccount.id]: balance }));
-      
+
       // Reset form and hide it
       setEditAccount({ id: '', accountName: '', accountType: 'Asset', openingBalance: 0, description: '' });
       setShowEditForm(false);
     } catch (error) {
       console.error('Error updating account:', error);
-      setEditError(error.message || 'Failed to update account. Please try again.');
+      setEditError(error.message || getTranslatedAttr('failedToSaveAccount'));
     } finally {
       setEditLoading(false);
     }
   };
-  
+
   // Handle delete account
   const handleDeleteClick = (account) => {
     setAccountToDelete(account);
     setShowDeleteModal(true);
   };
-  
+
   const confirmDelete = async () => {
     if (!accountToDelete || !activeShopId) return;
-    
+
     try {
       await deleteLedgerAccount(accountToDelete.id, activeShopId);
-      
+
       // Remove account from state
       setAccounts(prev => prev.filter(acc => acc.id !== accountToDelete.id));
       setBalances(prev => {
@@ -228,16 +229,16 @@ const LedgerAccounts = () => {
         delete newBalances[accountToDelete.id];
         return newBalances;
       });
-      
+
       setShowDeleteModal(false);
       setAccountToDelete(null);
     } catch (error) {
       console.error('Error deleting account:', error);
-      setError(error.message || 'Failed to delete account. Please try again.');
+      setError(error.message || getTranslatedAttr('error'));
       setShowDeleteModal(false);
     }
   };
-  
+
   // Handle edit button click
   const handleEditClick = (account) => {
     setEditAccount({
@@ -249,7 +250,7 @@ const LedgerAccounts = () => {
     });
     setShowEditForm(true);
   };
-  
+
   // Group accounts by type
   const accountsByType = {
     Asset: accounts.filter(a => a.accountType === 'Asset'),
@@ -257,7 +258,7 @@ const LedgerAccounts = () => {
     Income: accounts.filter(a => a.accountType === 'Income'),
     Expense: accounts.filter(a => a.accountType === 'Expense')
   };
-  
+
   const getTypeBadgeVariant = (type) => {
     switch (type) {
       case 'Asset': return 'success';
@@ -267,60 +268,60 @@ const LedgerAccounts = () => {
       default: return 'secondary';
     }
   };
-  
+
   return (
     <>
       <MainNavbar />
       <Container className="pb-4">
-        <PageHeader 
-          title="Ledger Accounts" 
-          icon="bi-journal-text" 
-          subtitle="Manage your chart of accounts and track balances."
+        <PageHeader
+          title={<Translate textKey="ledgerAccounts" />}
+          icon="bi-journal-text"
+          subtitle={<Translate textKey="manageLedgerSubtitle" />}
         />
         <div className="page-header-actions">
-          <Button 
-            variant="outline-secondary" 
+          <Button
+            variant="outline-secondary"
             onClick={() => navigate('/ledger-entries')}
           >
-            View Entries
+            <Translate textKey="viewEntries" />
           </Button>
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             onClick={() => setShowAddForm(true)}
             disabled={showAddForm}
           >
-            Add Account
+            <Translate textKey="addAccount" />
           </Button>
         </div>
-        
+
         {error && <Alert variant="danger">{error}</Alert>}
-        
+
         {/* Add Account Form */}
         {showAddForm && (
           <Card className="mb-4 shadow-sm">
             <Card.Body>
               <div className="d-flex justify-content-between align-items-center mb-3">
-                <h5>Add New Account</h5>
-                <Button 
-                  variant="link" 
-                  className="p-0" 
+                <h5><Translate textKey="addNewAccount" /></h5>
+                <Button
+                  variant="link"
+                  className="p-0"
                   onClick={() => {
                     setShowAddForm(false);
                     setNewAccount({ accountName: '', accountType: 'Asset', openingBalance: 0, description: '' });
                     setAddError('');
                   }}
                 >
-                  Cancel
+                  <Translate textKey="cancel" />
                 </Button>
               </div>
-              
+
               {addError && <Alert variant="danger">{addError}</Alert>}
-              
+
               <Form onSubmit={handleAddAccount}>
                 <Row>
                   <Col md={4}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Account Name *</Form.Label>
+                      <Form.Label><Translate textKey="accountName" /> *</Form.Label>
                       <Form.Control
                         type="text"
                         name="accountName"
@@ -333,7 +334,7 @@ const LedgerAccounts = () => {
                   </Col>
                   <Col md={3}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Account Type *</Form.Label>
+                      <Form.Label><Translate textKey="accountType" /> *</Form.Label>
                       <Form.Select
                         name="accountType"
                         value={newAccount.accountType}
@@ -341,16 +342,16 @@ const LedgerAccounts = () => {
                         required
                         disabled={addLoading}
                       >
-                        <option value="Asset">Asset</option>
-                        <option value="Liability">Liability</option>
-                        <option value="Income">Income</option>
-                        <option value="Expense">Expense</option>
+                        <option value="Asset">{getTranslatedAttr('asset')}</option>
+                        <option value="Liability">{getTranslatedAttr('liability')}</option>
+                        <option value="Income">{getTranslatedAttr('income')}</option>
+                        <option value="Expense">{getTranslatedAttr('expense')}</option>
                       </Form.Select>
                     </Form.Group>
                   </Col>
                   <Col md={3}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Opening Balance</Form.Label>
+                      <Form.Label><Translate textKey="openingBalance" /></Form.Label>
                       <Form.Control
                         type="number"
                         name="openingBalance"
@@ -363,7 +364,7 @@ const LedgerAccounts = () => {
                   </Col>
                   <Col md={12}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Description (Optional)</Form.Label>
+                      <Form.Label><Translate textKey="description" /> (<Translate textKey="optional" />)</Form.Label>
                       <Form.Control
                         type="text"
                         name="description"
@@ -375,18 +376,18 @@ const LedgerAccounts = () => {
                   </Col>
                 </Row>
                 <div className="d-flex justify-content-end">
-                  <Button 
-                    variant="primary" 
+                  <Button
+                    variant="primary"
                     type="submit"
                     disabled={addLoading}
                   >
                     {addLoading ? (
                       <>
                         <Spinner animation="border" size="sm" className="me-1" />
-                        Saving...
+                        <Translate textKey="saving" />...
                       </>
                     ) : (
-                      'Save Account'
+                      <Translate textKey="save" />
                     )}
                   </Button>
                 </div>
@@ -394,33 +395,33 @@ const LedgerAccounts = () => {
             </Card.Body>
           </Card>
         )}
-        
+
         {/* Edit Account Form */}
         {showEditForm && (
           <Card className="mb-4 shadow-sm">
             <Card.Body>
               <div className="d-flex justify-content-between align-items-center mb-3">
-                <h5>Edit Account</h5>
-                <Button 
-                  variant="link" 
-                  className="p-0" 
+                <h5><Translate textKey="edit" /></h5>
+                <Button
+                  variant="link"
+                  className="p-0"
                   onClick={() => {
                     setShowEditForm(false);
                     setEditAccount({ id: '', accountName: '', accountType: 'Asset', openingBalance: 0, description: '' });
                     setEditError('');
                   }}
                 >
-                  Cancel
+                  <Translate textKey="cancel" />
                 </Button>
               </div>
-              
+
               {editError && <Alert variant="danger">{editError}</Alert>}
-              
+
               <Form onSubmit={handleUpdateAccount}>
                 <Row>
                   <Col md={4}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Account Name *</Form.Label>
+                      <Form.Label><Translate textKey="accountName" /> *</Form.Label>
                       <Form.Control
                         type="text"
                         name="accountName"
@@ -433,7 +434,7 @@ const LedgerAccounts = () => {
                   </Col>
                   <Col md={3}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Account Type *</Form.Label>
+                      <Form.Label><Translate textKey="accountType" /> *</Form.Label>
                       <Form.Select
                         name="accountType"
                         value={editAccount.accountType}
@@ -441,16 +442,16 @@ const LedgerAccounts = () => {
                         required
                         disabled={editLoading}
                       >
-                        <option value="Asset">Asset</option>
-                        <option value="Liability">Liability</option>
-                        <option value="Income">Income</option>
-                        <option value="Expense">Expense</option>
+                        <option value="Asset">{getTranslatedAttr('asset')}</option>
+                        <option value="Liability">{getTranslatedAttr('liability')}</option>
+                        <option value="Income">{getTranslatedAttr('income')}</option>
+                        <option value="Expense">{getTranslatedAttr('expense')}</option>
                       </Form.Select>
                     </Form.Group>
                   </Col>
                   <Col md={3}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Opening Balance</Form.Label>
+                      <Form.Label><Translate textKey="openingBalance" /></Form.Label>
                       <Form.Control
                         type="number"
                         name="openingBalance"
@@ -463,7 +464,7 @@ const LedgerAccounts = () => {
                   </Col>
                   <Col md={12}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Description (Optional)</Form.Label>
+                      <Form.Label><Translate textKey="description" /> (<Translate textKey="optional" />)</Form.Label>
                       <Form.Control
                         type="text"
                         name="description"
@@ -475,18 +476,18 @@ const LedgerAccounts = () => {
                   </Col>
                 </Row>
                 <div className="d-flex justify-content-end">
-                  <Button 
-                    variant="primary" 
+                  <Button
+                    variant="primary"
                     type="submit"
                     disabled={editLoading}
                   >
                     {editLoading ? (
                       <>
                         <Spinner animation="border" size="sm" className="me-1" />
-                        Updating...
+                        <Translate textKey="updating" />...
                       </>
                     ) : (
-                      'Update Account'
+                      <Translate textKey="save" />
                     )}
                   </Button>
                 </div>
@@ -494,12 +495,12 @@ const LedgerAccounts = () => {
             </Card.Body>
           </Card>
         )}
-        
+
         {/* Accounts by Type */}
         {loading || initializing ? (
           <div className="text-center py-4">
             <Spinner animation="border" />
-            <p className="mt-2">{initializing ? 'Initializing default accounts...' : 'Loading...'}</p>
+            <p className="mt-2">{initializing ? <Translate textKey="initializingDefaultAccounts" /> : <Translate textKey="loading" />}</p>
           </div>
         ) : (
           Object.keys(accountsByType).map(type => (
@@ -507,19 +508,19 @@ const LedgerAccounts = () => {
               <Card key={type} className="mb-4 shadow-sm">
                 <Card.Header>
                   <h5 className="mb-0">
-                    <Badge bg={getTypeBadgeVariant(type)} className="me-2">{type}</Badge>
-                    {accountsByType[type].length} {accountsByType[type].length === 1 ? 'Account' : 'Accounts'}
+                    <Badge bg={getTypeBadgeVariant(type)} className="me-2">{getTranslatedAttr(type.toLowerCase())}</Badge>
+                    {accountsByType[type].length} {accountsByType[type].length === 1 ? <Translate textKey="account" /> : <Translate textKey="accounts" />}
                   </h5>
                 </Card.Header>
                 <Card.Body>
                   <Table hover responsive>
                     <thead>
                       <tr>
-                        <th>Account Name</th>
-                        <th>Description</th>
-                        <th className="text-end">Opening Balance</th>
-                        <th className="text-end">Current Balance</th>
-                        <th>Actions</th>
+                        <th><Translate textKey="accountName" /></th>
+                        <th><Translate textKey="description" /></th>
+                        <th className="text-end"><Translate textKey="openingBalance" /></th>
+                        <th className="text-end"><Translate textKey="currentBalance" /></th>
+                        <th><Translate textKey="action" /></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -534,20 +535,20 @@ const LedgerAccounts = () => {
                             </strong>
                           </td>
                           <td>
-                            <Button 
-                              variant="outline-primary" 
+                            <Button
+                              variant="outline-primary"
                               size="sm"
                               className="me-1"
                               onClick={() => handleEditClick(account)}
                             >
-                              Edit
+                              <Translate textKey="edit" />
                             </Button>
-                            <Button 
-                              variant="outline-danger" 
+                            <Button
+                              variant="outline-danger"
                               size="sm"
                               onClick={() => handleDeleteClick(account)}
                             >
-                              Delete
+                              <Translate textKey="delete" />
                             </Button>
                           </td>
                         </tr>
@@ -560,30 +561,30 @@ const LedgerAccounts = () => {
           ))
         )}
       </Container>
-      
+
       {/* Delete Confirmation Modal */}
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>Confirm Delete</Modal.Title>
+          <Modal.Title><Translate textKey="confirmDelete" /></Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          Are you sure you want to delete this account? This action cannot be undone.
+          <Translate textKey="confirmDeleteAccount" />
           {accountToDelete && (
             <div className="mt-3">
-              <p><strong>Account Name:</strong> {accountToDelete.accountName}</p>
-              <p><strong>Account Type:</strong> {accountToDelete.accountType}</p>
+              <p><strong><Translate textKey="accountName" />:</strong> {accountToDelete.accountName}</p>
+              <p><strong><Translate textKey="accountType" />:</strong> {getTranslatedAttr(accountToDelete.accountType.toLowerCase())}</p>
               {accountToDelete.description && (
-                <p><strong>Description:</strong> {accountToDelete.description}</p>
+                <p><strong><Translate textKey="description" />:</strong> {accountToDelete.description}</p>
               )}
             </div>
           )}
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
-            Cancel
+            <Translate textKey="cancel" />
           </Button>
           <Button variant="danger" onClick={confirmDelete}>
-            Delete
+            <Translate textKey="delete" />
           </Button>
         </Modal.Footer>
       </Modal>

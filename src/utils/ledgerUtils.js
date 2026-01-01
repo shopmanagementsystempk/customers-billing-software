@@ -8,31 +8,31 @@ export const getLedgerAccounts = async (shopId) => {
   try {
     const accountsRef = collection(db, 'ledgerAccounts');
     const q = query(
-      accountsRef, 
+      accountsRef,
       where('shopId', '==', shopId),
       orderBy('accountType', 'asc'),
       orderBy('accountName', 'asc')
     );
-    
+
     const querySnapshot = await getDocs(q);
     const accounts = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
-    
+
     return accounts;
   } catch (error) {
     // Fallback if index not created
     console.log('Index not created yet, falling back to basic query');
     const accountsRef = collection(db, 'ledgerAccounts');
     const q = query(accountsRef, where('shopId', '==', shopId));
-    
+
     const querySnapshot = await getDocs(q);
     const accounts = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
-    
+
     // Sort client-side
     accounts.sort((a, b) => {
       if (a.accountType !== b.accountType) {
@@ -40,7 +40,7 @@ export const getLedgerAccounts = async (shopId) => {
       }
       return a.accountName.localeCompare(b.accountName);
     });
-    
+
     return accounts;
   }
 };
@@ -50,7 +50,7 @@ export const getLedgerAccountById = async (accountId) => {
   try {
     const accountRef = doc(db, 'ledgerAccounts', accountId);
     const accountSnap = await getDoc(accountRef);
-    
+
     if (accountSnap.exists()) {
       return {
         id: accountSnap.id,
@@ -74,7 +74,7 @@ export const addLedgerAccount = async (accountData) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
-    
+
     return docRef.id;
   } catch (error) {
     console.error('Error adding ledger account:', error);
@@ -105,7 +105,7 @@ export const deleteLedgerAccount = async (accountId, shopId) => {
     if (entries.length > 0) {
       throw new Error('Cannot delete account with existing entries');
     }
-    
+
     const accountRef = doc(db, 'ledgerAccounts', accountId);
     await deleteDoc(accountRef);
     return true;
@@ -123,15 +123,15 @@ export const initializeDefaultAccounts = async (shopId) => {
     { accountName: 'Bank Account', accountType: 'Asset', shopId, openingBalance: 0, description: 'Bank account balance' },
     { accountName: 'Accounts Receivable', accountType: 'Asset', shopId, openingBalance: 0, description: 'Money owed by customers' },
     { accountName: 'Inventory', accountType: 'Asset', shopId, openingBalance: 0, description: 'Stock inventory value' },
-    
+
     // Liabilities
     { accountName: 'Accounts Payable', accountType: 'Liability', shopId, openingBalance: 0, description: 'Money owed to suppliers' },
     { accountName: 'Loans Payable', accountType: 'Liability', shopId, openingBalance: 0, description: 'Outstanding loans' },
-    
+
     // Income
     { accountName: 'Sales Revenue', accountType: 'Income', shopId, openingBalance: 0, description: 'Revenue from sales' },
     { accountName: 'Other Income', accountType: 'Income', shopId, openingBalance: 0, description: 'Miscellaneous income' },
-    
+
     // Expenses
     { accountName: 'Operating Expenses', accountType: 'Expense', shopId, openingBalance: 0, description: 'General operating expenses' },
     { accountName: 'Salaries', accountType: 'Expense', shopId, openingBalance: 0, description: 'Employee salaries' },
@@ -146,14 +146,14 @@ export const initializeDefaultAccounts = async (shopId) => {
     }
 
     const accountsRef = collection(db, 'ledgerAccounts');
-    const promises = defaultAccounts.map(account => 
+    const promises = defaultAccounts.map(account =>
       addDoc(accountsRef, {
         ...account,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       })
     );
-    
+
     await Promise.all(promises);
     return true;
   } catch (error) {
@@ -169,7 +169,7 @@ export const getLedgerEntries = async (shopId, filters = {}) => {
   try {
     const entriesRef = collection(db, 'ledgerEntries');
     let q;
-    
+
     try {
       if (filters.accountId) {
         q = query(
@@ -185,45 +185,45 @@ export const getLedgerEntries = async (shopId, filters = {}) => {
           orderBy('entryDate', 'desc')
         );
       }
-      
+
       const querySnapshot = await getDocs(q);
       let entries = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
-      
+
       // Filter by credit account if needed (client-side)
       if (filters.accountId) {
-        entries = entries.filter(entry => 
-          entry.debitAccountId === filters.accountId || 
+        entries = entries.filter(entry =>
+          entry.debitAccountId === filters.accountId ||
           entry.creditAccountId === filters.accountId
         );
       }
-      
+
       return entries;
     } catch (indexError) {
       console.log('Index not created yet, falling back to basic query');
       q = query(entriesRef, where('shopId', '==', shopId));
-      
+
       const querySnapshot = await getDocs(q);
       let entries = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
-      
+
       // Filter client-side
       if (filters.accountId) {
-        entries = entries.filter(entry => 
-          entry.debitAccountId === filters.accountId || 
+        entries = entries.filter(entry =>
+          entry.debitAccountId === filters.accountId ||
           entry.creditAccountId === filters.accountId
         );
       }
-      
+
       // Sort client-side
       entries.sort((a, b) => {
         return new Date(b.entryDate) - new Date(a.entryDate);
       });
-      
+
       return entries;
     }
   } catch (error) {
@@ -237,14 +237,14 @@ export const getLedgerEntriesByAccount = async (accountId, shopId) => {
   try {
     const entriesRef = collection(db, 'ledgerEntries');
     const q = query(entriesRef, where('shopId', '==', shopId));
-    
+
     const querySnapshot = await getDocs(q);
     const entries = querySnapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
-      .filter(entry => 
+      .filter(entry =>
         entry.debitAccountId === accountId || entry.creditAccountId === accountId
       );
-    
+
     return entries;
   } catch (error) {
     console.error('Error fetching ledger entries by account:', error);
@@ -257,7 +257,7 @@ export const getLedgerEntryById = async (entryId) => {
   try {
     const entryRef = doc(db, 'ledgerEntries', entryId);
     const entrySnap = await getDoc(entryRef);
-    
+
     if (entrySnap.exists()) {
       return {
         id: entrySnap.id,
@@ -279,12 +279,12 @@ export const addLedgerEntry = async (entryData) => {
     if (entryData.debitAccountId === entryData.creditAccountId) {
       throw new Error('Debit and credit accounts cannot be the same');
     }
-    
+
     // Validate that amount is positive
     if (parseFloat(entryData.amount) <= 0) {
       throw new Error('Amount must be greater than zero');
     }
-    
+
     const entriesRef = collection(db, 'ledgerEntries');
     const docRef = await addDoc(entriesRef, {
       ...entryData,
@@ -292,7 +292,7 @@ export const addLedgerEntry = async (entryData) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
-    
+
     return docRef.id;
   } catch (error) {
     console.error('Error adding ledger entry:', error);
@@ -307,12 +307,12 @@ export const updateLedgerEntry = async (entryId, updateData) => {
     if (updateData.debitAccountId === updateData.creditAccountId) {
       throw new Error('Debit and credit accounts cannot be the same');
     }
-    
+
     // Validate that amount is positive
     if (updateData.amount && parseFloat(updateData.amount) <= 0) {
       throw new Error('Amount must be greater than zero');
     }
-    
+
     const entryRef = doc(db, 'ledgerEntries', entryId);
     await updateDoc(entryRef, {
       ...updateData,
@@ -343,9 +343,9 @@ export const calculateAccountBalance = async (accountId, shopId) => {
   try {
     const entries = await getLedgerEntries(shopId);
     const account = await getLedgerAccountById(accountId);
-    
+
     let balance = parseFloat(account.openingBalance || 0);
-    
+
     entries.forEach(entry => {
       if (entry.debitAccountId === accountId) {
         // Debit increases assets/expenses, decreases liabilities/income
@@ -363,7 +363,7 @@ export const calculateAccountBalance = async (accountId, shopId) => {
         }
       }
     });
-    
+
     return balance;
   } catch (error) {
     console.error('Error calculating account balance:', error);
@@ -375,22 +375,22 @@ export const calculateAccountBalance = async (accountId, shopId) => {
 // This function is exported so it can be used in other files if needed
 export const calculateAllAccountBalances = (accounts, entries) => {
   const balances = {};
-  
+
   // Initialize balances with opening balances
   accounts.forEach(account => {
     balances[account.id] = parseFloat(account.openingBalance || 0);
   });
-  
+
   // Create a map for faster account lookup (O(1) instead of O(n))
   const accountMap = {};
   accounts.forEach(account => {
     accountMap[account.id] = account;
   });
-  
+
   // Process all entries in a single pass
   entries.forEach(entry => {
     const amount = parseFloat(entry.amount || 0);
-    
+
     // Process debit account
     if (entry.debitAccountId && accountMap[entry.debitAccountId]) {
       const debitAccount = accountMap[entry.debitAccountId];
@@ -400,7 +400,7 @@ export const calculateAllAccountBalances = (accounts, entries) => {
         balances[debitAccount.id] -= amount;
       }
     }
-    
+
     // Process credit account
     if (entry.creditAccountId && accountMap[entry.creditAccountId]) {
       const creditAccount = accountMap[entry.creditAccountId];
@@ -411,7 +411,7 @@ export const calculateAllAccountBalances = (accounts, entries) => {
       }
     }
   });
-  
+
   return balances;
 };
 
@@ -423,10 +423,10 @@ export const getLedgerStatistics = async (shopId) => {
       getLedgerAccounts(shopId),
       getLedgerEntries(shopId)
     ]);
-    
+
     // Calculate balances for all accounts in a single pass (much faster!)
     const accountBalances = calculateAllAccountBalances(accounts, entries);
-    
+
     // Group accounts by type
     const accountsByType = {
       Asset: accounts.filter(a => a.accountType === 'Asset'),
@@ -434,7 +434,7 @@ export const getLedgerStatistics = async (shopId) => {
       Income: accounts.filter(a => a.accountType === 'Income'),
       Expense: accounts.filter(a => a.accountType === 'Expense')
     };
-    
+
     // Calculate totals by type
     const totalsByType = {
       Asset: accountsByType.Asset.reduce((sum, acc) => sum + (accountBalances[acc.id] || 0), 0),
@@ -442,11 +442,11 @@ export const getLedgerStatistics = async (shopId) => {
       Income: accountsByType.Income.reduce((sum, acc) => sum + (accountBalances[acc.id] || 0), 0),
       Expense: accountsByType.Expense.reduce((sum, acc) => sum + (accountBalances[acc.id] || 0), 0)
     };
-    
+
     // Calculate profit/loss
     const netIncome = totalsByType.Income - totalsByType.Expense;
     const totalEquity = totalsByType.Asset - totalsByType.Liability;
-    
+
     return {
       totalAccounts: accounts.length,
       totalEntries: entries.length,
@@ -472,11 +472,11 @@ const getOrCreateAccount = async (shopId, accountName, accountType, accountsCach
     if (!accounts) {
       accounts = await getLedgerAccounts(shopId);
     }
-    
-    let account = accounts.find(acc => 
+
+    let account = accounts.find(acc =>
       acc.accountName === accountName && acc.accountType === accountType
     );
-    
+
     if (!account) {
       // Create account if it doesn't exist
       const accountId = await addLedgerAccount({
@@ -492,7 +492,7 @@ const getOrCreateAccount = async (shopId, accountName, accountType, accountsCach
         accountsCache.push(account);
       }
     }
-    
+
     return account;
   } catch (error) {
     console.error('Error getting or creating account:', error);
@@ -504,15 +504,15 @@ const getOrCreateAccount = async (shopId, accountName, accountType, accountsCach
 export const createSaleLedgerEntry = async (receiptData) => {
   try {
     const { shopId, totalAmount, discount, paymentMethod, transactionId, items, timestamp } = receiptData;
-    
+
     if (!shopId || !totalAmount) {
       console.warn('Missing required data for ledger entry');
       return null;
     }
-    
+
     // Fetch all accounts once (instead of fetching 8+ times)
     const accountsCache = await getLedgerAccounts(shopId);
-    
+
     // Get or create accounts in parallel (only the ones we need)
     const accountPromises = [
       getOrCreateAccount(shopId, 'Sales Revenue', 'Income', accountsCache),
@@ -524,7 +524,7 @@ export const createSaleLedgerEntry = async (receiptData) => {
       getOrCreateAccount(shopId, 'Accounts Receivable', 'Asset', accountsCache),
       getOrCreateAccount(shopId, 'Discounts Given', 'Expense', accountsCache)
     ];
-    
+
     const [
       salesAccount,
       cashAccount,
@@ -535,16 +535,16 @@ export const createSaleLedgerEntry = async (receiptData) => {
       accountsReceivableAccount,
       discountAccount
     ] = await Promise.all(accountPromises);
-    
+
     // Determine payment account based on payment method
     let paymentAccount;
     const paymentMethodLower = (paymentMethod || 'Cash').toLowerCase();
-    
+
     if (paymentMethodLower.includes('cash')) {
       paymentAccount = cashAccount;
     } else if (paymentMethodLower.includes('card') || paymentMethodLower.includes('credit') || paymentMethodLower.includes('debit')) {
       paymentAccount = cardAccount;
-    } else if (paymentMethodLower.includes('upi')) {
+    } else if (paymentMethodLower.includes('upi') || paymentMethodLower.includes('qr')) {
       paymentAccount = upiAccount;
     } else if (paymentMethodLower.includes('wallet')) {
       paymentAccount = walletAccount;
@@ -555,15 +555,15 @@ export const createSaleLedgerEntry = async (receiptData) => {
     } else {
       paymentAccount = cashAccount; // Default to cash
     }
-    
+
     const entryDate = receiptData.date || receiptData.timestamp || new Date().toISOString().split('T')[0];
     const saleAmount = parseFloat(totalAmount) || 0;
     const discountAmount = parseFloat(discount) || 0;
     const netSaleAmount = saleAmount - discountAmount;
-    
+
     // Prepare all entries to create
     const entriesToCreate = [];
-    
+
     // Main sale entry: Debit Payment Account, Credit Sales Revenue
     entriesToCreate.push({
       shopId,
@@ -579,7 +579,7 @@ export const createSaleLedgerEntry = async (receiptData) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
-    
+
     // Discount entry if discount exists
     if (discountAmount > 0) {
       entriesToCreate.push({
@@ -597,7 +597,7 @@ export const createSaleLedgerEntry = async (receiptData) => {
         updatedAt: new Date().toISOString()
       });
     }
-    
+
     // COGS entry if cost prices are available
     if (items && items.length > 0) {
       const totalCost = items.reduce((sum, item) => {
@@ -605,14 +605,14 @@ export const createSaleLedgerEntry = async (receiptData) => {
         const quantity = parseFloat(item.quantity || 0);
         return sum + (costPrice * quantity);
       }, 0);
-      
+
       if (totalCost > 0) {
         // Get inventory and COGS accounts (only if needed)
         const [inventoryAccount, cogsAccount] = await Promise.all([
           getOrCreateAccount(shopId, 'Inventory', 'Asset', accountsCache),
           getOrCreateAccount(shopId, 'Cost of Goods Sold', 'Expense', accountsCache)
         ]);
-        
+
         entriesToCreate.push({
           shopId,
           entryDate,
@@ -628,11 +628,11 @@ export const createSaleLedgerEntry = async (receiptData) => {
         });
       }
     }
-    
+
     // Create all entries in parallel
     const entryPromises = entriesToCreate.map(entry => addLedgerEntry(entry));
     const entryIds = await Promise.all(entryPromises);
-    
+
     return entryIds[0]; // Return the main sale entry ID
   } catch (error) {
     console.error('Error creating sale ledger entry:', error);
@@ -645,15 +645,15 @@ export const createSaleLedgerEntry = async (receiptData) => {
 export const createRefundLedgerEntry = async (returnData) => {
   try {
     const { shopId, returnAmount, originalReceipt, paymentMethod, transactionId, reason } = returnData;
-    
+
     if (!shopId || !returnAmount) {
       console.warn('Missing required data for refund ledger entry');
       return null;
     }
-    
+
     // Fetch all accounts once
     const accountsCache = await getLedgerAccounts(shopId);
-    
+
     // Get or create accounts in parallel
     const accountPromises = [
       getOrCreateAccount(shopId, 'Sales Revenue', 'Income', accountsCache),
@@ -664,7 +664,7 @@ export const createRefundLedgerEntry = async (returnData) => {
       getOrCreateAccount(shopId, 'Wallet Payments', 'Asset', accountsCache),
       getOrCreateAccount(shopId, 'Refunds', 'Expense', accountsCache)
     ];
-    
+
     const [
       salesAccount,
       cashAccount,
@@ -674,11 +674,11 @@ export const createRefundLedgerEntry = async (returnData) => {
       walletAccount,
       refundAccount
     ] = await Promise.all(accountPromises);
-    
+
     // Determine payment account based on original payment method
     let paymentAccount;
     const paymentMethodLower = (paymentMethod || originalReceipt?.paymentMethod || 'Cash').toLowerCase();
-    
+
     if (paymentMethodLower.includes('cash')) {
       paymentAccount = cashAccount;
     } else if (paymentMethodLower.includes('card') || paymentMethodLower.includes('credit') || paymentMethodLower.includes('debit')) {
@@ -692,10 +692,10 @@ export const createRefundLedgerEntry = async (returnData) => {
     } else {
       paymentAccount = cashAccount; // Default to cash
     }
-    
+
     const entryDate = returnData.date || returnData.timestamp || new Date().toISOString().split('T')[0];
     const refundAmount = parseFloat(returnAmount) || 0;
-    
+
     // Prepare entries to create
     const entriesToCreate = [
       {
@@ -727,11 +727,11 @@ export const createRefundLedgerEntry = async (returnData) => {
         updatedAt: new Date().toISOString()
       }
     ];
-    
+
     // Create all entries in parallel
     const entryPromises = entriesToCreate.map(entry => addLedgerEntry(entry));
     const entryIds = await Promise.all(entryPromises);
-    
+
     return entryIds[0]; // Return the main refund entry ID
   } catch (error) {
     console.error('Error creating refund ledger entry:', error);
@@ -743,12 +743,12 @@ export const createRefundLedgerEntry = async (returnData) => {
 export const createVoidLedgerEntry = async (voidData) => {
   try {
     const { shopId, voidAmount, originalReceipt, reason } = voidData;
-    
+
     if (!shopId || !voidAmount) {
       console.warn('Missing required data for void ledger entry');
       return null;
     }
-    
+
     // Get or create accounts
     const salesAccount = await getOrCreateAccount(shopId, 'Sales Revenue', 'Income');
     const cashAccount = await getOrCreateAccount(shopId, 'Cash', 'Asset');
@@ -757,12 +757,12 @@ export const createVoidLedgerEntry = async (voidData) => {
     const cardAccount = await getOrCreateAccount(shopId, 'Card Payments', 'Asset');
     const walletAccount = await getOrCreateAccount(shopId, 'Wallet Payments', 'Asset');
     const voidAccount = await getOrCreateAccount(shopId, 'Voided Transactions', 'Expense');
-    
+
     // Determine payment account based on original payment method
     let paymentAccount;
     const paymentMethod = originalReceipt?.paymentMethod || 'Cash';
     const paymentMethodLower = paymentMethod.toLowerCase();
-    
+
     if (paymentMethodLower.includes('cash')) {
       paymentAccount = cashAccount;
     } else if (paymentMethodLower.includes('card') || paymentMethodLower.includes('credit') || paymentMethodLower.includes('debit')) {
@@ -776,10 +776,10 @@ export const createVoidLedgerEntry = async (voidData) => {
     } else {
       paymentAccount = cashAccount;
     }
-    
+
     const entryDate = voidData.date || voidData.timestamp || new Date().toISOString().split('T')[0];
     const voidAmountValue = parseFloat(voidAmount) || 0;
-    
+
     // Create void entry: Debit Sales Revenue, Credit Payment Account
     const voidEntry = {
       shopId,
@@ -795,9 +795,9 @@ export const createVoidLedgerEntry = async (voidData) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    
+
     const voidEntryId = await addLedgerEntry(voidEntry);
-    
+
     // Also create a void expense entry for tracking
     const voidExpenseEntry = {
       shopId,
@@ -813,9 +813,9 @@ export const createVoidLedgerEntry = async (voidData) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    
+
     await addLedgerEntry(voidExpenseEntry);
-    
+
     return voidEntryId;
   } catch (error) {
     console.error('Error creating void ledger entry:', error);
@@ -829,38 +829,38 @@ export const createVoidLedgerEntry = async (voidData) => {
 export const getDailyClosing = async (shopId, date) => {
   try {
     const closingDate = date || new Date().toISOString().split('T')[0];
-    
+
     // Get all entries for the day
     const entries = await getLedgerEntries(shopId, {});
     const dayEntries = entries.filter(entry => entry.entryDate === closingDate);
-    
+
     // Get accounts
     const accounts = await getLedgerAccounts(shopId);
-    
+
     // Calculate totals by payment method
     const paymentMethodTotals = {};
     const transactionTypeTotals = {};
-    
+
     dayEntries.forEach(entry => {
       const paymentMethod = entry.paymentMethod || 'Cash';
       const transactionType = entry.transactionType || 'Manual';
-      
+
       if (!paymentMethodTotals[paymentMethod]) {
         paymentMethodTotals[paymentMethod] = { debit: 0, credit: 0 };
       }
       if (!transactionTypeTotals[transactionType]) {
         transactionTypeTotals[transactionType] = { count: 0, total: 0 };
       }
-      
+
       // Determine if this entry affects the payment method account
-      const paymentAccount = accounts.find(acc => 
+      const paymentAccount = accounts.find(acc =>
         (acc.accountName === 'Cash' && paymentMethod.toLowerCase().includes('cash')) ||
         (acc.accountName === 'Card Payments' && paymentMethod.toLowerCase().includes('card')) ||
         (acc.accountName === 'UPI Payments' && paymentMethod.toLowerCase().includes('upi')) ||
         (acc.accountName === 'Wallet Payments' && paymentMethod.toLowerCase().includes('wallet')) ||
         (acc.accountName === 'Bank Account' && (paymentMethod.toLowerCase().includes('bank') || paymentMethod.toLowerCase().includes('transfer')))
       );
-      
+
       if (paymentAccount) {
         if (entry.debitAccountId === paymentAccount.id) {
           paymentMethodTotals[paymentMethod].debit += parseFloat(entry.amount || 0);
@@ -869,7 +869,7 @@ export const getDailyClosing = async (shopId, date) => {
           paymentMethodTotals[paymentMethod].credit += parseFloat(entry.amount || 0);
         }
       }
-      
+
       if (transactionType === 'Sale' || transactionType === 'Refund' || transactionType === 'Void') {
         transactionTypeTotals[transactionType].count++;
         if (transactionType === 'Sale') {
@@ -879,13 +879,13 @@ export const getDailyClosing = async (shopId, date) => {
         }
       }
     });
-    
+
     // Calculate net by payment method
     const netByPaymentMethod = {};
     Object.keys(paymentMethodTotals).forEach(method => {
       netByPaymentMethod[method] = paymentMethodTotals[method].debit - paymentMethodTotals[method].credit;
     });
-    
+
     // Calculate total sales, refunds, discounts
     const salesTotal = transactionTypeTotals['Sale']?.total || 0;
     const refundsTotal = Math.abs(transactionTypeTotals['Refund']?.total || 0);
@@ -893,7 +893,7 @@ export const getDailyClosing = async (shopId, date) => {
     const discountsTotal = dayEntries
       .filter(e => e.transactionType === 'Discount')
       .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
-    
+
     return {
       date: closingDate,
       totalEntries: dayEntries.length,
@@ -922,16 +922,16 @@ export const getAccountingReport = async (shopId, startDate, endDate) => {
       getLedgerEntries(shopId, {}),
       getLedgerAccounts(shopId)
     ]);
-    
+
     // Calculate all balances in a single pass (much faster!)
     const accountBalances = calculateAllAccountBalances(accounts, entries);
-    
+
     // Filter entries by date range for payment method breakdown
     const filteredEntries = entries.filter(entry => {
       const entryDate = entry.entryDate;
       return (!startDate || entryDate >= startDate) && (!endDate || entryDate <= endDate);
     });
-    
+
     // Group by account type
     const accountsByType = {
       Asset: accounts.filter(a => a.accountType === 'Asset'),
@@ -939,7 +939,7 @@ export const getAccountingReport = async (shopId, startDate, endDate) => {
       Income: accounts.filter(a => a.accountType === 'Income'),
       Expense: accounts.filter(a => a.accountType === 'Expense')
     };
-    
+
     // Calculate totals by type
     const totalsByType = {
       Asset: accountsByType.Asset.reduce((sum, acc) => sum + (accountBalances[acc.id] || 0), 0),
@@ -947,12 +947,12 @@ export const getAccountingReport = async (shopId, startDate, endDate) => {
       Income: accountsByType.Income.reduce((sum, acc) => sum + (accountBalances[acc.id] || 0), 0),
       Expense: accountsByType.Expense.reduce((sum, acc) => sum + (accountBalances[acc.id] || 0), 0)
     };
-    
+
     // Calculate profit/loss
     const grossProfit = totalsByType.Income - totalsByType.Expense;
     const netIncome = totalsByType.Income - totalsByType.Expense;
     const totalEquity = totalsByType.Asset - totalsByType.Liability;
-    
+
     // Payment method breakdown (only for filtered entries)
     const paymentMethodBreakdown = {};
     filteredEntries.forEach(entry => {
@@ -965,7 +965,7 @@ export const getAccountingReport = async (shopId, startDate, endDate) => {
         paymentMethodBreakdown[method].total += parseFloat(entry.amount || 0);
       }
     });
-    
+
     return {
       period: { startDate, endDate },
       totalEntries: filteredEntries.length,

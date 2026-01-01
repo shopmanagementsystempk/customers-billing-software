@@ -10,7 +10,8 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import './SalesAnalytics.css';
-import { Translate } from '../utils';
+import { Translate, getTranslatedText } from '../utils';
+import { useLanguage } from '../contexts/LanguageContext';
 import * as echarts from 'echarts';
 import ReactECharts from 'echarts-for-react';
 import 'echarts-gl';
@@ -29,10 +30,10 @@ const CategoryRow = React.memo(({ category, index }) => (
 // Memoized category progress bar component
 const CategoryProgressBar = React.memo(({ category, index, totalSales }) => {
   // Calculate percentage of total sales
-  const percentage = totalSales > 0 
-    ? (category.sales / totalSales * 100).toFixed(1) 
+  const percentage = totalSales > 0
+    ? (category.sales / totalSales * 100).toFixed(1)
     : 0;
-  
+
   return (
     <div className="mb-2">
       <div className="d-flex justify-content-between mb-1">
@@ -40,15 +41,15 @@ const CategoryProgressBar = React.memo(({ category, index, totalSales }) => {
         <span>{formatCurrency(category.sales)} ({percentage}%)</span>
       </div>
       <div className="progress" style={{ height: '20px' }}>
-        <div 
-          className="progress-bar" 
-          role="progressbar" 
-          style={{ 
+        <div
+          className="progress-bar"
+          role="progressbar"
+          style={{
             width: `${percentage}%`,
             backgroundColor: `hsl(${210 - index * 30}, 70%, 50%)` // Different color for each category
-          }} 
-          aria-valuenow={percentage} 
-          aria-valuemin="0" 
+          }}
+          aria-valuenow={percentage}
+          aria-valuemin="0"
           aria-valuemax="100"
         >
           {percentage > 5 ? `${percentage}%` : ''}
@@ -61,7 +62,7 @@ const CategoryProgressBar = React.memo(({ category, index, totalSales }) => {
 // Memoized daily data row component
 const DailyDataRow = React.memo(({ day }) => {
   const profitMargin = day.sales > 0 ? ((day.profit / day.sales) * 100).toFixed(2) : 0;
-  
+
   return (
     <tr>
       <td>{day.day}</td>
@@ -75,7 +76,7 @@ const DailyDataRow = React.memo(({ day }) => {
 // Memoized monthly data row component
 const MonthlyDataRow = React.memo(({ month }) => {
   const profitMargin = month.sales > 0 ? ((month.profit / month.sales) * 100).toFixed(2) : 0;
-  
+
   return (
     <tr>
       <td>{month.month}</td>
@@ -89,7 +90,7 @@ const MonthlyDataRow = React.memo(({ month }) => {
 // Memoized product sales by employee row component
 const ProductSalesRow = React.memo(({ product }) => {
   const profitMargin = product.totalSales > 0 ? ((product.profit / product.totalSales) * 100).toFixed(2) : 0;
-  
+
   return (
     <tr>
       <td>{product.productName}</td>
@@ -108,6 +109,7 @@ const ProductSalesRow = React.memo(({ product }) => {
 
 const SalesAnalytics = () => {
   const { currentUser, activeShopId } = useAuth();
+  const { language } = useLanguage();
   const [viewMode, setViewMode] = useState('daily'); // 'daily', 'monthly', 'yearly'
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [analytics, setAnalytics] = useState(null);
@@ -118,10 +120,10 @@ const SalesAnalytics = () => {
   // Memoized function to fetch analytics data
   const fetchAnalyticsData = useCallback(async () => {
     if (!currentUser) return;
-    
+
     setLoading(true);
     setError('');
-    
+
     try {
       // Add validation for date and fallback to current date if invalid
       let date;
@@ -134,9 +136,9 @@ const SalesAnalytics = () => {
       } catch (e) {
         date = new Date(); // Fallback to current date
       }
-      
+
       let data;
-      
+
       switch (viewMode) {
         case 'daily':
           data = await getDailySalesAndProfit(activeShopId, date);
@@ -150,12 +152,12 @@ const SalesAnalytics = () => {
         default:
           data = await getDailySalesAndProfit(activeShopId, date);
       }
-      
+
       setAnalytics(data);
     } catch (error) {
       // Only log minimal error details, not the full error object
       console.log('Analytics data fetch issue:', error.message || 'Error fetching data');
-      
+
       // Set user-friendly error message without exposing internal details
       setError('Failed to load analytics data. Please try again later.');
     } finally {
@@ -245,12 +247,15 @@ const SalesAnalytics = () => {
     if (!analytics) return null;
     const timeSeries = analytics.dailyData || analytics.monthlyData;
     if (!timeSeries || timeSeries.length === 0) return null;
-  
+
     const xAxisCategories = timeSeries.map(item => item.day || item.month);
-    const yAxisCategories = ['Sales', 'Profit'];
+    const yAxisCategories = [
+      getTranslatedText('sales', language),
+      getTranslatedText('profit', language)
+    ];
     const data = [];
     let maxValue = 0;
-  
+
     timeSeries.forEach((item, xi) => {
       const salesVal = Number(item.sales || 0);
       const profitVal = Number(item.profit || 0);
@@ -258,7 +263,7 @@ const SalesAnalytics = () => {
       data.push([xi, 0, salesVal]);
       data.push([xi, 1, profitVal]);
     });
-  
+
     return {
       tooltip: {
         formatter: params => {
@@ -277,16 +282,16 @@ const SalesAnalytics = () => {
       xAxis3D: {
         type: 'category',
         data: xAxisCategories,
-        name: analytics.dailyData ? 'Day' : 'Month'
+        name: analytics.dailyData ? getTranslatedText('day', language) : getTranslatedText('month', language)
       },
       yAxis3D: {
         type: 'category',
         data: yAxisCategories,
-        name: 'Metric'
+        name: getTranslatedText('metric', language)
       },
       zAxis3D: {
         type: 'value',
-        name: 'Amount'
+        name: getTranslatedText('amount', language)
       },
       grid3D: {
         boxWidth: 120,
@@ -355,13 +360,25 @@ const SalesAnalytics = () => {
   // Generate CSV report
   const generateCSVReport = useCallback(() => {
     if (!analytics || !analytics.productSalesByEmployee || analytics.productSalesByEmployee.length === 0) {
-      alert('No data available to export');
+      alert(getTranslatedText('noDataAvailable', language));
       return;
     }
 
     // CSV Headers
-    const headers = ['Product', 'Employee', 'Date', 'Time', 'Quantity', 'Unit Price', 'Total Sales', 'Profit', 'Profit Margin (%)', 'Category', 'Transaction ID'];
-    
+    const headers = [
+      getTranslatedText('product', language),
+      getTranslatedText('employee', language),
+      getTranslatedText('date', language),
+      getTranslatedText('time', language),
+      getTranslatedText('quantity', language),
+      getTranslatedText('unitPrice', language),
+      getTranslatedText('totalSales', language),
+      getTranslatedText('profit', language),
+      `${getTranslatedText('profitMargin', language)} (%)`,
+      getTranslatedText('category', language),
+      getTranslatedText('transactionId', language)
+    ];
+
     // CSV Rows
     const rows = analytics.productSalesByEmployee.map(product => [
       product.productName,
@@ -378,10 +395,18 @@ const SalesAnalytics = () => {
     ]);
 
     // Add employee summary section
-    const summaryHeaders = ['Employee Summary'];
+    const summaryHeaders = [getTranslatedText('employeeSummary', language)];
     const summarySection = generateEmployeeSummary.length > 0 ? [
       [],
-      ['Employee', 'Total Sales', 'Total Profit', 'Profit Margin (%)', 'Items Sold', 'Products Sold', 'Transactions'],
+      [
+        getTranslatedText('employee', language),
+        getTranslatedText('totalSales', language),
+        getTranslatedText('totalProfit', language),
+        `${getTranslatedText('profitMargin', language)} (%)`,
+        getTranslatedText('itemsSold', language),
+        getTranslatedText('productsSold', language),
+        getTranslatedText('transactions', language)
+      ],
       ...generateEmployeeSummary.map(emp => [
         emp.employeeName,
         emp.totalSales.toFixed(2),
@@ -395,11 +420,11 @@ const SalesAnalytics = () => {
 
     // Combine all data
     const csvContent = [
-      ['Employee Sales Report'],
-      [`Generated: ${formatDisplayDate(new Date())}`],
-      [`Period: ${viewMode} view - ${selectedDate}`],
+      [getTranslatedText('employeeSalesReport', language)],
+      [`${getTranslatedText('generated', language)}: ${formatDisplayDate(new Date())}`],
+      [`${getTranslatedText('period', language)}: ${getTranslatedText(viewMode, language)} ${getTranslatedText('view', language)} - ${selectedDate}`],
       [],
-      ['Detailed Product Sales'],
+      [getTranslatedText('detailedProductSales', language)],
       headers,
       ...rows,
       [],
@@ -421,7 +446,7 @@ const SalesAnalytics = () => {
   // Generate PDF report
   const generatePDFReport = useCallback(async () => {
     if (!analytics || !analytics.productSalesByEmployee || analytics.productSalesByEmployee.length === 0) {
-      alert('No data available to export');
+      alert(getTranslatedText('noDataAvailable', language));
       return;
     }
 
@@ -447,15 +472,15 @@ const SalesAnalytics = () => {
     // Title
     pdf.setFontSize(18);
     pdf.setFont('helvetica', 'bold');
-    pdf.text('Employee Sales Report', margin, yPosition);
+    pdf.text(getTranslatedText('employeeSalesReport', language), margin, yPosition);
     yPosition += lineHeight * 1.5;
 
     // Report Info
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
-    pdf.text(`Generated: ${formatDisplayDate(new Date())}`, margin, yPosition);
+    pdf.text(`${getTranslatedText('generated', language)}: ${formatDisplayDate(new Date())}`, margin, yPosition);
     yPosition += lineHeight;
-    pdf.text(`Period: ${viewMode} view - ${selectedDate}`, margin, yPosition);
+    pdf.text(`${getTranslatedText('period', language)}: ${getTranslatedText(viewMode, language)} ${getTranslatedText('view', language)} - ${selectedDate}`, margin, yPosition);
     yPosition += lineHeight * 1.5;
 
     // Employee Summary Section
@@ -467,10 +492,17 @@ const SalesAnalytics = () => {
 
       pdf.setFontSize(9);
       pdf.setFont('helvetica', 'bold');
-      const summaryHeaders = ['Employee', 'Sales', 'Profit', 'Margin %', 'Items', 'Transactions'];
+      const summaryHeaders = [
+        getTranslatedText('employee', language),
+        getTranslatedText('sales', language),
+        getTranslatedText('profit', language),
+        getTranslatedText('profitMargin', language),
+        getTranslatedText('items', language),
+        getTranslatedText('transactions', language)
+      ];
       const summaryColWidths = [50, 30, 30, 25, 20, 30];
       xPos = margin;
-      
+
       summaryHeaders.forEach((header, index) => {
         pdf.text(header, xPos, yPosition);
         xPos += summaryColWidths[index];
@@ -502,22 +534,30 @@ const SalesAnalytics = () => {
     checkNewPage(lineHeight * 3);
     pdf.setFontSize(14);
     pdf.setFont('helvetica', 'bold');
-    pdf.text('Detailed Product Sales', margin, yPosition);
+    pdf.text(getTranslatedText('detailedProductSales', language), margin, yPosition);
     yPosition += lineHeight * 1.5;
 
     // Table headers
     pdf.setFontSize(8);
     pdf.setFont('helvetica', 'bold');
-    const headers = ['Product', 'Employee', 'Date', 'Qty', 'Price', 'Sales', 'Profit'];
+    const headers = [
+      getTranslatedText('product', language),
+      getTranslatedText('employee', language),
+      getTranslatedText('date', language),
+      getTranslatedText('qty', language),
+      getTranslatedText('price', language),
+      getTranslatedText('sales', language),
+      getTranslatedText('profit', language)
+    ];
     const colWidths = [40, 30, 25, 15, 20, 25, 25];
-    
+
     xPos = margin;
     headers.forEach((header, index) => {
       pdf.text(header, xPos, yPosition);
       xPos += colWidths[index];
     });
     yPosition += lineHeight;
-    
+
     // Draw line under headers
     pdf.setLineWidth(0.5);
     pdf.line(margin, yPosition - 2, pageWidth - margin, yPosition - 2);
@@ -527,7 +567,7 @@ const SalesAnalytics = () => {
     pdf.setFont('helvetica', 'normal');
     analytics.productSalesByEmployee.forEach((product, index) => {
       checkNewPage(lineHeight * 2);
-      
+
       xPos = margin;
       pdf.text(product.productName.substring(0, 18), xPos, yPosition);
       xPos += colWidths[0];
@@ -542,9 +582,9 @@ const SalesAnalytics = () => {
       pdf.text(product.totalSales.toFixed(2), xPos, yPosition);
       xPos += colWidths[5];
       pdf.text(product.profit.toFixed(2), xPos, yPosition);
-      
+
       yPosition += lineHeight;
-      
+
       // Add line every 10 rows for readability
       if ((index + 1) % 10 === 0) {
         pdf.setLineWidth(0.1);
@@ -563,34 +603,52 @@ const SalesAnalytics = () => {
 
     return (
       <>
-        <Row className="mb-4">
-          <Col md={3} className="d-flex">
-            <Card className="text-center p-3 mb-3 shadow-sm analytics-card h-100 w-100">
-              <Card.Title><Translate textKey="totalSales" fallback="Total Sales" /></Card.Title>
-              <Card.Text className="display-6">{formatCurrency(analytics.sales)}</Card.Text>
-            </Card>
-          </Col>
-          <Col md={3} className="d-flex">
-            <Card className="text-center p-3 mb-3 shadow-sm analytics-card h-100 w-100">
-              <Card.Title><Translate textKey="totalProfit" fallback="Total Profit" /></Card.Title>
-              <Card.Text className="display-6">{formatCurrency(analytics.profit)}</Card.Text>
-              <small className="text-muted">{profitMargin}% margin</small>
-            </Card>
-          </Col>
-          <Col md={3} className="d-flex">
-            <Card className="text-center p-3 mb-3 shadow-sm analytics-card h-100 w-100">
-              <Card.Title><Translate textKey="itemsSold" fallback="Items Sold" /></Card.Title>
-              <Card.Text className="display-6">{analytics.totalItems}</Card.Text>
-            </Card>
-          </Col>
-          <Col md={3} className="d-flex">
-            <Card className="text-center p-3 mb-3 shadow-sm analytics-card h-100 w-100">
-              <Card.Title><Translate textKey="transactions" fallback="Transactions" /></Card.Title>
-              <Card.Text className="display-6">{analytics.transactionCount}</Card.Text>
-            </Card>
-          </Col>
-        </Row>
-        
+        <div className="dashboard-stats-grid-v2 mb-4">
+          {/* Total Sales - Green */}
+          <div className="stat-card-v2 stat-card-v2--green slide-in-up">
+            <div className="stat-card-v2__value">
+              {formatCurrency(analytics.sales).replace('RS', 'RS ')}
+            </div>
+            <div className="stat-card-v2__label">
+              <Translate textKey="totalSales" fallback="Total Sales" />
+            </div>
+            <i className="bi bi-cart-check stat-card-v2__icon"></i>
+          </div>
+
+          {/* Total Profit - Teal */}
+          <div className="stat-card-v2 stat-card-v2--teal slide-in-up" style={{ animationDelay: '0.1s' }}>
+            <div className="stat-card-v2__value">
+              {formatCurrency(analytics.profit).replace('RS', 'RS ')}
+            </div>
+            <div className="stat-card-v2__label">
+              <Translate textKey="totalProfit" fallback="Total Profit" /> ({profitMargin}% margin)
+            </div>
+            <i className="bi bi-graph-up-arrow stat-card-v2__icon"></i>
+          </div>
+
+          {/* Items Sold - Orange */}
+          <div className="stat-card-v2 stat-card-v2--orange slide-in-up" style={{ animationDelay: '0.2s' }}>
+            <div className="stat-card-v2__value">
+              {analytics.totalItems}
+            </div>
+            <div className="stat-card-v2__label">
+              <Translate textKey="itemsSold" fallback="Items Sold" />
+            </div>
+            <i className="bi bi-box-seam stat-card-v2__icon"></i>
+          </div>
+
+          {/* Transactions - Indigo */}
+          <div className="stat-card-v2 stat-card-v2--indigo slide-in-up" style={{ animationDelay: '0.3s' }}>
+            <div className="stat-card-v2__value">
+              {analytics.transactionCount}
+            </div>
+            <div className="stat-card-v2__label">
+              <Translate textKey="transactions" fallback="Transactions" />
+            </div>
+            <i className="bi bi-receipt stat-card-v2__icon"></i>
+          </div>
+        </div>
+
         <Row className="mb-4">
           <Col md={12}>
             <Card className="shadow-sm profit-breakdown-card">
@@ -617,12 +675,12 @@ const SalesAnalytics = () => {
                   </Col>
                 </Row>
                 <div className="progress mt-2" style={{ height: '25px' }}>
-                  <div 
-                    className="progress-bar bg-success" 
-                    role="progressbar" 
-                    style={{ width: `${profitMargin}%` }} 
-                    aria-valuenow={profitMargin} 
-                    aria-valuemin="0" 
+                  <div
+                    className="progress-bar bg-success"
+                    role="progressbar"
+                    style={{ width: `${profitMargin}%` }}
+                    aria-valuenow={profitMargin}
+                    aria-valuemin="0"
                     aria-valuemax="100"
                   >
                     {profitMargin}%
@@ -666,18 +724,18 @@ const SalesAnalytics = () => {
                         <YAxis />
                         <Tooltip formatter={(value) => formatCurrency(value)} />
                         <Legend />
-                        <Line 
-                          type="monotone" 
-                          dataKey="sales" 
-                          stroke="#0d6efd" 
-                          name="Sales" 
-                          activeDot={{ r: 8 }} 
+                        <Line
+                          type="monotone"
+                          dataKey="sales"
+                          stroke="#0d6efd"
+                          name="Sales"
+                          activeDot={{ r: 8 }}
                         />
-                        <Line 
-                          type="monotone" 
-                          dataKey="profit" 
-                          stroke="#198754" 
-                          name="Profit" 
+                        <Line
+                          type="monotone"
+                          dataKey="profit"
+                          stroke="#198754"
+                          name="Profit"
                         />
                       </LineChart>
                     </ResponsiveContainer>
@@ -703,15 +761,15 @@ const SalesAnalytics = () => {
                       <YAxis />
                       <Tooltip formatter={(value) => formatCurrency(value)} />
                       <Legend />
-                      <Bar 
-                        dataKey="sales" 
-                        fill="#0d6efd" 
-                        name="Sales" 
+                      <Bar
+                        dataKey="sales"
+                        fill="#0d6efd"
+                        name="Sales"
                       />
-                      <Bar 
-                        dataKey="profit" 
-                        fill="#198754" 
-                        name="Profit" 
+                      <Bar
+                        dataKey="profit"
+                        fill="#198754"
+                        name="Profit"
                       />
                     </BarChart>
                   </ResponsiveContainer>
@@ -743,21 +801,21 @@ const SalesAnalytics = () => {
                   </tbody>
                 </Table>
               </div>
-              
+
               {/* Category Sales Distribution Chart (visual representation as progress bars) */}
               <h6 className="mt-4"><Translate textKey="salesDistribution" fallback="Sales Distribution" /></h6>
               {analytics.categoryData.map((category, index) => (
-                <CategoryProgressBar 
-                  key={index} 
-                  category={category} 
-                  index={index} 
-                  totalSales={analytics.sales} 
+                <CategoryProgressBar
+                  key={index}
+                  category={category}
+                  index={index}
+                  totalSales={analytics.sales}
                 />
               ))}
             </Card.Body>
           </Card>
         )}
-        
+
         {/* Product Sales by Employee */}
         <Card className="shadow-sm mb-4">
           <Card.Body>
@@ -765,8 +823,8 @@ const SalesAnalytics = () => {
               <h5 className="mb-0"><Translate textKey="productSalesByEmployee" fallback="Product Sales by Employee" /></h5>
               {analytics.productSalesByEmployee && analytics.productSalesByEmployee.length > 0 && (
                 <Dropdown as={ButtonGroup}>
-                  <Button 
-                    variant="success" 
+                  <Button
+                    variant="success"
                     onClick={generateCSVReport}
                     size="sm"
                   >
@@ -788,12 +846,12 @@ const SalesAnalytics = () => {
               )}
             </div>
             <p className="text-muted mb-3">
-              <Translate 
-                textKey="productSalesByEmployeeDescription" 
-                fallback="Detailed list of products sold by employees (only shows products from receipts where an employee was selected)" 
+              <Translate
+                textKey="productSalesByEmployeeDescription"
+                fallback="Detailed list of products sold by employees (only shows products from receipts where an employee was selected)"
               />
             </p>
-            
+
             {/* Employee Summary */}
             {generateEmployeeSummary && generateEmployeeSummary.length > 0 && (
               <Card className="mb-3" style={{ backgroundColor: '#f8f9fa' }}>
@@ -830,7 +888,7 @@ const SalesAnalytics = () => {
                 </Card.Body>
               </Card>
             )}
-            
+
             {analytics.productSalesByEmployee && analytics.productSalesByEmployee.length > 0 ? (
               <div className="table-responsive mt-3">
                 <Table striped bordered hover size="sm" className="product-sales-table">
@@ -857,9 +915,9 @@ const SalesAnalytics = () => {
               </div>
             ) : (
               <Alert variant="info" className="mt-3">
-                <Translate 
-                  textKey="noProductSalesWithEmployee" 
-                  fallback="No product sales with employee information found for this period. Products will appear here when an employee is selected during receipt generation." 
+                <Translate
+                  textKey="noProductSalesWithEmployee"
+                  fallback="No product sales with employee information found for this period. Products will appear here when an employee is selected during receipt generation."
                 />
               </Alert>
             )}
@@ -900,7 +958,7 @@ const SalesAnalytics = () => {
             </tbody>
           </Table>
         );
-        
+
       case 'yearly':
         return (
           <Table responsive striped bordered hover>
@@ -927,12 +985,12 @@ const SalesAnalytics = () => {
             </tbody>
           </Table>
         );
-        
+
       default: // daily
         return (
           <Alert variant="info">
-            <Translate 
-              textKey="dailyViewDescription" 
+            <Translate
+              textKey="dailyViewDescription"
               fallback="Daily view displays summary data for the selected date. You can switch to monthly or yearly views for more detailed analysis."
             />
           </Alert>
@@ -949,12 +1007,12 @@ const SalesAnalytics = () => {
     <>
       <MainNavbar />
       <Container>
-        <PageHeader 
-          title="Profit and Loss" 
-          icon="bi-graph-up" 
-          subtitle="Dive into your sales performance, profit trends, and period comparisons."
+        <PageHeader
+          title={getTranslatedText('salesAnalytics', language)}
+          icon="bi-graph-up"
+          subtitle={getTranslatedText('profitAndLossDesc', language)}
         />
-        
+
         <Card className="mb-4 shadow-sm">
           <Card.Body>
             <Row className="mb-3">
@@ -999,9 +1057,9 @@ const SalesAnalytics = () => {
             </Row>
           </Card.Body>
         </Card>
-        
+
         {error && <Alert variant="danger">{error}</Alert>}
-        
+
         {isInitialLoad ? (
           <div className="text-center my-5">
             <Spinner animation="border" role="status">
@@ -1018,13 +1076,13 @@ const SalesAnalytics = () => {
             {analytics && (
               <>
                 {renderSummary}
-                
+
                 <Card className="shadow-sm">
                   <Card.Body>
                     <h4 className="mb-3">
-                      <Translate 
-                        textKey={`${viewMode}Details`} 
-                        fallback={`${viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} Details`} 
+                      <Translate
+                        textKey={`${viewMode}Details`}
+                        fallback={`${viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} Details`}
                       />
                     </h4>
                     {renderDetailedData}
@@ -1036,13 +1094,13 @@ const SalesAnalytics = () => {
         ) : (
           <>
             {renderSummary}
-            
+
             <Card className="shadow-sm">
               <Card.Body>
                 <h4 className="mb-3">
-                  <Translate 
-                    textKey={`${viewMode}Details`} 
-                    fallback={`${viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} Details`} 
+                  <Translate
+                    textKey={`${viewMode}Details`}
+                    fallback={`${viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} Details`}
                   />
                 </h4>
                 {renderDetailedData}

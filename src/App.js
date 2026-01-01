@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { AdminProvider } from './contexts/AdminContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { useLanguage } from './contexts/LanguageContext';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import PrivateRoute from './components/PrivateRoute';
 import AdminPrivateRoute from './components/AdminPrivateRoute';
 import GuestPrivateRoute from './components/GuestPrivateRoute';
@@ -64,13 +65,14 @@ import './App.css';
 // Wrapper component to apply RTL class based on language
 function AppContent() {
   const { language } = useLanguage();
+  const { theme } = useTheme();
   const isRTL = language === 'ur';
-  
-  console.log('AppContent rendering, language:', language);
-  
+
+  console.log('AppContent rendering, language:', language, 'theme:', theme);
+
   return (
     <Router>
-      <div className={`App ${isRTL ? 'rtl' : ''}`}>
+      <div className={`App ${isRTL ? 'rtl' : ''}`} data-theme={theme}>
         <Routes>
           {/* User Routes */}
           <Route path="/login" element={
@@ -263,7 +265,7 @@ function AppContent() {
               </StaffPrivateRoute>
             </ErrorBoundary>
           } />
-          
+
           {/* Expense Management Routes */}
           <Route path="/expenses" element={
             <ErrorBoundary>
@@ -293,7 +295,7 @@ function AppContent() {
               </PrivateRoute>
             </ErrorBoundary>
           } />
-          
+
           {/* Guest Routes */}
           <Route path="/guest-dashboard" element={
             <ErrorBoundary>
@@ -332,7 +334,7 @@ function AppContent() {
               </PrivateRoute>
             </ErrorBoundary>
           } />
-          
+
           {/* Contacts Routes */}
           <Route path="/customer-information" element={
             <ErrorBoundary>
@@ -348,7 +350,7 @@ function AppContent() {
               </PrivateRoute>
             </ErrorBoundary>
           } />
-          
+
           {/* Staff Management Route */}
           <Route path="/staff-management" element={
             <ErrorBoundary>
@@ -357,7 +359,7 @@ function AppContent() {
               </PrivateRoute>
             </ErrorBoundary>
           } />
-          
+
           {/* Ledger Routes */}
           <Route path="/ledger-accounts" element={
             <ErrorBoundary>
@@ -401,7 +403,7 @@ function AppContent() {
               </PrivateRoute>
             </ErrorBoundary>
           } />
-          
+
           {/* Admin Routes */}
           <Route path="/admin/login" element={
             <ErrorBoundary>
@@ -429,7 +431,7 @@ function AppContent() {
               </AdminPrivateRoute>
             </ErrorBoundary>
           } />
-          
+
           <Route path="/" element={<Navigate replace to="/login" />} />
           <Route path="/admin" element={<Navigate replace to="/admin/login" />} />
         </Routes>
@@ -440,13 +442,15 @@ function AppContent() {
 
 function App() {
   console.log('App component rendering');
-  
+
   return (
     <ErrorBoundary>
       <AuthProvider>
         <AdminProvider>
           <LanguageProvider>
-            <AppContent />
+            <ThemeProvider>
+              <AppContent />
+            </ThemeProvider>
           </LanguageProvider>
         </AdminProvider>
       </AuthProvider>

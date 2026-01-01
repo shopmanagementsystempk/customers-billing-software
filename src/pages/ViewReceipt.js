@@ -1,17 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Container, Card, Button, Row, Col, Table, Alert, Form } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useLanguage } from '../contexts/LanguageContext';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { useAuth } from '../contexts/AuthContext';
 import MainNavbar from '../components/Navbar';
 import { getReceiptById, formatCurrency, formatDate, formatTime } from '../utils/receiptUtils';
 import Translate from '../components/Translate';
+import translations from '../utils/translations';
 import './ViewReceipt.css';
 
 const ViewReceipt = () => {
   const { id } = useParams();
   const { currentUser, activeShopId } = useAuth();
+  const { language } = useLanguage();
   const [receipt, setReceipt] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -32,7 +35,7 @@ const ViewReceipt = () => {
             if (receiptData.shopId !== activeShopId) {
               throw new Error('You do not have permission to view this receipt');
             }
-            
+
             setReceipt(receiptData);
           })
           .catch(error => {
@@ -51,7 +54,7 @@ const ViewReceipt = () => {
   // Updated downloadPdf function to consider custom size
   const downloadPdf = () => {
     const input = pdfRef.current;
-    
+
     // Make sure all images are loaded before converting to canvas
     const images = input.querySelectorAll('img');
     const imagesLoaded = Array.from(images).map(img => {
@@ -64,7 +67,7 @@ const ViewReceipt = () => {
         });
       }
     });
-    
+
     // Wait for all images to load then create PDF
     Promise.all(imagesLoaded).then(() => {
       html2canvas(input, {
@@ -93,11 +96,11 @@ const ViewReceipt = () => {
   const printReceipt = () => {
     const content = pdfRef.current;
     const originalContents = document.body.innerHTML;
-    
+
     // Create print content with proper invoice dimensions
     const printContent = document.createElement('div');
     printContent.innerHTML = content.innerHTML;
-    
+
     // Apply invoice bill dimensions based on print mode
     if (printMode === 'thermal') {
       // Thermal printer dimensions (80mm width)
@@ -118,7 +121,7 @@ const ViewReceipt = () => {
       printContent.style.fontSize = '14px';
       printContent.style.lineHeight = '1.4';
     }
-    
+
     // Create print stylesheet
     const printStyles = document.createElement('style');
     printStyles.innerHTML = `
@@ -132,17 +135,17 @@ const ViewReceipt = () => {
       h3 { font-size: ${printMode === 'thermal' ? '18px' : '20px'} !important; margin: ${printMode === 'thermal' ? '6px 0' : '10px 0'} !important; text-align: center !important; }
       p { font-size: ${printMode === 'thermal' ? '11px' : '12px'} !important; margin: ${printMode === 'thermal' ? '2px 0' : '5px 0'} !important; text-align: center !important; }
     `;
-    
+
     document.head.appendChild(printStyles);
     document.body.innerHTML = printContent.innerHTML;
-    
+
     // Add appropriate CSS class based on print mode
     document.body.classList.add(printMode === 'thermal' ? 'thermal-print' : 'a4-print');
-    
+
     // Wait for content to render before printing
     setTimeout(() => {
       window.print();
-      
+
       // Cleanup
       document.head.removeChild(printStyles);
       document.body.classList.remove(printMode === 'thermal' ? 'thermal-print' : 'a4-print');
@@ -183,8 +186,8 @@ const ViewReceipt = () => {
         <MainNavbar />
         <Container className="mt-4">
           <Alert variant="danger">{error}</Alert>
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             onClick={() => navigate('/receipts')}
           >
             Back to Receipts
@@ -200,8 +203,8 @@ const ViewReceipt = () => {
         <MainNavbar />
         <Container className="mt-4">
           <Alert variant="warning">Receipt not found</Alert>
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             onClick={() => navigate('/receipts')}
           >
             Back to Receipts
@@ -218,50 +221,50 @@ const ViewReceipt = () => {
         <div className="d-flex justify-content-between align-items-center mb-4 receipt-header">
           <h2>Receipt Details</h2>
           <div className="receipt-buttons">
-            <Button 
-              variant="primary" 
-              onClick={downloadPdf} 
+            <Button
+              variant="primary"
+              onClick={downloadPdf}
             >
               Download PDF
             </Button>
-            
-            <Button 
-              variant="success" 
-              onClick={printReceipt} 
+
+            <Button
+              variant="success"
+              onClick={printReceipt}
             >
               Print Receipt
             </Button>
-            
-            <Button 
-              variant="info" 
-              onClick={() => setShowSizeControls(!showSizeControls)} 
+
+            <Button
+              variant="info"
+              onClick={() => setShowSizeControls(!showSizeControls)}
             >
               {showSizeControls ? 'Hide Size Controls' : 'Adjust Size'}
             </Button>
-            
-            <Button 
-              variant="warning" 
-              onClick={() => navigate(`/edit-receipt/${id}`)} 
+
+            <Button
+              variant="warning"
+              onClick={() => navigate(`/edit-receipt/${id}`)}
             >
               <Translate textKey="edit" fallback="Edit" />
             </Button>
-            
-            <Button 
-              variant="danger" 
-              onClick={() => navigate(`/return-products/${id}`)} 
+
+            <Button
+              variant="danger"
+              onClick={() => navigate(`/return-products/${id}`)}
             >
               <Translate textKey="returnProducts" fallback="Return Products" />
             </Button>
-            
-            <Button 
-              variant="outline-secondary" 
+
+            <Button
+              variant="outline-secondary"
               onClick={() => navigate('/receipts')}
             >
               Back to Receipts
             </Button>
           </div>
         </div>
-        
+
         {showSizeControls && (
           <Card className="mb-3">
             <Card.Body>
@@ -275,11 +278,11 @@ const ViewReceipt = () => {
                     </Form.Select>
                   </Col>
                 </Form.Group>
-                
+
                 <Form.Group as={Row} className="align-items-center mb-3">
                   <Form.Label column xs={12} sm={3}>Receipt Width (%): {receiptWidth}%</Form.Label>
                   <Col xs={12} sm={7} className="mb-2 mb-sm-0">
-                    <Form.Range 
+                    <Form.Range
                       value={receiptWidth}
                       onChange={handleWidthChange}
                       min={50}
@@ -288,8 +291,8 @@ const ViewReceipt = () => {
                     />
                   </Col>
                   <Col xs={12} sm={2} className="d-flex justify-content-start justify-content-sm-end">
-                    <Button 
-                      variant="outline-secondary" 
+                    <Button
+                      variant="outline-secondary"
                       size="sm"
                       onClick={() => setReceiptWidth(100)}
                     >
@@ -297,11 +300,11 @@ const ViewReceipt = () => {
                     </Button>
                   </Col>
                 </Form.Group>
-                
+
                 <Form.Group as={Row} className="align-items-center">
                   <Form.Label column xs={12} sm={3}>Receipt Height:</Form.Label>
                   <Col xs={12} sm={7} className="mb-2 mb-sm-0">
-                    <Form.Select 
+                    <Form.Select
                       value={receiptHeight}
                       onChange={handleHeightChange}
                     >
@@ -313,8 +316,8 @@ const ViewReceipt = () => {
                     </Form.Select>
                   </Col>
                   <Col xs={12} sm={2} className="d-flex justify-content-start justify-content-sm-end">
-                    <Button 
-                      variant="outline-secondary" 
+                    <Button
+                      variant="outline-secondary"
                       size="sm"
                       onClick={() => setReceiptHeight('auto')}
                     >
@@ -326,9 +329,9 @@ const ViewReceipt = () => {
             </Card.Body>
           </Card>
         )}
-        
-        <div style={{ 
-          maxWidth: `${receiptWidth}%`, 
+
+        <div style={{
+          maxWidth: `${receiptWidth}%`,
           margin: '0 auto',
           height: receiptHeight !== 'auto' ? receiptHeight : 'auto',
           minHeight: receiptHeight !== 'auto' ? receiptHeight : 'auto'
@@ -371,25 +374,39 @@ const ViewReceipt = () => {
               <div className="thermal-wrap">
                 <div className="center">
                   {receipt.shopDetails.logoUrl && (
-                    <img src={receipt.shopDetails.logoUrl} alt={receipt.shopDetails.name} className="logo" onError={(e)=>{e.target.style.display='none'}} />
+                    <img src={receipt.shopDetails.logoUrl} alt={receipt.shopDetails.name} className="logo" onError={(e) => { e.target.style.display = 'none' }} />
                   )}
                   <div className="title">{receipt.shopDetails.name}</div>
                   <div className="sm">{receipt.shopDetails.address}</div>
                   <div className="sm">Phone # {receipt.shopDetails.phone}</div>
                 </div>
                 <div className="sep"></div>
-                <div className="sm" style={{display:'flex',justifyContent:'space-between'}}>
+                <div className="sm" style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <div>Invoice: {receipt.transactionId}</div>
                   <div>{formatDate(receipt.timestamp)} {formatTime(receipt.timestamp)}</div>
+                </div>
+                <div className="sm" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+                  <div><Translate textKey="paymentMethod" fallback="Payment" />:</div>
+                  <div>
+                    {translations[language]?.[
+                      ({
+                        'Cash': 'cash',
+                        'Cards': 'cards',
+                        'Mobile Wallet': 'mobileWallets',
+                        'QR Code': 'qrPayment',
+                        'Bank Transfer': 'bankLinked'
+                      })[receipt.paymentMethod] || 'cash'
+                    ] || receipt.paymentMethod || 'Cash'}
+                  </div>
                 </div>
                 <div className="sep"></div>
                 <table className="thermal">
                   <colgroup>
-                    <col style={{width:'10mm'}} />
+                    <col style={{ width: '10mm' }} />
                     <col />
-                    <col style={{width:'12mm'}} />
-                    <col style={{width:'16mm'}} />
-                    <col style={{width:'16mm'}} />
+                    <col style={{ width: '12mm' }} />
+                    <col style={{ width: '16mm' }} />
+                    <col style={{ width: '16mm' }} />
                   </colgroup>
                   <thead>
                     <tr>
@@ -401,15 +418,15 @@ const ViewReceipt = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {receipt.items.map((item, idx)=>{
-                      const qty = parseFloat(item.quantity||1);
-                      const rate = Math.round(parseFloat(item.price||0));
-                      const amt = Math.round(qty*rate);
+                    {receipt.items.map((item, idx) => {
+                      const qty = parseFloat(item.quantity || 1);
+                      const rate = Math.round(parseFloat(item.price || 0));
+                      const amt = Math.round(qty * rate);
                       return (
                         <tr key={idx}>
-                          <td className="c">{idx+1}</td>
+                          <td className="c">{idx + 1}</td>
                           <td className="wrap">{item.name}</td>
-                          <td className="c">{qty} {item.quantityUnit==='kg'?'KG':''}</td>
+                          <td className="c">{qty} {item.quantityUnit === 'kg' ? 'KG' : ''}</td>
                           <td className="r">{rate}</td>
                           <td className="r">{amt}</td>
                         </tr>
@@ -418,17 +435,17 @@ const ViewReceipt = () => {
                   </tbody>
                 </table>
                 <div className="totals">
-                  <div className="line"><span>Total</span><span>{receipt.items.reduce((s,i)=>s+parseFloat(i.quantity||0),0).toFixed(2)}</span></div>
-                  {receipt.discount>0 && (<div className="line"><span>Discount</span><span>{Math.round(parseFloat(receipt.discount))}</span></div>)}
+                  <div className="line"><span>Total</span><span>{receipt.items.reduce((s, i) => s + parseFloat(i.quantity || 0), 0).toFixed(2)}</span></div>
+                  {receipt.discount > 0 && (<div className="line"><span>Discount</span><span>{Math.round(parseFloat(receipt.discount))}</span></div>)}
                   <div className="line"><span>Net Total</span><span>{Math.round(parseFloat(receipt.totalAmount))}</span></div>
-                  {receipt.isLoan && (<div className="line"><span>Loan</span><span>{Math.round(parseFloat(receipt.loanAmount||0))}</span></div>)}
+                  {receipt.isLoan && (<div className="line"><span>Loan</span><span>{Math.round(parseFloat(receipt.loanAmount || 0))}</span></div>)}
                 </div>
                 <div className="net">{Math.round(parseFloat(receipt.totalAmount))}</div>
-                <div className="center sm" style={{marginTop:'8px'}}>Thank you For Shoping !</div>
+                <div className="center sm" style={{ marginTop: '8px' }}>Thank you For Shoping !</div>
                 {receipt.shopDetails.receiptDescription && (
-                  <div className="center sm" style={{marginTop:'4px'}}>{receipt.shopDetails.receiptDescription}</div>
+                  <div className="center sm" style={{ marginTop: '4px' }}>{receipt.shopDetails.receiptDescription}</div>
                 )}
-                <div className="dev">software developed by SARMAD 03425050007</div>
+                <div className="dev">software developed by Soft Verse 03311041968</div>
               </div>
             </Card.Body>
           </Card>

@@ -8,29 +8,29 @@ import cloudinaryConfig from '../utils/cloudinaryConfig';
 
 const Settings = () => {
   const { shopData, updateShopData } = useAuth();
-  
+
   // Get translations for attributes
   const getTranslatedAttr = useTranslatedAttribute();
-  
+
   // Basic shop info
   const [shopName, setShopName] = useState('');
   const [address, setAddress] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [receiptDescription, setReceiptDescription] = useState('');
-  
+
   // Phone numbers
   const [phoneNumbers, setPhoneNumbers] = useState([]);
   const [newPhoneNumber, setNewPhoneNumber] = useState('');
-  
+
   // UI states
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  
+
   // File input reference
   const fileInputRef = useRef(null);
-  
+
   // Load shop data
   useEffect(() => {
     if (shopData) {
@@ -38,7 +38,7 @@ const Settings = () => {
       setAddress(shopData.address || '');
       setLogoUrl(shopData.logoUrl || '');
       setReceiptDescription(shopData.receiptDescription || '');
-      
+
       // Load phone numbers (convert from string if necessary)
       if (shopData.phoneNumbers && Array.isArray(shopData.phoneNumbers)) {
         setPhoneNumbers(shopData.phoneNumbers);
@@ -49,33 +49,33 @@ const Settings = () => {
       }
     }
   }, [shopData]);
-  
+
   // Handle logo upload to Cloudinary
   const handleLogoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
+
     // Check file type
     if (!file.type.match('image.*')) {
-      setError('Please select an image file');
+      setError(getTranslatedAttr('pleaseSelectImage'));
       return;
     }
-    
+
     // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      setError('Image file should be less than 5MB');
+      setError(getTranslatedAttr('imageSizeLimit'));
       return;
     }
-    
+
     setIsUploading(true);
     setError('');
-    
+
     try {
       // Create form data for upload
       const formData = new FormData();
       formData.append('file', file);
       formData.append('upload_preset', cloudinaryConfig.upload_preset);
-      
+
       // Upload to Cloudinary
       const response = await fetch(
         `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloud_name}/image/upload`,
@@ -84,15 +84,15 @@ const Settings = () => {
           body: formData
         }
       );
-      
+
       const data = await response.json();
-      
+
       if (data.secure_url) {
         setLogoUrl(data.secure_url);
-        setSuccess('Logo uploaded successfully');
+        setSuccess(getTranslatedAttr('logoUploadedSuccessfully'));
         setTimeout(() => setSuccess(''), 3000);
       } else {
-        throw new Error(data.error?.message || 'Failed to upload image');
+        throw new Error(data.error?.message || getTranslatedAttr('failedToUploadImage'));
       }
     } catch (error) {
       console.error('Error uploading logo:', error);
@@ -101,47 +101,47 @@ const Settings = () => {
       setIsUploading(false);
     }
   };
-  
+
   // Handle removing the logo
   const handleRemoveLogo = () => {
     setLogoUrl('');
   };
-  
+
   // Handle adding a new phone number
   const handleAddPhoneNumber = () => {
     if (!newPhoneNumber.trim()) return;
-    
+
     // Check if phone number already exists
     if (phoneNumbers.includes(newPhoneNumber.trim())) {
       setError(getTranslatedAttr('phoneNumberExists'));
       setTimeout(() => setError(''), 3000);
       return;
     }
-    
+
     setPhoneNumbers([...phoneNumbers, newPhoneNumber.trim()]);
     setNewPhoneNumber('');
   };
-  
+
   // Handle removing a phone number
   const handleRemovePhoneNumber = (index) => {
     const newPhoneNumbers = [...phoneNumbers];
     newPhoneNumbers.splice(index, 1);
     setPhoneNumbers(newPhoneNumbers);
   };
-  
+
   // Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     // Validate shop name
     if (!shopName.trim()) {
       setError(getTranslatedAttr('shopNameRequired'));
       return;
     }
-    
+
     setError('');
     setLoading(true);
-    
+
     // Create updated shop data
     const updatedData = {
       shopName: shopName.trim(),
@@ -152,7 +152,7 @@ const Settings = () => {
       receiptDescription: receiptDescription.trim(),
       updatedAt: new Date().toISOString()
     };
-    
+
     // Update shop data in Firestore
     updateShopData(updatedData)
       .then(() => {
@@ -167,20 +167,20 @@ const Settings = () => {
         setLoading(false);
       });
   };
-  
+
   return (
     <>
       <MainNavbar />
       <Container>
-        <PageHeader 
-          title="Shop Settings" 
-          icon="bi-gear" 
-          subtitle="Customize your store profile, contact details, and receipt preferences."
+        <PageHeader
+          title={<Translate textKey="shopSettings" />}
+          icon="bi-gear"
+          subtitle={<Translate textKey="shopSettingsSubtitle" />}
         />
-        
+
         {error && <Alert variant="danger">{error}</Alert>}
         {success && <Alert variant="success">{success}</Alert>}
-        
+
         <Card className="mb-4">
           <Card.Body>
             <Form onSubmit={handleSubmit}>
@@ -188,12 +188,12 @@ const Settings = () => {
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Business Name</Form.Label>
+                    <Form.Label><Translate textKey="businessName" /></Form.Label>
                     <Form.Control
                       type="text"
                       value={shopName}
                       onChange={(e) => setShopName(e.target.value)}
-                      placeholder="Enter business name"
+                      placeholder={getTranslatedAttr("enterBusinessName")}
                       required
                     />
                   </Form.Group>
@@ -210,7 +210,7 @@ const Settings = () => {
                   </Form.Group>
                 </Col>
               </Row>
-              
+
               {/* Receipt Description */}
               <Form.Group className="mb-3">
                 <Form.Label><Translate textKey="receiptDescription" fallback="Receipt Description" /></Form.Label>
@@ -219,13 +219,13 @@ const Settings = () => {
                   rows={2}
                   value={receiptDescription}
                   onChange={(e) => setReceiptDescription(e.target.value)}
-                  placeholder="Enter a custom message to display at the bottom of receipts"
+                  placeholder={getTranslatedAttr("receiptDescriptionPlaceholder")}
                 />
                 <Form.Text className="text-muted">
-                  This message will appear at the bottom of all receipts.
+                  <Translate textKey="receiptDescriptionHelp" />
                 </Form.Text>
               </Form.Group>
-              
+
               {/* Shop Logo Upload Section */}
               <h4 className="mb-3 mt-4"><Translate textKey="shopLogo" fallback="Shop Logo" /></h4>
               <Row>
@@ -275,7 +275,7 @@ const Settings = () => {
                   )}
                 </Col>
               </Row>
-              
+
               <h4 className="mb-3 mt-4"><Translate textKey="phoneNumbers" /></h4>
               <Row>
                 <Col md={8}>
@@ -289,8 +289,8 @@ const Settings = () => {
                         placeholder={getTranslatedAttr("enterPhoneNumber")}
                         className="me-2"
                       />
-                      <Button 
-                        variant="outline-primary" 
+                      <Button
+                        variant="outline-primary"
                         onClick={handleAddPhoneNumber}
                       >
                         <Translate textKey="add" />
@@ -299,14 +299,14 @@ const Settings = () => {
                   </Form.Group>
                 </Col>
               </Row>
-              
+
               {phoneNumbers.length > 0 && (
                 <ListGroup className="mb-4">
                   {phoneNumbers.map((phone, index) => (
                     <ListGroup.Item key={index} className="d-flex justify-content-between align-items-center">
                       {phone}
-                      <Button 
-                        variant="outline-danger" 
+                      <Button
+                        variant="outline-danger"
                         size="sm"
                         onClick={() => handleRemovePhoneNumber(index)}
                       >
@@ -316,11 +316,11 @@ const Settings = () => {
                   ))}
                 </ListGroup>
               )}
-              
+
               <div className="d-flex justify-content-end mt-4">
-                <Button 
-                  variant="primary" 
-                  type="submit" 
+                <Button
+                  variant="primary"
+                  type="submit"
                   disabled={loading}
                 >
                   {loading ? <Translate textKey="saving" /> : <Translate textKey="save" />}

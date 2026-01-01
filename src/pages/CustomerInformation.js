@@ -6,9 +6,11 @@ import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
 import { db } from '../firebase/config';
 import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, getDocs } from 'firebase/firestore';
+import { Translate, useTranslatedAttribute } from '../utils';
 
 const CustomerInformation = () => {
   const { currentUser, activeShopId, shopData } = useAuth();
+  const getTranslatedAttr = useTranslatedAttribute();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -42,7 +44,7 @@ const CustomerInformation = () => {
 
   const fetchCustomers = useCallback(async () => {
     if (!activeShopId) return;
-    
+
     setLoading(true);
     try {
       const customersRef = collection(db, 'customers');
@@ -64,7 +66,7 @@ const CustomerInformation = () => {
       setCustomers(customersData);
     } catch (err) {
       console.error('Error fetching customers:', err);
-      setError('Failed to load customers');
+      setError(getTranslatedAttr('failedToLoadCustomers'));
     } finally {
       setLoading(false);
     }
@@ -107,7 +109,7 @@ const CustomerInformation = () => {
     setSuccess('');
 
     if (!formData.name.trim()) {
-      setError('Customer name is required');
+      setError(getTranslatedAttr('customerNameRequired'));
       return;
     }
 
@@ -127,10 +129,10 @@ const CustomerInformation = () => {
       if (editingCustomer) {
         const customerRef = doc(db, 'customers', editingCustomer.id);
         await updateDoc(customerRef, customerData);
-        setSuccess('Customer updated successfully');
+        setSuccess(getTranslatedAttr('customerUpdatedSuccess'));
       } else {
         await addDoc(collection(db, 'customers'), customerData);
-        setSuccess('Customer added successfully');
+        setSuccess(getTranslatedAttr('customerAddedSuccess'));
       }
 
       setShowModal(false);
@@ -139,7 +141,7 @@ const CustomerInformation = () => {
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       console.error('Error saving customer:', err);
-      setError('Failed to save customer: ' + err.message);
+      setError(getTranslatedAttr('failedToSaveCustomer') + ': ' + err.message);
     }
   };
 
@@ -166,14 +168,14 @@ const CustomerInformation = () => {
 
     try {
       await deleteDoc(doc(db, 'customers', customerToDelete.id));
-      setSuccess('Customer deleted successfully');
+      setSuccess(getTranslatedAttr('customerDeletedSuccess'));
       setShowDeleteModal(false);
       setCustomerToDelete(null);
       fetchCustomers();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       console.error('Error deleting customer:', err);
-      setError('Failed to delete customer: ' + err.message);
+      setError(getTranslatedAttr('failedToDeleteCustomer') + ': ' + err.message);
     }
   };
 
@@ -220,7 +222,7 @@ const CustomerInformation = () => {
     try {
       let remaining = Math.max(0, Math.min(parseFloat(paymentAmount) || 0, outstandingTotal));
       const now = new Date().toISOString();
-      const sorted = [...customerOutstandingLoans].sort((a,b) => (a.timestamp||'').localeCompare(b.timestamp||''));
+      const sorted = [...customerOutstandingLoans].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
       const updatedLoansLocal = [...loans];
       for (const loan of sorted) {
         if (remaining <= 0) break;
@@ -239,11 +241,11 @@ const CustomerInformation = () => {
           await updateDoc(doc(db, 'customerLoans', loan.id), {
             status: 'outstanding',
             paidAt: now,
-            paidAmount: (parseFloat(loan.paidAmount)||0) + remaining,
+            paidAmount: (parseFloat(loan.paidAmount) || 0) + remaining,
             amount: (amt - remaining)
           });
           const idx = updatedLoansLocal.findIndex(l => l.id === loan.id);
-          if (idx >= 0) updatedLoansLocal[idx] = { ...updatedLoansLocal[idx], status: 'outstanding', amount: (amt - remaining), paidAt: now, paidAmount: (parseFloat(loan.paidAmount)||0) + remaining };
+          if (idx >= 0) updatedLoansLocal[idx] = { ...updatedLoansLocal[idx], status: 'outstanding', amount: (amt - remaining), paidAt: now, paidAmount: (parseFloat(loan.paidAmount) || 0) + remaining };
           remaining = 0;
         }
       }
@@ -256,12 +258,12 @@ const CustomerInformation = () => {
         timestamp: now
       });
       setShowPayLoanModal(false);
-      setSuccess('Loan payment recorded');
+      setSuccess(getTranslatedAttr('loanPaymentRecorded'));
       setTimeout(() => setSuccess(''), 3000);
       const amtToPrint = Math.max(0, Math.min(parseFloat(paymentAmount) || 0, outstandingTotal));
       printPaymentReceipt(paymentTransactionId, payingCustomerName, amtToPrint);
     } catch (err) {
-      setError('Failed to pay loan: ' + err.message);
+      setError(getTranslatedAttr('failedToPayLoan') + ': ' + err.message);
     } finally {
       setPayLoading(false);
     }
@@ -343,19 +345,19 @@ const CustomerInformation = () => {
       <MainNavbar />
       <Container className="pos-content">
         <PageHeader
-          title="Customer Information"
+          title={<Translate textKey="customerInformation" />}
           icon="bi-people"
-          subtitle="Manage your customer database and contact information."
+          subtitle={<Translate textKey="manageCustomersSubtitle" />}
         >
           <div className="hero-metrics__item">
-            <span className="hero-metrics__label">Total Customers</span>
+            <span className="hero-metrics__label"><Translate textKey="totalCustomers" /></span>
             <span className="hero-metrics__value">{customers.length}</span>
           </div>
         </PageHeader>
 
         <div className="page-header-actions mb-3">
           <Button variant="primary" onClick={() => { resetForm(); setShowModal(true); }}>
-            <i className="bi bi-plus-circle me-2"></i>Add Customer
+            <i className="bi bi-plus-circle me-2"></i><Translate textKey="addNewCustomer" />
           </Button>
         </div>
 
@@ -372,7 +374,7 @@ const CustomerInformation = () => {
                   </InputGroup.Text>
                   <Form.Control
                     type="text"
-                    placeholder="Search by name, phone, or email..."
+                    placeholder={getTranslatedAttr('searchCustomerPlaceholder')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -388,20 +390,20 @@ const CustomerInformation = () => {
               <div className="text-center py-4">
                 <i className="bi bi-people" style={{ fontSize: '3rem', color: '#ccc' }}></i>
                 <p className="text-muted mt-3">
-                  {searchTerm ? 'No customers found matching your search.' : 'No customers added yet. Click "Add Customer" to get started.'}
+                  {searchTerm ? getTranslatedAttr('noReceiptsMatch') : <Translate textKey="noDataFound" />}
                 </p>
               </div>
             ) : (
               <Table responsive hover>
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Phone</th>
-                    <th>Email</th>
-                    <th>Address</th>
-                    <th>City</th>
-                    <th>Loans</th>
-                    <th>Actions</th>
+                    <th><Translate textKey="name" /></th>
+                    <th><Translate textKey="phone" /></th>
+                    <th><Translate textKey="email" /></th>
+                    <th><Translate textKey="address" /></th>
+                    <th><Translate textKey="city" /></th>
+                    <th><Translate textKey="loans" /></th>
+                    <th><Translate textKey="action" /></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -437,7 +439,7 @@ const CustomerInformation = () => {
                             setShowLoansModal(true);
                           }}
                         >
-                          View Loans
+                          <Translate textKey="viewLoans" />
                         </Button>
                         {(() => {
                           const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase() && (l.status || 'outstanding') !== 'paid');
@@ -449,7 +451,7 @@ const CustomerInformation = () => {
                               className="me-2"
                               onClick={() => openPayLoanModal(customer)}
                             >
-                              Pay Loan
+                              <Translate textKey="payLoan" />
                             </Button>
                           ) : null;
                         })()}
@@ -459,14 +461,14 @@ const CustomerInformation = () => {
                           className="me-2"
                           onClick={() => handleEdit(customer)}
                         >
-                          <i className="bi bi-pencil"></i> Edit
+                          <i className="bi bi-pencil"></i> <Translate textKey="edit" />
                         </Button>
                         <Button
                           variant="outline-danger"
                           size="sm"
                           onClick={() => handleDelete(customer)}
                         >
-                          <i className="bi bi-trash"></i> Delete
+                          <i className="bi bi-trash"></i> <Translate textKey="delete" />
                         </Button>
                       </td>
                     </tr>
@@ -480,14 +482,14 @@ const CustomerInformation = () => {
         {/* Add/Edit Modal */}
         <Modal show={showModal} onHide={handleCloseModal} size="lg">
           <Modal.Header closeButton>
-            <Modal.Title>{editingCustomer ? 'Edit Customer' : 'Add New Customer'}</Modal.Title>
+            <Modal.Title>{editingCustomer ? <Translate textKey="editCustomer" /> : <Translate textKey="addNewCustomer" />}</Modal.Title>
           </Modal.Header>
           <Form onSubmit={handleSubmit}>
             <Modal.Body>
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Name *</Form.Label>
+                    <Form.Label><Translate textKey="name" /> *</Form.Label>
                     <Form.Control
                       type="text"
                       name="name"
@@ -500,7 +502,7 @@ const CustomerInformation = () => {
                 </Col>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Phone</Form.Label>
+                    <Form.Label><Translate textKey="phone" /></Form.Label>
                     <Form.Control
                       type="tel"
                       name="phone"
@@ -514,7 +516,7 @@ const CustomerInformation = () => {
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Email</Form.Label>
+                    <Form.Label><Translate textKey="email" /></Form.Label>
                     <Form.Control
                       type="email"
                       name="email"
@@ -526,7 +528,7 @@ const CustomerInformation = () => {
                 </Col>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>City</Form.Label>
+                    <Form.Label><Translate textKey="city" /></Form.Label>
                     <Form.Control
                       type="text"
                       name="city"
@@ -538,7 +540,7 @@ const CustomerInformation = () => {
                 </Col>
               </Row>
               <Form.Group className="mb-3">
-                <Form.Label>Address</Form.Label>
+                <Form.Label><Translate textKey="address" /></Form.Label>
                 <Form.Control
                   as="textarea"
                   rows={2}
@@ -549,7 +551,7 @@ const CustomerInformation = () => {
                 />
               </Form.Group>
               <Form.Group className="mb-3">
-                <Form.Label>Notes</Form.Label>
+                <Form.Label><Translate textKey="notes" /></Form.Label>
                 <Form.Control
                   as="textarea"
                   rows={3}
@@ -562,10 +564,10 @@ const CustomerInformation = () => {
             </Modal.Body>
             <Modal.Footer>
               <Button variant="secondary" onClick={handleCloseModal}>
-                Cancel
+                <Translate textKey="cancel" />
               </Button>
               <Button variant="primary" type="submit">
-                {editingCustomer ? 'Update' : 'Add'} Customer
+                {editingCustomer ? <Translate textKey="save" /> : <Translate textKey="add" />}
               </Button>
             </Modal.Footer>
           </Form>
@@ -574,18 +576,18 @@ const CustomerInformation = () => {
         {/* Delete Confirmation Modal */}
         <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
           <Modal.Header closeButton>
-            <Modal.Title>Delete Customer</Modal.Title>
+            <Modal.Title><Translate textKey="delete" /></Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            <p>Are you sure you want to delete <strong>{customerToDelete?.name}</strong>?</p>
-            <p className="text-muted small">This action cannot be undone.</p>
+            <p><Translate textKey="confirmDeleteCustomer" values={{ name: customerToDelete?.name }} /></p>
+            <p className="text-muted small"><Translate textKey="deleteItemConfirmation" /></p>
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
-              Cancel
+              <Translate textKey="cancel" />
             </Button>
             <Button variant="danger" onClick={confirmDelete}>
-              Delete
+              <Translate textKey="delete" />
             </Button>
           </Modal.Footer>
         </Modal>
@@ -593,7 +595,7 @@ const CustomerInformation = () => {
 
       <Modal show={showLoansModal} onHide={() => setShowLoansModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>Loan History - {selectedCustomerName}</Modal.Title>
+          <Modal.Title><Translate textKey="loanHistory" /> - {selectedCustomerName}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {loansLoading ? (
@@ -604,10 +606,10 @@ const CustomerInformation = () => {
             <Table hover size="sm">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Transaction</th>
-                  <th>Amount</th>
-                  <th>Status</th>
+                  <th><Translate textKey="date" /></th>
+                  <th><Translate textKey="transactionId" /></th>
+                  <th><Translate textKey="total" /></th>
+                  <th><Translate textKey="status" /></th>
                 </tr>
               </thead>
               <tbody>
@@ -616,7 +618,7 @@ const CustomerInformation = () => {
                     <td>{loan.timestamp ? new Date(loan.timestamp).toLocaleString() : '-'}</td>
                     <td>{loan.transactionId || loan.receiptId || '-'}</td>
                     <td>RS {(parseFloat(loan.amount) || 0).toFixed(2)}</td>
-                    <td>{loan.status || 'outstanding'}</td>
+                    <td>{loan.status || getTranslatedAttr('outstanding')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -624,18 +626,18 @@ const CustomerInformation = () => {
           )}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowLoansModal(false)}>Close</Button>
+          <Button variant="secondary" onClick={() => setShowLoansModal(false)}><Translate textKey="close" /></Button>
         </Modal.Footer>
       </Modal>
 
       <Modal show={showPayLoanModal} onHide={() => setShowPayLoanModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>Pay Loan - {payingCustomerName}</Modal.Title>
+          <Modal.Title><Translate textKey="payLoan" /> - {payingCustomerName}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <p>Outstanding: RS {outstandingTotal.toFixed(2)}</p>
+          <p><Translate textKey="outstanding" />: RS {outstandingTotal.toFixed(2)}</p>
           <Form.Group className="mb-3">
-            <Form.Label>Amount to Pay (RS)</Form.Label>
+            <Form.Label><Translate textKey="amountToPay" /></Form.Label>
             <Form.Control
               type="number"
               value={paymentAmount}
@@ -647,9 +649,9 @@ const CustomerInformation = () => {
           </Form.Group>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowPayLoanModal(false)} disabled={payLoading}>Cancel</Button>
-          <Button variant="success" onClick={confirmPayLoan} disabled={payLoading || outstandingTotal <= 0 || (parseFloat(paymentAmount)||0) <= 0}>
-            {payLoading ? 'Processing...' : 'Pay Now'}
+          <Button variant="secondary" onClick={() => setShowPayLoanModal(false)} disabled={payLoading}><Translate textKey="cancel" /></Button>
+          <Button variant="success" onClick={confirmPayLoan} disabled={payLoading || outstandingTotal <= 0 || (parseFloat(paymentAmount) || 0) <= 0}>
+            {payLoading ? <Translate textKey="processing" /> : <Translate textKey="payNow" />}
           </Button>
         </Modal.Footer>
       </Modal>

@@ -5,9 +5,11 @@ import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
 import { db } from '../firebase/config';
 import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, getDocs } from 'firebase/firestore';
+import { Translate, useTranslatedAttribute } from '../utils';
 
 const SupplierInformation = () => {
   const { currentUser, activeShopId } = useAuth();
+  const getTranslatedAttr = useTranslatedAttribute();
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -30,7 +32,7 @@ const SupplierInformation = () => {
 
   const fetchSuppliers = useCallback(async () => {
     if (!activeShopId) return;
-    
+
     setLoading(true);
     try {
       const suppliersRef = collection(db, 'suppliers');
@@ -52,7 +54,7 @@ const SupplierInformation = () => {
       setSuppliers(suppliersData);
     } catch (err) {
       console.error('Error fetching suppliers:', err);
-      setError('Failed to load suppliers');
+      setError(getTranslatedAttr('failedToLoadSuppliers'));
     } finally {
       setLoading(false);
     }
@@ -76,7 +78,7 @@ const SupplierInformation = () => {
     setSuccess('');
 
     if (!formData.name.trim()) {
-      setError('Supplier name is required');
+      setError(getTranslatedAttr('supplierNameRequired'));
       return;
     }
 
@@ -96,10 +98,10 @@ const SupplierInformation = () => {
       if (editingSupplier) {
         const supplierRef = doc(db, 'suppliers', editingSupplier.id);
         await updateDoc(supplierRef, supplierData);
-        setSuccess('Supplier updated successfully');
+        setSuccess(getTranslatedAttr('supplierUpdatedSuccess'));
       } else {
         await addDoc(collection(db, 'suppliers'), supplierData);
-        setSuccess('Supplier added successfully');
+        setSuccess(getTranslatedAttr('supplierAddedSuccess'));
       }
 
       setShowModal(false);
@@ -108,7 +110,7 @@ const SupplierInformation = () => {
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       console.error('Error saving supplier:', err);
-      setError('Failed to save supplier: ' + err.message);
+      setError(getTranslatedAttr('failedToSaveSupplier') + ': ' + err.message);
     }
   };
 
@@ -137,14 +139,14 @@ const SupplierInformation = () => {
 
     try {
       await deleteDoc(doc(db, 'suppliers', supplierToDelete.id));
-      setSuccess('Supplier deleted successfully');
+      setSuccess(getTranslatedAttr('supplierDeletedSuccess'));
       setShowDeleteModal(false);
       setSupplierToDelete(null);
       fetchSuppliers();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       console.error('Error deleting supplier:', err);
-      setError('Failed to delete supplier: ' + err.message);
+      setError(getTranslatedAttr('failedToDeleteSupplier') + ': ' + err.message);
     }
   };
 
@@ -179,19 +181,19 @@ const SupplierInformation = () => {
       <MainNavbar />
       <Container className="pos-content">
         <PageHeader
-          title="Supplier Information"
+          title={<Translate textKey="supplierInformation" />}
           icon="bi-truck"
-          subtitle="Manage your supplier database and contact information."
+          subtitle={<Translate textKey="manageSuppliersSubtitle" />}
         >
           <div className="hero-metrics__item">
-            <span className="hero-metrics__label">Total Suppliers</span>
+            <span className="hero-metrics__label"><Translate textKey="totalSuppliers" /></span>
             <span className="hero-metrics__value">{suppliers.length}</span>
           </div>
         </PageHeader>
 
         <div className="page-header-actions mb-3">
           <Button variant="primary" onClick={() => { resetForm(); setShowModal(true); }}>
-            <i className="bi bi-plus-circle me-2"></i>Add Supplier
+            <i className="bi bi-plus-circle me-2"></i><Translate textKey="addNewSupplier" />
           </Button>
         </div>
 
@@ -208,7 +210,7 @@ const SupplierInformation = () => {
                   </InputGroup.Text>
                   <Form.Control
                     type="text"
-                    placeholder="Search by name, company, phone, or email..."
+                    placeholder={getTranslatedAttr('searchSupplierPlaceholder')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -224,20 +226,20 @@ const SupplierInformation = () => {
               <div className="text-center py-4">
                 <i className="bi bi-truck" style={{ fontSize: '3rem', color: '#ccc' }}></i>
                 <p className="text-muted mt-3">
-                  {searchTerm ? 'No suppliers found matching your search.' : 'No suppliers added yet. Click "Add Supplier" to get started.'}
+                  {searchTerm ? getTranslatedAttr('noReceiptsMatch') : <Translate textKey="noDataFound" />}
                 </p>
               </div>
             ) : (
               <Table responsive hover>
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Company</th>
-                    <th>Contact Person</th>
-                    <th>Phone</th>
-                    <th>Email</th>
-                    <th>City</th>
-                    <th>Actions</th>
+                    <th><Translate textKey="name" /></th>
+                    <th><Translate textKey="company" /></th>
+                    <th><Translate textKey="contactPerson" /></th>
+                    <th><Translate textKey="phone" /></th>
+                    <th><Translate textKey="email" /></th>
+                    <th><Translate textKey="city" /></th>
+                    <th><Translate textKey="action" /></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -256,14 +258,14 @@ const SupplierInformation = () => {
                           className="me-2"
                           onClick={() => handleEdit(supplier)}
                         >
-                          <i className="bi bi-pencil"></i> Edit
+                          <i className="bi bi-pencil"></i> <Translate textKey="edit" />
                         </Button>
                         <Button
                           variant="outline-danger"
                           size="sm"
                           onClick={() => handleDelete(supplier)}
                         >
-                          <i className="bi bi-trash"></i> Delete
+                          <i className="bi bi-trash"></i> <Translate textKey="delete" />
                         </Button>
                       </td>
                     </tr>
@@ -277,14 +279,14 @@ const SupplierInformation = () => {
         {/* Add/Edit Modal */}
         <Modal show={showModal} onHide={handleCloseModal} size="lg">
           <Modal.Header closeButton>
-            <Modal.Title>{editingSupplier ? 'Edit Supplier' : 'Add New Supplier'}</Modal.Title>
+            <Modal.Title>{editingSupplier ? <Translate textKey="editSupplier" /> : <Translate textKey="addNewSupplier" />}</Modal.Title>
           </Modal.Header>
           <Form onSubmit={handleSubmit}>
             <Modal.Body>
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Supplier Name *</Form.Label>
+                    <Form.Label><Translate textKey="supplierName" /> *</Form.Label>
                     <Form.Control
                       type="text"
                       name="name"
@@ -297,7 +299,7 @@ const SupplierInformation = () => {
                 </Col>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Company</Form.Label>
+                    <Form.Label><Translate textKey="company" /></Form.Label>
                     <Form.Control
                       type="text"
                       name="company"
@@ -311,7 +313,7 @@ const SupplierInformation = () => {
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Contact Person</Form.Label>
+                    <Form.Label><Translate textKey="contactPerson" /></Form.Label>
                     <Form.Control
                       type="text"
                       name="contactPerson"
@@ -323,7 +325,7 @@ const SupplierInformation = () => {
                 </Col>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Phone</Form.Label>
+                    <Form.Label><Translate textKey="phone" /></Form.Label>
                     <Form.Control
                       type="tel"
                       name="phone"
@@ -337,7 +339,7 @@ const SupplierInformation = () => {
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Email</Form.Label>
+                    <Form.Label><Translate textKey="email" /></Form.Label>
                     <Form.Control
                       type="email"
                       name="email"
@@ -349,7 +351,7 @@ const SupplierInformation = () => {
                 </Col>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>City</Form.Label>
+                    <Form.Label><Translate textKey="city" /></Form.Label>
                     <Form.Control
                       type="text"
                       name="city"
@@ -361,7 +363,7 @@ const SupplierInformation = () => {
                 </Col>
               </Row>
               <Form.Group className="mb-3">
-                <Form.Label>Address</Form.Label>
+                <Form.Label><Translate textKey="address" /></Form.Label>
                 <Form.Control
                   as="textarea"
                   rows={2}
@@ -372,7 +374,7 @@ const SupplierInformation = () => {
                 />
               </Form.Group>
               <Form.Group className="mb-3">
-                <Form.Label>Notes</Form.Label>
+                <Form.Label><Translate textKey="notes" /></Form.Label>
                 <Form.Control
                   as="textarea"
                   rows={3}
@@ -385,10 +387,10 @@ const SupplierInformation = () => {
             </Modal.Body>
             <Modal.Footer>
               <Button variant="secondary" onClick={handleCloseModal}>
-                Cancel
+                <Translate textKey="cancel" />
               </Button>
               <Button variant="primary" type="submit">
-                {editingSupplier ? 'Update' : 'Add'} Supplier
+                {editingSupplier ? <Translate textKey="save" /> : <Translate textKey="add" />}
               </Button>
             </Modal.Footer>
           </Form>
@@ -397,18 +399,18 @@ const SupplierInformation = () => {
         {/* Delete Confirmation Modal */}
         <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
           <Modal.Header closeButton>
-            <Modal.Title>Delete Supplier</Modal.Title>
+            <Modal.Title><Translate textKey="delete" /></Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            <p>Are you sure you want to delete <strong>{supplierToDelete?.name}</strong>?</p>
-            <p className="text-muted small">This action cannot be undone.</p>
+            <p><Translate textKey="confirmDeleteSupplier" values={{ name: supplierToDelete?.name }} /></p>
+            <p className="text-muted small"><Translate textKey="deleteItemConfirmation" /></p>
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
-              Cancel
+              <Translate textKey="cancel" />
             </Button>
             <Button variant="danger" onClick={confirmDelete}>
-              Delete
+              <Translate textKey="delete" />
             </Button>
           </Modal.Footer>
         </Modal>

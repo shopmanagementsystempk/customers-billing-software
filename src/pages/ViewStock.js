@@ -38,15 +38,15 @@ const ViewStock = () => {
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [alertItems, setAlertItems] = useState([]);
   const navigate = useNavigate();
-  
+
   // Get translations for attributes
   const getTranslatedAttr = useTranslatedAttribute();
 
   const fetchStock = useCallback(() => {
     if (!currentUser || !activeShopId) return;
-    
+
     setLoading(true);
-    
+
     // Create a simple function to fetch stock items
     getShopStock(activeShopId)
       .then(stockData => {
@@ -67,7 +67,7 @@ const ViewStock = () => {
       navigate('/login');
       return;
     }
-    
+
     fetchStock();
   }, [fetchStock, currentUser, navigate]);
 
@@ -108,7 +108,7 @@ const ViewStock = () => {
     const today = new Date();
     return expiry < today;
   };
-  
+
   const isLowStock = (item) => {
     const alert = parseFloat(item?.lowStockAlert);
     const qty = parseFloat(item?.quantity);
@@ -116,11 +116,11 @@ const ViewStock = () => {
   };
   const filteredItems = stockItems
     .filter(item => {
-      const matchesSearch = 
+      const matchesSearch =
         item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.category?.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       const matchesCategory = categoryFilter ? item.category === categoryFilter : true;
 
       const matchesStatus = statusFilter === ''
@@ -130,13 +130,13 @@ const ViewStock = () => {
           : statusFilter === 'expired'
             ? isExpired(item)
             : true;
-      
+
       return matchesSearch && matchesCategory && matchesStatus;
     })
     .sort((a, b) => {
       // Handle client-side sorting
       let comparison = 0;
-      
+
       if (sortField === 'name') {
         comparison = a.name.localeCompare(b.name);
       } else if (sortField === 'price') {
@@ -146,7 +146,7 @@ const ViewStock = () => {
       } else if (sortField === 'updatedAt') {
         comparison = new Date(a.updatedAt) - new Date(b.updatedAt);
       }
-      
+
       return sortDirection === 'asc' ? comparison : -comparison;
     });
 
@@ -169,7 +169,7 @@ const ViewStock = () => {
   // Delete stock item
   const handleDelete = () => {
     if (!itemToDelete) return;
-    
+
     deleteStockItem(itemToDelete.id)
       .then(() => {
         fetchStock(); // Refresh the list
@@ -218,24 +218,24 @@ const ViewStock = () => {
   // Popup method - generates barcode in new window
   const handlePrintBarcodePopup = () => {
     if (!itemToPrintBarcode) return;
-    
+
     try {
       const printWindow = window.open('', '_blank', 'width=500,height=400,scrollbars=yes,resizable=yes');
-      
+
       if (!printWindow) {
         alert('Please allow popups for this site to print barcodes.');
         return;
       }
-      
+
       const barcodeNumber = itemToPrintBarcode.barcode || itemToPrintBarcode.sku || itemToPrintBarcode.id;
       const barcodeImage = generateBarcodeImage(barcodeNumber);
-      
+
       if (!barcodeImage) {
         alert('Error generating barcode. Please try again.');
         printWindow.close();
         return;
       }
-      
+
       printWindow.document.write(`
         <html>
           <head>
@@ -296,9 +296,9 @@ const ViewStock = () => {
           </body>
         </html>
       `);
-      
+
       printWindow.document.close();
-      
+
       // Wait for image to load before printing
       setTimeout(() => {
         try {
@@ -312,7 +312,7 @@ const ViewStock = () => {
           console.error('Error printing:', printError);
         }
       }, 500);
-      
+
     } catch (error) {
       console.error('Error opening print window:', error);
       alert('Error generating print window. Please try again.');
@@ -432,13 +432,13 @@ const ViewStock = () => {
           }
         `
       }} />
-      
+
       <MainNavbar />
       <Container>
-        <PageHeader 
-          title="Stock Inventory" 
+        <PageHeader
+          title={<Translate textKey="stockInventory" fallback="Stock Inventory" />}
           icon="bi-box-seam"
-          subtitle="Monitor stock levels, add incoming quantities and keep products ready to sell."
+          subtitle={<Translate textKey="inventorySubtitle" fallback="Monitor stock levels, add incoming quantities and keep products ready to sell." />}
         />
         <div className="page-header-actions">
           <div className="d-flex flex-wrap gap-2">
@@ -448,22 +448,22 @@ const ViewStock = () => {
             >
               <Translate textKey="stockIn" />
             </Button>
-            <Button 
-              variant="success" 
+            <Button
+              variant="success"
               onClick={() => navigate('/add-stock')}
             >
               <Translate textKey="addNewItem" />
             </Button>
-            <Button 
-              variant="outline-primary" 
+            <Button
+              variant="outline-primary"
               onClick={() => setShowCategoryModal(true)}
             >
               <i className="bi bi-tags me-1"></i>
-              Manage Categories
+              <Translate textKey="manageCategories" fallback="Manage Categories" />
             </Button>
           </div>
         </div>
-        
+
         <Card className="mb-4">
           <Card.Body>
             <Row>
@@ -478,8 +478,8 @@ const ViewStock = () => {
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
                     {searchTerm && (
-                      <Button 
-                        variant="outline-secondary" 
+                      <Button
+                        variant="outline-secondary"
                         onClick={() => setSearchTerm('')}
                       >
                         <Translate textKey="clear" />
@@ -488,7 +488,7 @@ const ViewStock = () => {
                   </InputGroup>
                 </Form.Group>
               </Col>
-              
+
               <Col md={6} lg={4}>
                 <Form.Group className="mb-3">
                   <Form.Label><Translate textKey="filterByCategory" /></Form.Label>
@@ -507,21 +507,21 @@ const ViewStock = () => {
               </Col>
               <Col md={6} lg={4}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Filter by Status</Form.Label>
+                  <Form.Label><Translate textKey="status" fallback="Status" /></Form.Label>
                   <Form.Select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
                   >
-                    <option value="">All items</option>
-                    <option value="low">Low Stock</option>
-                    <option value="expired">Expired</option>
+                    <option value=""><Translate textKey="allCategories" fallback="All items" /></option>
+                    <option value="low"><Translate textKey="lowStock" fallback="Low Stock" /></option>
+                    <option value="expired"><Translate textKey="expired" fallback="Expired" /></option>
                   </Form.Select>
                 </Form.Group>
               </Col>
             </Row>
           </Card.Body>
         </Card>
-        
+
         {loading ? (
           <p className="text-center"><Translate textKey="loadingStockItems" /></p>
         ) : (
@@ -532,8 +532,8 @@ const ViewStock = () => {
                   <Table hover responsive="sm" className="stock-table">
                     <thead>
                       <tr>
-                        <th 
-                          className="cursor-pointer" 
+                        <th
+                          className="cursor-pointer"
                           onClick={() => handleSort('name')}
                         >
                           <Translate textKey="itemName" />
@@ -543,7 +543,7 @@ const ViewStock = () => {
                         </th>
                         <th className="description-column"><Translate textKey="description" /></th>
                         <th><Translate textKey="category" /></th>
-                        <th 
+                        <th
                           className="cursor-pointer"
                           onClick={() => handleSort('price')}
                         >
@@ -552,7 +552,7 @@ const ViewStock = () => {
                             <span>{sortDirection === 'asc' ? ' ↑' : ' ↓'}</span>
                           )}
                         </th>
-                        <th 
+                        <th
                           className="cursor-pointer"
                           onClick={() => handleSort('quantity')}
                         >
@@ -561,7 +561,7 @@ const ViewStock = () => {
                             <span>{sortDirection === 'asc' ? ' ↑' : ' ↓'}</span>
                           )}
                         </th>
-                        <th 
+                        <th
                           className="cursor-pointer"
                           onClick={() => handleSort('updatedAt')}
                         >
@@ -599,24 +599,24 @@ const ViewStock = () => {
                             >
                               <Translate textKey="addQuantity" />
                             </Button>
-                            <Button 
-                              variant="outline-primary" 
+                            <Button
+                              variant="outline-primary"
                               size="sm"
                               onClick={() => navigate(`/edit-stock/${item.id}`)}
                               className="me-1 mb-1"
                             >
                               <Translate textKey="edit" />
                             </Button>
-                            <Button 
-                              variant="outline-secondary" 
+                            <Button
+                              variant="outline-secondary"
                               size="sm"
                               onClick={() => printBarcode(item)}
                               className="me-1 mb-1"
                             >
-                              Print Barcode
+                              <Translate textKey="printBarcode" fallback="Print Barcode" />
                             </Button>
-                            <Button 
-                              variant="outline-danger" 
+                            <Button
+                              variant="outline-danger"
                               size="sm"
                               onClick={() => confirmDelete(item)}
                               className="mb-1"
@@ -631,7 +631,7 @@ const ViewStock = () => {
                 </div>
               ) : (
                 <p className="text-center">
-                  {stockItems.length > 0 
+                  {stockItems.length > 0
                     ? <Translate textKey="noItemsMatch" />
                     : <Translate textKey="noItemsFound" />}
                 </p>
@@ -639,7 +639,7 @@ const ViewStock = () => {
             </Card.Body>
           </Card>
         )}
-        
+
         {/* Delete Confirmation Modal */}
         <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
           <Modal.Header closeButton>
@@ -659,50 +659,49 @@ const ViewStock = () => {
           </Modal.Footer>
         </Modal>
 
-        {/* Barcode Print Modal */}
         <Modal show={showBarcodeModal} onHide={() => setShowBarcodeModal(false)}>
           <Modal.Header closeButton>
-            <Modal.Title>Print Barcode</Modal.Title>
+            <Modal.Title><Translate textKey="printBarcode" fallback="Print Barcode" /></Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            <p>Ready to print barcode for:</p>
+            <p><Translate textKey="readyToPrintBarcode" fallback="Ready to print barcode for:" /></p>
             {itemToPrintBarcode && (
               <div>
                 <p><strong>{itemToPrintBarcode.name}</strong></p>
-                <p>Price: RS{parseFloat(itemToPrintBarcode.price).toFixed(2)}</p>
-                <p>Barcode: {itemToPrintBarcode.barcode || itemToPrintBarcode.sku || itemToPrintBarcode.id}</p>
+                <p><Translate textKey="price" />: RS{parseFloat(itemToPrintBarcode.price).toFixed(2)}</p>
+                <p><Translate textKey="barcodeLabel" />: {itemToPrintBarcode.barcode || itemToPrintBarcode.sku || itemToPrintBarcode.id}</p>
               </div>
             )}
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setShowBarcodeModal(false)}>
-                    Cancel
-                  </Button>
-                  <Button variant="primary" onClick={handlePrintBarcode}>
-                    Print Barcode
-                  </Button>
-                  <Button variant="outline-primary" onClick={handlePrintBarcodePopup}>
-                    Print (Popup)
-                  </Button>
+              <Translate textKey="cancel" />
+            </Button>
+            <Button variant="primary" onClick={handlePrintBarcode}>
+              <Translate textKey="printBarcode" />
+            </Button>
+            <Button variant="outline-primary" onClick={handlePrintBarcodePopup}>
+              <Translate textKey="printPopup" fallback="Print (Popup)" />
+            </Button>
           </Modal.Footer>
         </Modal>
 
         {/* Category Management Modal */}
-        <Modal show={showCategoryModal} onHide={() => setShowCategoryModal(false)} size="lg">
+        < Modal show={showCategoryModal} onHide={() => setShowCategoryModal(false)} size="lg" >
           <Modal.Header closeButton>
             <Modal.Title>Manage Inventory Categories</Modal.Title>
           </Modal.Header>
           <Modal.Body>
             {categoryError && <Alert variant="danger" dismissible onClose={() => setCategoryError('')}>{categoryError}</Alert>}
             {categorySuccess && <Alert variant="success" dismissible onClose={() => setCategorySuccess('')}>{categorySuccess}</Alert>}
-            
+
             <Form onSubmit={handleAddCategory} className="mb-4">
-              <h6>Add New Category</h6>
+              <h6><Translate textKey="addNewCategory" fallback="Add New Category" /></h6>
               <Row className="g-2">
                 <Col md={5}>
                   <Form.Control
                     type="text"
-                    placeholder="Category name"
+                    placeholder={getTranslatedAttr("categoryName")}
                     value={newCategory.name}
                     onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
                     required
@@ -711,14 +710,14 @@ const ViewStock = () => {
                 <Col md={5}>
                   <Form.Control
                     type="text"
-                    placeholder="Description (optional)"
+                    placeholder={getTranslatedAttr("descriptionOptional")}
                     value={newCategory.description}
                     onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
                   />
                 </Col>
                 <Col md={2}>
                   <Button type="submit" variant="primary" disabled={categoryLoading}>
-                    Add
+                    <Translate textKey="add" />
                   </Button>
                 </Col>
               </Row>
@@ -775,10 +774,10 @@ const ViewStock = () => {
               Close
             </Button>
           </Modal.Footer>
-        </Modal>
+        </Modal >
 
         {/* Edit Category Modal */}
-        <Modal show={showEditCategoryModal} onHide={() => setShowEditCategoryModal(false)}>
+        < Modal show={showEditCategoryModal} onHide={() => setShowEditCategoryModal(false)}>
           <Modal.Header closeButton>
             <Modal.Title>Edit Category</Modal.Title>
           </Modal.Header>
@@ -812,10 +811,10 @@ const ViewStock = () => {
               </Button>
             </Modal.Footer>
           </Form>
-        </Modal>
+        </Modal >
 
         {/* Delete Category Confirmation Modal */}
-        <Modal show={showDeleteCategoryModal} onHide={() => setShowDeleteCategoryModal(false)}>
+        < Modal show={showDeleteCategoryModal} onHide={() => setShowDeleteCategoryModal(false)}>
           <Modal.Header closeButton>
             <Modal.Title>Delete Category</Modal.Title>
           </Modal.Header>
@@ -831,44 +830,46 @@ const ViewStock = () => {
               {categoryLoading ? 'Deleting...' : 'Delete'}
             </Button>
           </Modal.Footer>
-        </Modal>
-      </Container>
-      
+        </Modal >
+      </Container >
+
       {/* Hidden printable barcode area (screen-hidden, print-visible) */}
-      {printBarcodeData && (
-        <div id="printable-wrapper" style={{ position: 'fixed', left: '-9999px', top: '-9999px' }}>
-          <div id="printable-barcode">
-            <div style={{
-              fontFamily: 'Courier New, monospace',
-              textAlign: 'center',
-              padding: '20px',
-              margin: '0',
-              background: 'white',
-              width: '300px',
-              border: 'none',
-              padding: '15px'
-            }}>
+      {
+        printBarcodeData && (
+          <div id="printable-wrapper" style={{ position: 'fixed', left: '-9999px', top: '-9999px' }}>
+            <div id="printable-barcode">
               <div style={{
-                fontSize: '14px',
-                lineHeight: '1.2',
-                margin: '15px 0',
-                letterSpacing: '2px',
-                fontWeight: 'bold'
+                fontFamily: 'Courier New, monospace',
+                textAlign: 'center',
+                padding: '20px',
+                margin: '0',
+                background: 'white',
+                width: '300px',
+                border: 'none',
+                padding: '15px'
               }}>
-                {printBarcodeData.barcode}
-              </div>
-              <div style={{
-                fontSize: '16px',
-                fontWeight: 'bold',
-                marginTop: '12px',
-                letterSpacing: '3px'
-              }}>
-                {printBarcodeData.barcodeNumber}
+                <div style={{
+                  fontSize: '14px',
+                  lineHeight: '1.2',
+                  margin: '15px 0',
+                  letterSpacing: '2px',
+                  fontWeight: 'bold'
+                }}>
+                  {printBarcodeData.barcode}
+                </div>
+                <div style={{
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  marginTop: '12px',
+                  letterSpacing: '3px'
+                }}>
+                  {printBarcodeData.barcodeNumber}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
     </>
   );
 };

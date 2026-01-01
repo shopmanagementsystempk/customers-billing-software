@@ -9,7 +9,7 @@ export function useLanguage() {
 
 export function LanguageProvider({ children }) {
   const [language, setLanguage] = useState('en');
-  
+
   // Load language preference from localStorage on initial load
   useEffect(() => {
     const savedLanguage = localStorage.getItem('language');
@@ -17,29 +17,34 @@ export function LanguageProvider({ children }) {
       setLanguage(savedLanguage);
     }
   }, []);
-  
+
   // Save language preference to localStorage when it changes
   useEffect(() => {
     localStorage.setItem('language', language);
   }, [language]);
-  
+
   const toggleLanguage = () => {
-    setLanguage(prevLanguage => prevLanguage === 'en' ? 'ur' : 'en');
+    setLanguage(prevLanguage => {
+      if (prevLanguage === 'en') return 'ur';
+      if (prevLanguage === 'ur') return 'fi';
+      return 'en';
+    });
   };
 
   // Function to translate data
   const translateData = (data) => {
     return translate(data, language);
   };
-  
+
   const value = {
     language,
     toggleLanguage,
     isEnglish: language === 'en',
     isUrdu: language === 'ur',
+    isFinnish: language === 'fi',
     translateData
   };
-  
+
   return (
     <LanguageContext.Provider value={value}>
       {children}

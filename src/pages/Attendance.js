@@ -12,23 +12,23 @@ import { Translate, useTranslatedAttribute } from '../utils';
 const Attendance = () => {
   const { currentUser, activeShopId } = useAuth();
   const navigate = useNavigate();
-  
+
   // Get translations for attributes
   const getTranslatedAttr = useTranslatedAttribute();
-  
+
   const [attendance, setAttendance] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   // Filters
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedEmployee, setSelectedEmployee] = useState('all');
-  
+
   useEffect(() => {
     const fetchEmployees = async () => {
       if (!currentUser || !activeShopId) return;
-      
+
       try {
         setEmployees([]);
         const employeesRef = collection(db, 'employees');
@@ -36,13 +36,13 @@ const Attendance = () => {
           employeesRef,
           where('shopId', '==', activeShopId)
         );
-        
+
         const snapshot = await getDocs(employeesQuery);
         const employeesList = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
-        
+
         setEmployees(employeesList);
       } catch (err) {
         console.error('Error fetching employees:', err);
@@ -50,33 +50,33 @@ const Attendance = () => {
         setEmployees([]);
       }
     };
-    
+
     fetchEmployees();
   }, [currentUser, activeShopId, getTranslatedAttr]);
-  
+
   useEffect(() => {
     const fetchAttendance = async () => {
       if (!currentUser || !activeShopId) {
         setLoading(false);
         return;
       }
-      
+
       try {
         setLoading(true);
         const attendanceRef = collection(db, 'attendance');
-        
+
         // Modified approach: Query by shopId only, then filter in memory
         const attendanceQuery = query(
           attendanceRef,
           where('shopId', '==', activeShopId)
         );
-        
+
         const snapshot = await getDocs(attendanceQuery);
         const allAttendanceRecords = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
-        
+
         // Filter records by date and employee ID (if selected)
         const filteredAttendance = allAttendanceRecords.filter(record => {
           if (selectedEmployee === 'all') {
@@ -85,7 +85,7 @@ const Attendance = () => {
             return record.date === selectedDate && record.employeeId === selectedEmployee;
           }
         });
-        
+
         // Get employee names for each attendance record
         const attendanceWithNames = filteredAttendance.map(record => {
           const employee = employees.find(emp => emp.id === record.employeeId);
@@ -94,7 +94,7 @@ const Attendance = () => {
             employeeName: employee ? employee.name : getTranslatedAttr('unknownEmployee')
           };
         });
-        
+
         setAttendance(attendanceWithNames);
       } catch (err) {
         console.error('Error fetching attendance:', err);
@@ -104,15 +104,15 @@ const Attendance = () => {
         setLoading(false);
       }
     };
-    
+
     // Always fetch attendance, even if employees array is empty
     // This prevents infinite loading when there are no employees
     fetchAttendance();
   }, [currentUser, activeShopId, selectedDate, selectedEmployee, employees, getTranslatedAttr]);
-  
+
   // Translate status
   const getTranslatedStatus = (status) => {
-    switch(status) {
+    switch (status) {
       case 'present':
         return <Translate textKey="present" />;
       case 'absent':
@@ -125,31 +125,31 @@ const Attendance = () => {
         return status;
     }
   };
-  
+
   return (
     <>
       <MainNavbar />
       <Container>
-        <PageHeader 
-          title="Attendance Records" 
-          icon="bi-calendar-check" 
-          subtitle="Monitor daily attendance, review status, and keep your team on track."
+        <PageHeader
+          title={<Translate textKey="attendanceRecordsTitle" />}
+          icon="bi-calendar-check"
+          subtitle={<Translate textKey="attendanceRecordsSubtitle" />}
         />
         <div className="page-header-actions">
-          <Button 
-            variant="outline-info" 
+          <Button
+            variant="outline-info"
             onClick={() => navigate('/qr-scanner')}
           >
-            Scan QR Code
+            <Translate textKey="scanQRCode" />
           </Button>
-          <Button 
-            variant="success" 
+          <Button
+            variant="success"
             onClick={() => navigate('/mark-attendance')}
           >
             <Translate textKey="markAttendance" />
           </Button>
         </div>
-        
+
         <div className="mb-4">
           <Row>
             <Col md={4}>
@@ -178,13 +178,13 @@ const Attendance = () => {
             </Col>
           </Row>
         </div>
-        
+
         {error && (
           <div className="alert alert-danger" role="alert">
             {error}
           </div>
         )}
-        
+
         {loading ? (
           <div className="text-center p-4">
             <Spinner animation="border" variant="primary" />
@@ -220,7 +220,7 @@ const Attendance = () => {
             ) : (
               <div className="text-center p-4">
                 <p><Translate textKey="noAttendanceRecords" /></p>
-                <Button 
+                <Button
                   variant="primary"
                   onClick={() => navigate('/mark-attendance')}
                 >

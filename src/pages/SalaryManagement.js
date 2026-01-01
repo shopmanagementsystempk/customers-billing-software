@@ -25,7 +25,7 @@ const SalaryManagement = () => {
     currentMonthCount: 0
   });
   const navigate = useNavigate();
-  
+
   // Get translations for attributes
   const getTranslatedAttr = useTranslatedAttribute();
 
@@ -33,10 +33,10 @@ const SalaryManagement = () => {
   useEffect(() => {
     const fetchData = async () => {
       if (!currentUser || !activeShopId) return;
-      
+
       try {
         setLoading(true);
-        
+
         // Fetch salary records
         try {
           const records = await getShopSalaryRecords(activeShopId);
@@ -46,7 +46,7 @@ const SalaryManagement = () => {
           setError('Failed to load salary records. You may need to create Firestore indexes. Check console for details.');
           setSalaryRecords([]);
         }
-        
+
         // Fetch employees for the shop
         try {
           const employeesRef = collection(db, 'employees');
@@ -62,7 +62,7 @@ const SalaryManagement = () => {
           setError(prev => prev ? `${prev} Failed to load employees.` : 'Failed to load employees.');
           setEmployees([]);
         }
-        
+
         // Fetch salary statistics
         try {
           const stats = await getSalaryStatistics(activeShopId);
@@ -71,7 +71,7 @@ const SalaryManagement = () => {
           console.error('Error fetching statistics:', err);
           // We already have default statistics from the updated getSalaryStatistics function
         }
-        
+
         setLoading(false);
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -79,7 +79,7 @@ const SalaryManagement = () => {
         setLoading(false);
       }
     };
-    
+
     fetchData();
   }, [currentUser, activeShopId]);
 
@@ -89,7 +89,7 @@ const SalaryManagement = () => {
       try {
         await deleteSalaryRecord(salaryId);
         setSalaryRecords(salaryRecords.filter(record => record.id !== salaryId));
-        
+
         // Update statistics
         const stats = await getSalaryStatistics(activeShopId);
         setStatistics(stats);
@@ -109,14 +109,14 @@ const SalaryManagement = () => {
   // Filter salary records
   const filteredRecords = salaryRecords.filter(record => {
     const employeeName = getEmployeeName(record.employeeId);
-    const matchesSearch = 
+    const matchesSearch =
       employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesEmployee = employeeFilter ? record.employeeId === employeeFilter : true;
-    
+
     const matchesDate = dateFilter ? record.paymentDate.includes(dateFilter) : true;
-    
+
     return matchesSearch && matchesEmployee && matchesDate;
   });
 
@@ -125,49 +125,52 @@ const SalaryManagement = () => {
       <MainNavbar />
       <Container>
         <h2 className="mb-4"><Translate textKey="salaryManagement" defaultValue="Salary Management" /></h2>
-        
+
         {error && <Alert variant="danger">{error}</Alert>}
-        
-        <Row className="mb-4">
-          <Col md={6} lg={3}>
-            <Card className="mb-3 h-100">
-              <Card.Body className="d-flex flex-column align-items-center justify-content-center">
-                <Card.Title><Translate textKey="monthlyExpense" defaultValue="This Month" /></Card.Title>
-                <h3 className="text-success">RS{statistics.totalCurrentMonth.toFixed(2)}</h3>
-                <Card.Text className="text-muted">
-                  <Translate textKey="paymentCount" defaultValue="Payments" />: {statistics.currentMonthCount}
-                </Card.Text>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={6} lg={3}>
-            <Card className="mb-3 h-100">
-              <Card.Body className="d-flex flex-column align-items-center justify-content-center">
-                <Card.Title><Translate textKey="totalExpense" defaultValue="Total Expense" /></Card.Title>
-                <h3 className="text-primary">RS{statistics.totalAllTime.toFixed(2)}</h3>
-                <Card.Text className="text-muted">
-                  <Translate textKey="totalPayments" defaultValue="Total Payments" />: {statistics.recordCount}
-                </Card.Text>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col lg={6} className="d-flex align-items-center justify-content-end">
-            <Button 
-              variant="success" 
+
+        <div className="dashboard-stats-grid-v2 mb-4">
+          {/* Monthly Expense - Green */}
+          <div className="stat-card-v2 stat-card-v2--green slide-in-up">
+            <div className="stat-card-v2__value">
+              RS {statistics.totalCurrentMonth.toFixed(2)}
+            </div>
+            <div className="stat-card-v2__label">
+              <Translate textKey="monthlyExpense" defaultValue="This Month" />
+            </div>
+            <i className="bi bi-calendar-check stat-card-v2__icon"></i>
+          </div>
+
+          {/* Total Expense - Blue */}
+          <div className="stat-card-v2 stat-card-v2--blue slide-in-up" style={{ animationDelay: '0.1s' }}>
+            <div className="stat-card-v2__value">
+              RS {statistics.totalAllTime.toFixed(2)}
+            </div>
+            <div className="stat-card-v2__label">
+              <Translate textKey="totalExpense" defaultValue="Total Expense" />
+            </div>
+            <i className="bi bi-cash-stack stat-card-v2__icon"></i>
+          </div>
+
+          <div className="d-flex align-items-center justify-content-end gap-2 flex-grow-1">
+            <Button
+              variant="success"
               onClick={() => navigate('/add-salary-payment')}
-              className="me-2"
+              className="px-4 py-2 fw-bold shadow-sm"
             >
+              <i className="bi bi-plus-circle me-2"></i>
               <Translate textKey="addSalaryPayment" defaultValue="Add Salary Payment" />
             </Button>
-            <Button 
-              variant="outline-primary" 
+            <Button
+              variant="outline-primary"
               onClick={() => navigate('/salary-reports')}
+              className="px-4 py-2 fw-bold shadow-sm"
             >
+              <i className="bi bi-file-earmark-bar-graph me-2"></i>
               <Translate textKey="salaryReports" defaultValue="Salary Reports" />
             </Button>
-          </Col>
-        </Row>
-        
+          </div>
+        </div>
+
         <Card className="mb-4">
           <Card.Body>
             <Row>
@@ -182,8 +185,8 @@ const SalaryManagement = () => {
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
                     {searchTerm && (
-                      <Button 
-                        variant="outline-secondary" 
+                      <Button
+                        variant="outline-secondary"
                         onClick={() => setSearchTerm('')}
                       >
                         <Translate textKey="clear" defaultValue="Clear" />
@@ -192,7 +195,7 @@ const SalaryManagement = () => {
                   </InputGroup>
                 </Form.Group>
               </Col>
-              
+
               <Col md={4}>
                 <Form.Group className="mb-3">
                   <Form.Label><Translate textKey="filterByEmployee" defaultValue="Filter by Employee" /></Form.Label>
@@ -209,7 +212,7 @@ const SalaryManagement = () => {
                   </Form.Select>
                 </Form.Group>
               </Col>
-              
+
               <Col md={4}>
                 <Form.Group className="mb-3">
                   <Form.Label><Translate textKey="filterByDate" defaultValue="Filter by Date" /></Form.Label>
@@ -223,7 +226,7 @@ const SalaryManagement = () => {
             </Row>
           </Card.Body>
         </Card>
-        
+
         {loading ? (
           <p className="text-center"><Translate textKey="loadingData" defaultValue="Loading data..." /></p>
         ) : (
@@ -253,8 +256,8 @@ const SalaryManagement = () => {
                           <td>{record.paymentMethod}</td>
                           <td>
                             <Badge bg={record.status === 'paid' ? 'success' : 'warning'}>
-                              {record.status === 'paid' ? 
-                                <Translate textKey="paid" defaultValue="Paid" /> : 
+                              {record.status === 'paid' ?
+                                <Translate textKey="paid" defaultValue="Paid" /> :
                                 <Translate textKey="pending" defaultValue="Pending" />
                               }
                             </Badge>
@@ -283,8 +286,8 @@ const SalaryManagement = () => {
                 </div>
               ) : (
                 <p className="text-center">
-                  {salaryRecords.length > 0 ? 
-                    <Translate textKey="noRecordsFound" defaultValue="No records match your filters." /> : 
+                  {salaryRecords.length > 0 ?
+                    <Translate textKey="noRecordsFound" defaultValue="No records match your filters." /> :
                     <Translate textKey="noSalaryRecords" defaultValue="No salary records found. Add a payment to get started." />
                   }
                 </p>

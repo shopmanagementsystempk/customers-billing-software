@@ -4,6 +4,7 @@ import Select from 'react-select';
 import { useLocation, useNavigate } from 'react-router-dom';
 import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
+import { Translate, getTranslatedAttr } from '../components/Translate';
 import { useAuth } from '../contexts/AuthContext';
 import { getShopStock, addStockToItem } from '../utils/stockUtils';
 import { formatDisplayDate } from '../utils/dateUtils';
@@ -38,10 +39,10 @@ const AddStockEntry = () => {
       const opt = options.find(o => o.value === pre);
       if (opt) {
         const selectedStockItem = stock.find(s => s.id === pre);
-        setRows([{ 
-          item: opt, 
-          quantity: '', 
-          costPrice: '', 
+        setRows([{
+          item: opt,
+          quantity: '',
+          costPrice: '',
           expiryDate: '',
           lowStockAlert: selectedStockItem?.lowStockAlert?.toString() || ''
         }]);
@@ -112,7 +113,7 @@ const AddStockEntry = () => {
       if (existingIframe) {
         existingIframe.remove();
       }
-      
+
       // Create a hidden iframe for printing
       const iframe = document.createElement('iframe');
       iframe.id = 'print-stock-iframe';
@@ -123,7 +124,7 @@ const AddStockEntry = () => {
       iframe.style.height = '0';
       iframe.style.border = '0';
       document.body.appendChild(iframe);
-      
+
       const now = new Date();
       const purchaseDateDisplay = formatDisplayDate(purchaseDate);
       const entryDateDisplay = formatDisplayDate(now);
@@ -192,18 +193,18 @@ const AddStockEntry = () => {
           </body>
         </html>
       `;
-      
+
       // Write content to iframe
       const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
       iframeDoc.open();
       iframeDoc.write(html);
       iframeDoc.close();
-      
+
       // Print and remove iframe after printing
       setTimeout(() => {
         iframe.contentWindow.focus();
         iframe.contentWindow.print();
-        
+
         // Remove iframe after printing completes
         setTimeout(() => {
           if (iframe && iframe.parentNode) {
@@ -220,14 +221,14 @@ const AddStockEntry = () => {
     <>
       <MainNavbar />
       <Container className="mt-3">
-        <PageHeader 
-          title="Add Stock" 
-          icon="bi-box-arrow-in-down" 
-          subtitle="Record incoming deliveries and update product quantities."
+        <PageHeader
+          title={<Translate textKey="stockInTitle" fallback="Add Stock" />}
+          icon="bi-box-arrow-in-down"
+          subtitle={<Translate textKey="stockInSubtitle" fallback="Record incoming deliveries and update product quantities." />}
         />
         <div className="page-header-actions">
           <Button variant="outline-secondary" onClick={() => navigate('/stock')}>
-            Back to Inventory
+            <Translate textKey="backToInventory" fallback="Back to Inventory" />
           </Button>
         </div>
         <Card>
@@ -239,7 +240,7 @@ const AddStockEntry = () => {
                 <div key={idx} className="border rounded-3 p-3 mb-3 bg-light-subtle">
                   <Row className="g-3 align-items-end">
                     <Col md={5}>
-                      <Form.Label>Item</Form.Label>
+                      <Form.Label><Translate textKey="item" fallback="Item" /></Form.Label>
                       <Select
                         value={r.item}
                         onChange={(opt) => {
@@ -258,7 +259,7 @@ const AddStockEntry = () => {
                       />
                     </Col>
                     <Col md={3}>
-                      <Form.Label>Quantity to add</Form.Label>
+                      <Form.Label><Translate textKey="quantityToAdd" fallback="Quantity to add" /></Form.Label>
                       <Form.Control
                         type="number"
                         value={r.quantity}
@@ -269,7 +270,7 @@ const AddStockEntry = () => {
                       />
                     </Col>
                     <Col md={2}>
-                      <Form.Label>Cost price</Form.Label>
+                      <Form.Label><Translate textKey="costPrice" fallback="Cost price" /></Form.Label>
                       <Form.Control
                         type="number"
                         value={r.costPrice}
@@ -280,7 +281,7 @@ const AddStockEntry = () => {
                       />
                     </Col>
                     <Col md={2}>
-                      <Form.Label>Expiry Date (optional)</Form.Label>
+                      <Form.Label><Translate textKey="expiryDate" fallback="Expiry Date" /> ({getTranslatedAttr("optional")})</Form.Label>
                       <Form.Control
                         type="date"
                         value={r.expiryDate || ''}
@@ -306,26 +307,26 @@ const AddStockEntry = () => {
                   </Row>
                   <div className="d-flex justify-content-end mt-3">
                     <Button variant="outline-danger" onClick={() => removeRow(idx)} disabled={rows.length === 1}>
-                      Remove
+                      <Translate textKey="remove" />
                     </Button>
                   </div>
                 </div>
               ))}
               <div className="mt-2">
-                <Button variant="outline-primary" onClick={addRow}>+ Add another item</Button>
+                <Button variant="outline-primary" onClick={addRow}>+ <Translate textKey="addItem" /></Button>
               </div>
               <Row className="g-3 mt-3">
                 <Col md={4}>
-                  <Form.Label>Supplier (optional)</Form.Label>
+                  <Form.Label><Translate textKey="supplierLabel" /> ({getTranslatedAttr("optional")})</Form.Label>
                   <Form.Control
                     type="text"
                     value={supplier}
                     onChange={(e) => setSupplier(e.target.value)}
-                    placeholder="Supplier name"
+                    placeholder={getTranslatedAttr("supplierLabel")}
                   />
                 </Col>
                 <Col md={4}>
-                  <Form.Label>Purchase Date</Form.Label>
+                  <Form.Label><Translate textKey="purchaseDateLabel" /></Form.Label>
                   <Form.Control
                     type="date"
                     value={purchaseDate}
@@ -333,21 +334,21 @@ const AddStockEntry = () => {
                   />
                 </Col>
                 <Col md={4}>
-                  <Form.Label>Note (optional)</Form.Label>
+                  <Form.Label><Translate textKey="notes" /> ({getTranslatedAttr("optional")})</Form.Label>
                   <Form.Control
                     type="text"
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
-                    placeholder="Reference, batch no, reason, etc."
+                    placeholder={getTranslatedAttr("noteOptional")}
                   />
                 </Col>
               </Row>
               <div className="mt-4 d-flex gap-2">
                 <Button type="submit" variant="primary" disabled={loading}>
-                  {loading ? 'Adding...' : 'Add Stock & Print'}
+                  {loading ? <Translate textKey="adding" /> : <Translate textKey="addStockAndPrint" />}
                 </Button>
                 <Button variant="outline-secondary" onClick={() => navigate('/stock')}>
-                  Cancel
+                  <Translate textKey="cancel" />
                 </Button>
               </div>
             </Form>

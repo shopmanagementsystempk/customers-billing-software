@@ -10,6 +10,7 @@ import { getInventoryCategories, addInventoryCategory, updateInventoryCategory, 
 import { db } from '../firebase/config';
 import { collection, query, where, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import Select from 'react-select';
+import { Translate, getTranslatedAttr } from '../components/Translate';
 
 const defaultRow = {
   sourceItemId: '',
@@ -106,7 +107,7 @@ const PurchaseManagement = () => {
 
   const fetchSuppliers = useCallback(async () => {
     if (!currentUser?.uid || !activeShopId) return;
-    
+
     setSuppliersLoading(true);
     try {
       const suppliersRef = collection(db, 'suppliers');
@@ -434,30 +435,30 @@ const PurchaseManagement = () => {
             </style>
           </head>
           <body>
-            <h2>${shopData?.shopName || 'Shop'} - Purchase Invoice</h2>
+            <h2>${shopData?.shopName || 'Shop'} - ${getTranslatedAttr("purchaseInvoice")}</h2>
             <div class="meta">
-              <div><strong>Invoice #:</strong> ${purchase.invoiceNumber || '-'}</div>
-              <div><strong>Supplier:</strong> ${purchase.supplier || '-'}</div>
-              <div><strong>Date:</strong> ${purchaseDateDisplay}</div>
-              <div><strong>Reference:</strong> ${purchase.reference || '-'}</div>
-              <div><strong>Note:</strong> ${purchase.note || '-'}</div>
+              <div><strong>${getTranslatedAttr("invoiceNumber")}:</strong> ${purchase.invoiceNumber || '-'}</div>
+              <div><strong>${getTranslatedAttr("supplierLabel")}:</strong> ${purchase.supplier || '-'}</div>
+              <div><strong>${getTranslatedAttr("date")}:</strong> ${purchaseDateDisplay}</div>
+              <div><strong>${getTranslatedAttr("reference")}:</strong> ${purchase.reference || '-'}</div>
+              <div><strong>${getTranslatedAttr("notes")}:</strong> ${purchase.note || '-'}</div>
             </div>
             <table>
               <thead>
                 <tr>
-                  <th>Item</th>
-                  <th>Category</th>
-                  <th>Quantity</th>
-                  <th>Expiry</th>
-                  <th>Cost Price</th>
-                  <th>Line Total</th>
+                  <th>${getTranslatedAttr("item")}</th>
+                  <th>${getTranslatedAttr("category")}</th>
+                  <th>${getTranslatedAttr("quantity")}</th>
+                  <th>${getTranslatedAttr("expiryDate")}</th>
+                  <th>${getTranslatedAttr("costPrice")}</th>
+                  <th>${getTranslatedAttr("lineTotal")}</th>
                 </tr>
               </thead>
               <tbody>
                 ${bodyRows}
               </tbody>
             </table>
-            <div class="total">Total Cost: RS ${formatCurrency(total)}</div>
+            <div class="total">${getTranslatedAttr("totalCost")}: RS ${formatCurrency(total)}</div>
           </body>
         </html>
       `;
@@ -487,8 +488,8 @@ const PurchaseManagement = () => {
       return (
         <div className="empty-state">
           <i className="bi bi-receipt"></i>
-          <h5>No purchase history yet</h5>
-          <p>All recorded purchases will appear here with quick invoice access.</p>
+          <h5><Translate textKey="noPurchaseHistory" fallback="No purchase history yet" /></h5>
+          <p><Translate textKey="purchaseHistoryHelp" fallback="All recorded purchases will appear here with quick invoice access." /></p>
         </div>
       );
     }
@@ -497,12 +498,12 @@ const PurchaseManagement = () => {
       <Table responsive hover className="mb-0">
         <thead>
           <tr>
-            <th>Invoice #</th>
-            <th>Supplier</th>
-            <th>Date</th>
-            <th>Items</th>
-            <th>Total Cost</th>
-            <th>Actions</th>
+            <th><Translate textKey="invoiceNo" /></th>
+            <th><Translate textKey="supplierLabel" /></th>
+            <th><Translate textKey="date" /></th>
+            <th><Translate textKey="items" /></th>
+            <th><Translate textKey="totalCost" /></th>
+            <th><Translate textKey="actions" /></th>
           </tr>
         </thead>
         <tbody>
@@ -519,7 +520,7 @@ const PurchaseManagement = () => {
                 <td>RS {formatCurrency(total)}</td>
                 <td>
                   <Button size="sm" variant="outline-primary" onClick={() => printInvoice(purchase)}>
-                    Print Invoice
+                    <Translate textKey="printInvoice" />
                   </Button>
                 </td>
               </tr>
@@ -535,20 +536,20 @@ const PurchaseManagement = () => {
       <MainNavbar />
       <Container className="pos-content mt-3">
         <PageHeader
-          title="Purchase Management"
+          title={<Translate textKey="purchaseManagement" fallback="Purchase Management" />}
           icon="bi-cart-plus"
-          subtitle="Record incoming purchases, auto-create inventory items, and keep invoices handy."
+          subtitle={<Translate textKey="purchaseManagementSubtitle" fallback="Record incoming purchases, auto-create inventory items, and keep invoices handy." />}
         >
           <div className="hero-metrics__item">
-            <span className="hero-metrics__label">Supplier</span>
+            <span className="hero-metrics__label"><Translate textKey="supplierLabel" /></span>
             <span className="hero-metrics__value">{supplier || '—'}</span>
           </div>
           <div className="hero-metrics__item">
-            <span className="hero-metrics__label">Items</span>
+            <span className="hero-metrics__label"><Translate textKey="items" /></span>
             <span className="hero-metrics__value">{rows.length}</span>
           </div>
           <div className="hero-metrics__item">
-            <span className="hero-metrics__label">Total Cost</span>
+            <span className="hero-metrics__label"><Translate textKey="totalCost" /></span>
             <span className="hero-metrics__value">RS {formatCurrency(totalCost)}</span>
           </div>
         </PageHeader>
@@ -562,13 +563,13 @@ const PurchaseManagement = () => {
               <Row className="g-3">
                 <Col md={4}>
                   <Form.Group>
-                    <Form.Label>Supplier</Form.Label>
-                    <Form.Select 
-                      value={supplier} 
+                    <Form.Label><Translate textKey="supplierLabel" /></Form.Label>
+                    <Form.Select
+                      value={supplier}
                       onChange={(e) => setSupplier(e.target.value)}
                       disabled={suppliersLoading}
                     >
-                      <option value="">Select a supplier</option>
+                      <option value=""><Translate textKey="selectOption" /></option>
                       {suppliers.map(sup => (
                         <option key={sup.id} value={sup.name}>
                           {sup.name} {sup.company ? `(${sup.company})` : ''}
@@ -576,19 +577,19 @@ const PurchaseManagement = () => {
                       ))}
                     </Form.Select>
                     <Form.Text className="text-muted">
-                      {suppliersLoading ? 'Loading suppliers...' : suppliers.length === 0 ? 'No suppliers added yet. Add suppliers from Contacts > Supplier Information.' : ''}
+                      {suppliersLoading ? getTranslatedAttr("loading") : suppliers.length === 0 ? getTranslatedAttr("noSuppliersFound") : ''}
                     </Form.Text>
                   </Form.Group>
                 </Col>
                 <Col md={4}>
                   <Form.Group>
-                    <Form.Label>Invoice Number</Form.Label>
+                    <Form.Label><Translate textKey="invoiceNumber" /></Form.Label>
                     <Form.Control value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="INV-00123" />
                   </Form.Group>
                 </Col>
                 <Col md={4}>
                   <Form.Group>
-                    <Form.Label>Purchase Date</Form.Label>
+                    <Form.Label><Translate textKey="purchaseDateLabel" /></Form.Label>
                     <Form.Control type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} />
                   </Form.Group>
                 </Col>
@@ -597,31 +598,31 @@ const PurchaseManagement = () => {
               <Row className="g-3 mt-1">
                 <Col md={6}>
                   <Form.Group>
-                    <Form.Label>Reference</Form.Label>
-                    <Form.Control value={reference} onChange={(e) => setReference(e.target.value)} placeholder="PO number, delivery note, etc." />
+                    <Form.Label><Translate textKey="reference" /></Form.Label>
+                    <Form.Control value={reference} onChange={(e) => setReference(e.target.value)} placeholder={getTranslatedAttr("reference")} />
                   </Form.Group>
                 </Col>
                 <Col md={6}>
                   <Form.Group>
-                    <Form.Label>Note</Form.Label>
-                    <Form.Control value={note} onChange={(e) => setNote(e.target.value)} placeholder="Payment terms, remarks, etc." />
+                    <Form.Label><Translate textKey="notes" /></Form.Label>
+                    <Form.Control value={note} onChange={(e) => setNote(e.target.value)} placeholder={getTranslatedAttr("notes")} />
                   </Form.Group>
                 </Col>
               </Row>
 
               <div className="mt-4">
-                <h5 className="mb-3">Items</h5>
+                <h5 className="mb-3"><Translate textKey="items" /></h5>
                 {rows.map((row, idx) => (
                   <Card key={idx} className="mb-3">
                     <Card.Body>
                       <Row className="g-3">
                         <Col md={4}>
                           <Form.Group>
-                            <Form.Label>Existing Product</Form.Label>
+                            <Form.Label><Translate textKey="existingProduct" /></Form.Label>
                             <Select
                               isDisabled={stockLoading || !stockItems.length}
                               isClearable
-                              placeholder={stockLoading ? 'Loading inventory...' : 'Search by name or barcode, or leave empty to add as new product'}
+                              placeholder={stockLoading ? getTranslatedAttr("loading") : getTranslatedAttr("searchInventoryPlaceholder")}
                               options={stockItems.map(item => ({
                                 value: item.id,
                                 label: `${item.name}${item.barcode ? ` • ${item.barcode}` : ''}`,
@@ -648,7 +649,7 @@ const PurchaseManagement = () => {
                         </Col>
                         <Col md={4}>
                           <Form.Group>
-                            <Form.Label>Item Name*</Form.Label>
+                            <Form.Label><Translate textKey="itemNameLabel" /></Form.Label>
                             <Form.Control value={row.name} onChange={(e) => setRowValue(idx, 'name', e.target.value)} required />
                           </Form.Group>
                         </Col>
@@ -663,11 +664,11 @@ const PurchaseManagement = () => {
                                 onClick={() => setShowCategoryModal(true)}
                                 style={{ fontSize: '0.75rem' }}
                               >
-                                <i className="bi bi-pencil-square me-1"></i>Manage Categories
+                                <i className="bi bi-pencil-square me-1"></i><Translate textKey="manageCategories" />
                               </Button>
                             </div>
-                            <Form.Select 
-                              value={row.category} 
+                            <Form.Select
+                              value={row.category}
                               onChange={(e) => setRowValue(idx, 'category', e.target.value)}
                               disabled={categoriesLoading}
                             >
@@ -696,26 +697,26 @@ const PurchaseManagement = () => {
                                 onClick={() => generateBarcodeForRow(idx)}
                                 style={{ fontSize: '0.75rem' }}
                               >
-                                <i className="bi bi-upc-scan me-1"></i>Generate
+                                <i className="bi bi-upc-scan me-1"></i><Translate textKey="generate" />
                               </Button>
                             </div>
-                            <Form.Control value={row.barcode || ''} onChange={(e) => setRowValue(idx, 'barcode', e.target.value)} placeholder="Optional" />
-                            <Form.Text className="text-muted">Used for barcode scanning</Form.Text>
+                            <Form.Control value={row.barcode || ''} onChange={(e) => setRowValue(idx, 'barcode', e.target.value)} placeholder={getTranslatedAttr("optional")} />
+                            <Form.Text className="text-muted"><Translate textKey="barcodeScanningHelp" /></Form.Text>
                           </Form.Group>
                         </Col>
                       </Row>
                       <Row className="g-3 mt-1">
                         <Col md={12}>
                           <Form.Group>
-                            <Form.Label>Description</Form.Label>
-                            <Form.Control value={row.description} onChange={(e) => setRowValue(idx, 'description', e.target.value)} />
+                            <Form.Label><Translate textKey="description" /></Form.Label>
+                            <Form.Control value={row.description} onChange={(e) => setRowValue(idx, 'description', e.target.value)} placeholder={getTranslatedAttr("optional")} />
                           </Form.Group>
                         </Col>
                       </Row>
                       <Row className="g-3 mt-1">
                         <Col md={3}>
                           <Form.Group>
-                            <Form.Label>Quantity*</Form.Label>
+                            <Form.Label><Translate textKey="quantityLabel" /></Form.Label>
                             <Form.Control type="number" min="0" step="0.01" value={row.quantity} onChange={(e) => setRowValue(idx, 'quantity', e.target.value)} />
                           </Form.Group>
                         </Col>
@@ -730,33 +731,32 @@ const PurchaseManagement = () => {
                                 onClick={() => setShowUnitModal(true)}
                                 style={{ fontSize: '0.75rem' }}
                               >
-                                <i className="bi bi-pencil-square me-1"></i>Manage Units
+                                <i className="bi bi-pencil-square me-1"></i><Translate textKey="manageUnits" fallback="Manage Units" />
                               </Button>
                             </div>
                             <Form.Select value={row.unit} onChange={(e) => setRowValue(idx, 'unit', e.target.value)} disabled={unitsLoading}>
-                              {units.map(u => {
-                                const label = u === 'kg' ? 'KG' : u === 'litre' ? 'Litre' : u === 'pack' ? 'Pack' : u === 'units' ? 'Units' : u.charAt(0).toUpperCase() + u.slice(1);
-                                return <option key={u} value={u}>{label}</option>;
-                              })}
+                              {units.map(u => (
+                                <option key={u} value={u}><Translate textKey={u} fallback={u} /></option>
+                              ))}
                             </Form.Select>
                             <Form.Text className="text-muted">{unitsLoading ? 'Loading units...' : ''}</Form.Text>
                           </Form.Group>
                         </Col>
                         <Col md={3}>
                           <Form.Group>
-                            <Form.Label>Cost Price (RS)*</Form.Label>
+                            <Form.Label><Translate textKey="costPriceLabel" /></Form.Label>
                             <Form.Control type="number" min="0" step="0.01" value={row.costPrice} onChange={(e) => setRowValue(idx, 'costPrice', e.target.value)} />
                           </Form.Group>
                         </Col>
                         <Col md={3}>
                           <Form.Group>
-                            <Form.Label>Selling Price (Optional)</Form.Label>
+                            <Form.Label><Translate textKey="sellingPriceLabel" /> ({getTranslatedAttr("optional")})</Form.Label>
                             <Form.Control type="number" min="0" step="0.01" value={row.sellingPrice} onChange={(e) => setRowValue(idx, 'sellingPrice', e.target.value)} />
                           </Form.Group>
                         </Col>
                         <Col md={3}>
                           <Form.Group>
-                            <Form.Label>Expiry Date (Optional)</Form.Label>
+                            <Form.Label><Translate textKey="expiryDateLabel" /></Form.Label>
                             <Form.Control type="date" value={row.expiryDate || ''} onChange={(e) => setRowValue(idx, 'expiryDate', e.target.value)} />
                           </Form.Group>
                         </Col>
@@ -765,31 +765,31 @@ const PurchaseManagement = () => {
                         <Col md={3}>
                           <Form.Group>
                             <Form.Label>Low Stock Alert (Optional)</Form.Label>
-                            <Form.Control 
-                              type="number" 
-                              min="0" 
-                              step="0.01" 
-                              value={row.lowStockAlert || ''} 
-                              onChange={(e) => setRowValue(idx, 'lowStockAlert', e.target.value)} 
-                              placeholder="Minimum quantity"
+                            <Form.Control
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={row.lowStockAlert || ''}
+                              onChange={(e) => setRowValue(idx, 'lowStockAlert', e.target.value)}
+                              placeholder={getTranslatedAttr("lowStockAlert")}
                             />
                             <Form.Text className="text-muted">
-                              Alert when stock falls below this quantity
+                              <Translate textKey="lowStockAlertHelp" />
                             </Form.Text>
                           </Form.Group>
                         </Col>
                       </Row>
                       <div className="d-flex justify-content-between align-items-center mt-3">
-                        <div className="text-muted">Line Total: RS {formatCurrency(calculateRowTotal(row))}</div>
+                        <div className="text-muted"><Translate textKey="lineTotal" />: RS {formatCurrency(calculateRowTotal(row))}</div>
                         <Button variant="outline-danger" size="sm" onClick={() => removeRow(idx)} disabled={rows.length === 1}>
-                          Remove
+                          <Translate textKey="remove" />
                         </Button>
                       </div>
                     </Card.Body>
                   </Card>
                 ))}
                 <Button variant="outline-primary" onClick={addRow}>
-                  + Add Another Item
+                  <Translate textKey="addAnotherItem" fallback="+ Add Another Item" />
                 </Button>
               </div>
 
@@ -797,7 +797,7 @@ const PurchaseManagement = () => {
                 <div className="fw-bold fs-5">Grand Total: RS {formatCurrency(totalCost)}</div>
                 <div className="d-flex gap-2">
                   <Button type="submit" variant="primary" disabled={loading}>
-                    {loading ? 'Saving...' : 'Save Purchase & Print Invoice'}
+                    {loading ? <Translate textKey="saving" /> : <Translate textKey="savePurchaseAndPrint" fallback="Save Purchase & Print Invoice" />}
                   </Button>
                   <Button variant="outline-secondary" onClick={resetForm} disabled={loading}>
                     Reset
@@ -809,7 +809,7 @@ const PurchaseManagement = () => {
         </Card>
 
         <Card>
-          <Card.Header>Purchase History</Card.Header>
+          <Card.Header><Translate textKey="stockHistory" fallback="Purchase History" /></Card.Header>
           <Card.Body className="p-0">
             {renderHistory()}
           </Card.Body>
@@ -818,14 +818,14 @@ const PurchaseManagement = () => {
         {/* Category Management Modal */}
         <Modal show={showCategoryModal} onHide={() => setShowCategoryModal(false)} size="lg">
           <Modal.Header closeButton>
-            <Modal.Title>Manage Inventory Categories</Modal.Title>
+            <Modal.Title><Translate textKey="inventoryCategories" fallback="Manage Inventory Categories" /></Modal.Title>
           </Modal.Header>
           <Modal.Body>
             {categoryError && <Alert variant="danger" dismissible onClose={() => setCategoryError('')}>{categoryError}</Alert>}
             {categorySuccess && <Alert variant="success" dismissible onClose={() => setCategorySuccess('')}>{categorySuccess}</Alert>}
-            
+
             <Form onSubmit={handleAddCategory} className="mb-4">
-              <h6>Add New Category</h6>
+              <h6><Translate textKey="addNewCategory" fallback="Add New Category" /></h6>
               <Row className="g-2">
                 <Col md={5}>
                   <Form.Control
@@ -846,7 +846,7 @@ const PurchaseManagement = () => {
                 </Col>
                 <Col md={2}>
                   <Button type="submit" variant="primary" disabled={categoriesLoading}>
-                    Add
+                    <Translate textKey="add" />
                   </Button>
                 </Col>
               </Row>
@@ -854,7 +854,7 @@ const PurchaseManagement = () => {
 
             <hr />
 
-            <h6>Existing Categories</h6>
+            <h6><Translate textKey="existingCategories" fallback="Existing Categories" /></h6>
             {categoriesLoading && !categories.length ? (
               <div className="text-center py-3">
                 <Spinner animation="border" size="sm" />
@@ -865,9 +865,9 @@ const PurchaseManagement = () => {
               <Table hover size="sm">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Description</th>
-                    <th>Actions</th>
+                    <th><Translate textKey="name" /></th>
+                    <th><Translate textKey="description" /></th>
+                    <th><Translate textKey="actions" /></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -882,14 +882,14 @@ const PurchaseManagement = () => {
                           className="me-2"
                           onClick={() => handleEditCategory(cat)}
                         >
-                          Edit
+                          <Translate textKey="edit" />
                         </Button>
                         <Button
                           variant="outline-danger"
                           size="sm"
                           onClick={() => handleDeleteCategory(cat)}
                         >
-                          Delete
+                          <Translate textKey="delete" />
                         </Button>
                       </td>
                     </tr>
@@ -900,7 +900,7 @@ const PurchaseManagement = () => {
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setShowCategoryModal(false)}>
-              Close
+              <Translate textKey="close" />
             </Button>
           </Modal.Footer>
         </Modal>
@@ -908,13 +908,13 @@ const PurchaseManagement = () => {
         {/* Edit Category Modal */}
         <Modal show={showEditCategoryModal} onHide={() => setShowEditCategoryModal(false)}>
           <Modal.Header closeButton>
-            <Modal.Title>Edit Category</Modal.Title>
+            <Modal.Title><Translate textKey="editCategory" /></Modal.Title>
           </Modal.Header>
           <Form onSubmit={handleUpdateCategory}>
             <Modal.Body>
               {categoryError && <Alert variant="danger">{categoryError}</Alert>}
               <Form.Group className="mb-3">
-                <Form.Label>Category Name</Form.Label>
+                <Form.Label><Translate textKey="categoryName" /></Form.Label>
                 <Form.Control
                   type="text"
                   value={editCategory.name}
@@ -923,7 +923,7 @@ const PurchaseManagement = () => {
                 />
               </Form.Group>
               <Form.Group>
-                <Form.Label>Description</Form.Label>
+                <Form.Label><Translate textKey="description" /></Form.Label>
                 <Form.Control
                   type="text"
                   value={editCategory.description}
@@ -936,7 +936,7 @@ const PurchaseManagement = () => {
                 Cancel
               </Button>
               <Button type="submit" variant="primary" disabled={categoriesLoading}>
-                {categoriesLoading ? 'Updating...' : 'Update'}
+                {categoriesLoading ? <Translate textKey="updating" /> : <Translate textKey="update" />}
               </Button>
             </Modal.Footer>
           </Form>
@@ -945,7 +945,7 @@ const PurchaseManagement = () => {
         {/* Delete Category Confirmation Modal */}
         <Modal show={showDeleteCategoryModal} onHide={() => setShowDeleteCategoryModal(false)}>
           <Modal.Header closeButton>
-            <Modal.Title>Delete Category</Modal.Title>
+            <Modal.Title><Translate textKey="deleteCategory" /></Modal.Title>
           </Modal.Header>
           <Modal.Body>
             <p>Are you sure you want to delete the category <strong>"{categoryToDelete?.name}"</strong>?</p>
@@ -956,7 +956,7 @@ const PurchaseManagement = () => {
               Cancel
             </Button>
             <Button variant="danger" onClick={confirmDeleteCategory} disabled={categoriesLoading}>
-              {categoriesLoading ? 'Deleting...' : 'Delete'}
+              {categoriesLoading ? <Translate textKey="deleting" /> : <Translate textKey="delete" />}
             </Button>
           </Modal.Footer>
         </Modal>
@@ -964,7 +964,7 @@ const PurchaseManagement = () => {
         {/* Unit Management Modal */}
         <Modal show={showUnitModal} onHide={() => setShowUnitModal(false)}>
           <Modal.Header closeButton>
-            <Modal.Title>Manage Units</Modal.Title>
+            <Modal.Title><Translate textKey="manageUnits" fallback="Manage Units" /></Modal.Title>
           </Modal.Header>
           <Modal.Body>
             <Form onSubmit={handleAddUnit} className="mb-3">
@@ -979,7 +979,7 @@ const PurchaseManagement = () => {
                   />
                 </Col>
                 <Col xs={4}>
-                  <Button type="submit" variant="primary" disabled={unitsLoading}>Add Unit</Button>
+                  <Button type="submit" variant="primary" disabled={unitsLoading}><Translate textKey="add" /></Button>
                 </Col>
               </Row>
             </Form>
@@ -992,7 +992,7 @@ const PurchaseManagement = () => {
                 <thead>
                   <tr>
                     <th>Unit</th>
-                    <th style={{width:'120px'}}>Actions</th>
+                    <th style={{ width: '120px' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1000,7 +1000,7 @@ const PurchaseManagement = () => {
                     <tr key={u}>
                       <td>{u}</td>
                       <td>
-                        {['units','kg','litre','pack'].includes(u) ? (
+                        {['units', 'kg', 'litre', 'pack'].includes(u) ? (
                           <span className="text-muted">Default</span>
                         ) : (
                           <Button
@@ -1008,13 +1008,13 @@ const PurchaseManagement = () => {
                             size="sm"
                             onClick={async () => {
                               const unitsRef = collection(db, 'units');
-                              const q = query(unitsRef, where('shopId','==', activeShopId));
+                              const q = query(unitsRef, where('shopId', '==', activeShopId));
                               const snapshot = await getDocs(q);
                               const match = snapshot.docs.find(d => (d.data().name || '').toLowerCase() === u.toLowerCase());
                               if (match) handleDeleteUnit(match.id);
                             }}
                           >
-                            Delete
+                            <Translate textKey="delete" />
                           </Button>
                         )}
                       </td>
@@ -1025,7 +1025,7 @@ const PurchaseManagement = () => {
             )}
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowUnitModal(false)}>Close</Button>
+            <Button variant="secondary" onClick={() => setShowUnitModal(false)}><Translate textKey="close" /></Button>
           </Modal.Footer>
         </Modal>
       </Container>

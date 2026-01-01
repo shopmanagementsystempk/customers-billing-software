@@ -12,18 +12,27 @@ function LanguageToggle({
 }) {
   const { language, toggleLanguage } = useLanguage();
 
-  const label = isCompact
-    ? (language === 'en' ? 'UR' : 'EN')
-    : (language === 'en' ? translations.en.switchToUrdu : translations.ur.switchToEnglish);
-  
+  const getLabel = () => {
+    if (isCompact) {
+      if (language === 'en') return 'UR';
+      if (language === 'ur') return 'FI';
+      return 'EN';
+    }
+    if (language === 'en') return translations.en.switchToUrdu;
+    if (language === 'ur') return translations.ur.switchToFinnish;
+    return translations.fi.switchToEnglish;
+  };
+
+  const label = getLabel();
+
   const classes = [
     'language-toggle-btn',
     isCompact ? 'language-toggle-btn--compact' : '',
     className
   ].filter(Boolean).join(' ');
-  
+
   return (
-    <Button 
+    <Button
       variant={variant}
       className={classes}
       onClick={toggleLanguage}

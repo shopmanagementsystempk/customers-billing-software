@@ -7,11 +7,13 @@ import { auth } from '../firebase/config';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { validatePassword } from '../utils/passwordPolicy';
 import MainNavbar from '../components/Navbar';
+import { Translate, useTranslatedAttribute } from '../utils';
 import PageHeader from '../components/PageHeader';
 import { formatCurrency } from '../utils/receiptUtils';
 
 const StaffManagement = () => {
   const { currentUser, shopData, activeShopId } = useAuth();
+  const getTranslatedAttr = useTranslatedAttribute();
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -47,7 +49,7 @@ const StaffManagement = () => {
 
   const fetchStaffList = useCallback(async () => {
     if (!currentUser) return;
-    
+
     try {
       const q = query(collection(db, 'staff'), where('shopId', '==', activeShopId));
       const querySnapshot = await getDocs(q);
@@ -58,7 +60,7 @@ const StaffManagement = () => {
       setStaffList(staff);
     } catch (error) {
       console.error('Error fetching staff:', error);
-      setError('Failed to fetch staff list');
+      setError(getTranslatedAttr('failedToFetchStaff'));
     } finally {
       setLoading(false);
     }
@@ -95,7 +97,7 @@ const StaffManagement = () => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
+
     if (name.startsWith('permission_')) {
       const permissionName = name.replace('permission_', '');
       setFormData(prev => ({
@@ -140,12 +142,12 @@ const StaffManagement = () => {
           updatedAt: new Date().toISOString()
         });
 
-        setSuccess('Staff member updated successfully');
+        setSuccess(getTranslatedAttr('staffMemberUpdated'));
         setShowEditModal(false);
         setIsEditMode(false);
         setSelectedStaff(null);
         fetchStaffList();
-        
+
         // Reset form
         setFormData({
           name: '',
@@ -186,7 +188,7 @@ const StaffManagement = () => {
       const shopsSnapshot = await getDocs(shopsQuery);
 
       if (!staffSnapshot.empty || !shopsSnapshot.empty) {
-        setError('This email is already registered');
+        setError(getTranslatedAttr('emailAlreadyRegistered'));
         return;
       }
 
@@ -207,15 +209,15 @@ const StaffManagement = () => {
 
       // Note: Firebase Auth automatically signs in the newly created staff account
       // We need to redirect the shop owner to login page to re-authenticate
-      
+
       // Close the modal first
       setShowModal(false);
-      
+
       // Redirect to login immediately
       window.location.href = '/login';
     } catch (error) {
       console.error('Error creating staff:', error);
-      setError(error.message || 'Failed to create staff account');
+      setError(error.message || getTranslatedAttr('failedToCreateStaff'));
     }
   };
 
@@ -230,7 +232,7 @@ const StaffManagement = () => {
       fetchStaffList();
     } catch (error) {
       console.error('Error deleting staff:', error);
-      setError('Failed to delete staff account');
+      setError(getTranslatedAttr('failedToDeleteStaff'));
     }
   };
 
@@ -242,10 +244,10 @@ const StaffManagement = () => {
     <>
       <MainNavbar />
       <Container className="pb-4">
-        <PageHeader 
-          title="Staff Management" 
-          icon="bi-people" 
-          subtitle="Control staff access, assign permissions, and oversee your team."
+        <PageHeader
+          title={<Translate textKey="staffManagement" />}
+          icon="bi-people"
+          subtitle={<Translate textKey="staffManagementSubtitle" />}
         />
         <div className="page-header-actions">
           <Button variant="primary" onClick={() => {
@@ -273,7 +275,7 @@ const StaffManagement = () => {
             });
             setShowModal(true);
           }}>
-            + Add Staff
+            + <Translate textKey="addStaff" />
           </Button>
         </div>
 
@@ -283,21 +285,21 @@ const StaffManagement = () => {
         <Card>
           <Card.Body>
             {loading ? (
-              <div className="text-center py-4">Loading staff...</div>
+              <div className="text-center py-4"><Translate textKey="loading" /></div>
             ) : staffList.length === 0 ? (
               <div className="text-center py-4 text-muted">
-                No staff members yet. Click "Add Staff" to create one.
+                <Translate textKey="noStaffMembers" />
               </div>
             ) : (
               <Table responsive striped hover>
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Permissions</th>
-                    <th>Sales</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th><Translate textKey="name" /></th>
+                    <th><Translate textKey="email" /></th>
+                    <th><Translate textKey="permissions" /></th>
+                    <th><Translate textKey="staffSales" /></th>
+                    <th><Translate textKey="status" /></th>
+                    <th><Translate textKey="action" /></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -306,7 +308,7 @@ const StaffManagement = () => {
                       <td>{staff.name}</td>
                       <td>{staff.email}</td>
                       <td>
-                        <Badge bg="info">{getPermissionCount(staff.permissions)} permissions</Badge>
+                        <Badge bg="info">{getPermissionCount(staff.permissions)} <Translate textKey="permissions" /></Badge>
                       </td>
                       <td>{formatCurrency(staffSales[staff.id] || 0)}</td>
                       <td>
@@ -315,23 +317,23 @@ const StaffManagement = () => {
                         </Badge>
                       </td>
                       <td>
-                        <Button 
-                          variant="primary" 
-                          size="sm" 
+                        <Button
+                          variant="primary"
+                          size="sm"
                           onClick={() => handleEdit(staff)}
                           className="me-2"
                         >
-                          Edit
+                          <Translate textKey="edit" />
                         </Button>
-                        <Button 
-                          variant="danger" 
-                          size="sm" 
+                        <Button
+                          variant="danger"
+                          size="sm"
                           onClick={() => {
                             setSelectedStaff(staff);
                             setShowDeleteModal(true);
                           }}
                         >
-                          Delete
+                          <Translate textKey="delete" />
                         </Button>
                       </td>
                     </tr>
@@ -369,12 +371,12 @@ const StaffManagement = () => {
           });
         }} size="lg">
           <Modal.Header closeButton>
-            <Modal.Title>Add Staff Member</Modal.Title>
+            <Modal.Title><Translate textKey="addStaffMember" /></Modal.Title>
           </Modal.Header>
           <Form onSubmit={handleSubmit}>
             <Modal.Body>
               <Form.Group className="mb-3">
-                <Form.Label>Name</Form.Label>
+                <Form.Label><Translate textKey="name" /></Form.Label>
                 <Form.Control
                   type="text"
                   name="name"
@@ -385,7 +387,7 @@ const StaffManagement = () => {
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label>Email</Form.Label>
+                <Form.Label><Translate textKey="email" /></Form.Label>
                 <Form.Control
                   type="email"
                   name="email"
@@ -397,7 +399,7 @@ const StaffManagement = () => {
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label>Password</Form.Label>
+                <Form.Label><Translate textKey="password" /></Form.Label>
                 <Form.Control
                   type="password"
                   name="password"
@@ -407,12 +409,12 @@ const StaffManagement = () => {
                   autoComplete="new-password"
                 />
                 <Form.Text className="text-muted">
-                  Password must be at least 8 characters with uppercase, lowercase, number, and special character.
+                  <Translate textKey="passwordHelp" />
                 </Form.Text>
               </Form.Group>
 
               <hr />
-              <h5>Permissions</h5>
+              <h5><Translate textKey="permissions" /></h5>
 
               <Row>
                 <Col md={6}>
@@ -420,7 +422,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="permission_ViewReceipts"
                     name="permission_canViewReceipts"
-                    label="View Receipts"
+                    label={<Translate textKey="viewReceipts" />}
                     checked={formData.permissions.canViewReceipts}
                     onChange={handleInputChange}
                   />
@@ -428,7 +430,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="permission_CreateReceipts"
                     name="permission_canCreateReceipts"
-                    label="Create Receipts"
+                    label={<Translate textKey="createReceipts" />}
                     checked={formData.permissions.canCreateReceipts}
                     onChange={handleInputChange}
                   />
@@ -436,7 +438,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="permission_EditReceipts"
                     name="permission_canEditReceipts"
-                    label="Edit Receipts"
+                    label={<Translate textKey="editReceipts" />}
                     checked={formData.permissions.canEditReceipts}
                     onChange={handleInputChange}
                   />
@@ -444,7 +446,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="permission_DeleteReceipts"
                     name="permission_canDeleteReceipts"
-                    label="Delete Receipts"
+                    label={<Translate textKey="deleteReceipts" />}
                     checked={formData.permissions.canDeleteReceipts}
                     onChange={handleInputChange}
                   />
@@ -452,7 +454,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="permission_ViewStock"
                     name="permission_canViewStock"
-                    label="View Stock"
+                    label={<Translate textKey="viewStock" />}
                     checked={formData.permissions.canViewStock}
                     onChange={handleInputChange}
                   />
@@ -460,7 +462,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="permission_EditStock"
                     name="permission_canEditStock"
-                    label="Edit Stock"
+                    label={<Translate textKey="editStock" />}
                     checked={formData.permissions.canEditStock}
                     onChange={handleInputChange}
                   />
@@ -468,7 +470,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="permission_ManageLedger"
                     name="permission_canManageLedger"
-                    label="Manage Ledger"
+                    label={<Translate textKey="manageLedger" />}
                     checked={formData.permissions.canManageLedger}
                     onChange={handleInputChange}
                   />
@@ -478,7 +480,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="permission_ViewEmployees"
                     name="permission_canViewEmployees"
-                    label="View Employees"
+                    label={<Translate textKey="viewEmployees" />}
                     checked={formData.permissions.canViewEmployees}
                     onChange={handleInputChange}
                   />
@@ -486,7 +488,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="permission_ManageEmployees"
                     name="permission_canManageEmployees"
-                    label="Manage Employees"
+                    label={<Translate textKey="manageEmployees" />}
                     checked={formData.permissions.canManageEmployees}
                     onChange={handleInputChange}
                   />
@@ -494,7 +496,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="permission_MarkAttendance"
                     name="permission_canMarkAttendance"
-                    label="Mark Attendance"
+                    label={<Translate textKey="markAttendance" />}
                     checked={formData.permissions.canMarkAttendance}
                     onChange={handleInputChange}
                   />
@@ -502,7 +504,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="permission_ManageSalary"
                     name="permission_canManageSalary"
-                    label="Manage Salary"
+                    label={<Translate textKey="manageSalary" />}
                     checked={formData.permissions.canManageSalary}
                     onChange={handleInputChange}
                   />
@@ -510,7 +512,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="permission_ViewAnalytics"
                     name="permission_canViewAnalytics"
-                    label="View Analytics"
+                    label={<Translate textKey="viewAnalytics" />}
                     checked={formData.permissions.canViewAnalytics}
                     onChange={handleInputChange}
                   />
@@ -518,7 +520,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="permission_ManageExpenses"
                     name="permission_canManageExpenses"
-                    label="Manage Expenses"
+                    label={<Translate textKey="manageExpenses" />}
                     checked={formData.permissions.canManageExpenses}
                     onChange={handleInputChange}
                   />
@@ -526,7 +528,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="permission_ManageContacts"
                     name="permission_canManageContacts"
-                    label="Manage Contacts"
+                    label={<Translate textKey="manageContacts" />}
                     checked={formData.permissions.canManageContacts}
                     onChange={handleInputChange}
                   />
@@ -534,7 +536,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="permission_ManageSettings"
                     name="permission_canManageSettings"
-                    label="Manage Settings"
+                    label={<Translate textKey="manageSettings" />}
                     checked={formData.permissions.canManageSettings}
                     onChange={handleInputChange}
                   />
@@ -543,10 +545,10 @@ const StaffManagement = () => {
             </Modal.Body>
             <Modal.Footer>
               <Button variant="secondary" onClick={() => setShowModal(false)}>
-                Cancel
+                <Translate textKey="cancel" />
               </Button>
               <Button variant="primary" type="submit">
-                Create Staff Account
+                <Translate textKey="createStaffAccount" />
               </Button>
             </Modal.Footer>
           </Form>
@@ -559,12 +561,12 @@ const StaffManagement = () => {
           setSelectedStaff(null);
         }} size="lg">
           <Modal.Header closeButton>
-            <Modal.Title>Edit Staff Member</Modal.Title>
+            <Modal.Title><Translate textKey="editStaffMember" /></Modal.Title>
           </Modal.Header>
           <Form onSubmit={handleSubmit}>
             <Modal.Body>
               <Form.Group className="mb-3">
-                <Form.Label>Name</Form.Label>
+                <Form.Label><Translate textKey="name" /></Form.Label>
                 <Form.Control
                   type="text"
                   name="name"
@@ -575,7 +577,7 @@ const StaffManagement = () => {
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label>Email</Form.Label>
+                <Form.Label><Translate textKey="email" /></Form.Label>
                 <Form.Control
                   type="email"
                   name="email"
@@ -583,12 +585,12 @@ const StaffManagement = () => {
                   disabled
                 />
                 <Form.Text className="text-muted">
-                  Email cannot be changed
+                  <Translate textKey="emailCannotBeChanged" />
                 </Form.Text>
               </Form.Group>
 
               <hr />
-              <h5>Permissions</h5>
+              <h5><Translate textKey="permissions" /></h5>
 
               <Row>
                 <Col md={6}>
@@ -596,7 +598,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="edit-permission_ViewReceipts"
                     name="permission_canViewReceipts"
-                    label="View Receipts"
+                    label={<Translate textKey="viewReceipts" />}
                     checked={formData.permissions.canViewReceipts}
                     onChange={handleInputChange}
                   />
@@ -604,7 +606,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="edit-permission_CreateReceipts"
                     name="permission_canCreateReceipts"
-                    label="Create Receipts"
+                    label={<Translate textKey="createReceipts" />}
                     checked={formData.permissions.canCreateReceipts}
                     onChange={handleInputChange}
                   />
@@ -612,7 +614,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="edit-permission_EditReceipts"
                     name="permission_canEditReceipts"
-                    label="Edit Receipts"
+                    label={<Translate textKey="editReceipts" />}
                     checked={formData.permissions.canEditReceipts}
                     onChange={handleInputChange}
                   />
@@ -620,7 +622,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="edit-permission_DeleteReceipts"
                     name="permission_canDeleteReceipts"
-                    label="Delete Receipts"
+                    label={<Translate textKey="deleteReceipts" />}
                     checked={formData.permissions.canDeleteReceipts}
                     onChange={handleInputChange}
                   />
@@ -628,7 +630,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="edit-permission_ViewStock"
                     name="permission_canViewStock"
-                    label="View Stock"
+                    label={<Translate textKey="viewStock" />}
                     checked={formData.permissions.canViewStock}
                     onChange={handleInputChange}
                   />
@@ -636,7 +638,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="edit-permission_EditStock"
                     name="permission_canEditStock"
-                    label="Edit Stock"
+                    label={<Translate textKey="editStock" />}
                     checked={formData.permissions.canEditStock}
                     onChange={handleInputChange}
                   />
@@ -644,7 +646,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="edit-permission_ManageLedger"
                     name="permission_canManageLedger"
-                    label="Manage Ledger"
+                    label={<Translate textKey="manageLedger" />}
                     checked={formData.permissions.canManageLedger}
                     onChange={handleInputChange}
                   />
@@ -654,7 +656,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="edit-permission_ViewEmployees"
                     name="permission_canViewEmployees"
-                    label="View Employees"
+                    label={<Translate textKey="viewEmployees" />}
                     checked={formData.permissions.canViewEmployees}
                     onChange={handleInputChange}
                   />
@@ -662,7 +664,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="edit-permission_ManageEmployees"
                     name="permission_canManageEmployees"
-                    label="Manage Employees"
+                    label={<Translate textKey="manageEmployees" />}
                     checked={formData.permissions.canManageEmployees}
                     onChange={handleInputChange}
                   />
@@ -670,7 +672,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="edit-permission_MarkAttendance"
                     name="permission_canMarkAttendance"
-                    label="Mark Attendance"
+                    label={<Translate textKey="markAttendance" />}
                     checked={formData.permissions.canMarkAttendance}
                     onChange={handleInputChange}
                   />
@@ -678,7 +680,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="edit-permission_ManageSalary"
                     name="permission_canManageSalary"
-                    label="Manage Salary"
+                    label={<Translate textKey="manageSalary" />}
                     checked={formData.permissions.canManageSalary}
                     onChange={handleInputChange}
                   />
@@ -686,7 +688,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="edit-permission_ViewAnalytics"
                     name="permission_canViewAnalytics"
-                    label="View Analytics"
+                    label={<Translate textKey="viewAnalytics" />}
                     checked={formData.permissions.canViewAnalytics}
                     onChange={handleInputChange}
                   />
@@ -694,7 +696,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="edit-permission_ManageExpenses"
                     name="permission_canManageExpenses"
-                    label="Manage Expenses"
+                    label={<Translate textKey="manageExpenses" />}
                     checked={formData.permissions.canManageExpenses}
                     onChange={handleInputChange}
                   />
@@ -702,7 +704,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="edit-permission_ManageContacts"
                     name="permission_canManageContacts"
-                    label="Manage Contacts"
+                    label={<Translate textKey="manageContacts" />}
                     checked={formData.permissions.canManageContacts}
                     onChange={handleInputChange}
                   />
@@ -710,7 +712,7 @@ const StaffManagement = () => {
                     type="checkbox"
                     id="edit-permission_ManageSettings"
                     name="permission_canManageSettings"
-                    label="Manage Settings"
+                    label={<Translate textKey="manageSettings" />}
                     checked={formData.permissions.canManageSettings}
                     onChange={handleInputChange}
                   />
@@ -723,10 +725,10 @@ const StaffManagement = () => {
                 setIsEditMode(false);
                 setSelectedStaff(null);
               }}>
-                Cancel
+                <Translate textKey="cancel" />
               </Button>
               <Button variant="primary" type="submit">
-                Update Staff Member
+                <Translate textKey="updateStaffMember" />
               </Button>
             </Modal.Footer>
           </Form>
@@ -735,10 +737,10 @@ const StaffManagement = () => {
         {/* Delete Confirmation Modal */}
         <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
           <Modal.Header closeButton>
-            <Modal.Title>Confirm Delete</Modal.Title>
+            <Modal.Title><Translate textKey="confirmDelete" /></Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            Are you sure you want to delete staff member <strong>{selectedStaff?.name}</strong>? This action cannot be undone.
+            <Translate textKey="confirmDeleteStaff" values={{ staffName: selectedStaff?.name }} />
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>

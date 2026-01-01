@@ -33,19 +33,19 @@ const Expenses = () => {
   useEffect(() => {
     const fetchData = async () => {
       if (!currentUser || !activeShopId) return;
-      
+
       setLoading(true);
       setError('');
-      
+
       try {
         // Fetch expense categories
         const categoriesData = await getExpenseCategories(activeShopId);
         setCategories(categoriesData);
-        
+
         // Fetch all expenses
         const expensesData = await getShopExpenseRecords(activeShopId);
         setExpenses(expensesData);
-        
+
         // Fetch expense statistics
         const statsData = await getExpenseStatistics(activeShopId);
         setStatistics(statsData);
@@ -56,7 +56,7 @@ const Expenses = () => {
         setLoading(false);
       }
     };
-    
+
     fetchData();
   }, [currentUser, activeShopId]);
 
@@ -83,16 +83,16 @@ const Expenses = () => {
   const filteredExpenses = expenses.filter(expense => {
     // Category filter
     const categoryMatch = selectedCategory === 'all' || expense.categoryId === selectedCategory;
-    
+
     // Search term filter (search in description and notes)
-    const searchMatch = searchTerm === '' || 
+    const searchMatch = searchTerm === '' ||
       (expense.description && expense.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (expense.notes && expense.notes.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+
     // Date range filter
     const startDateMatch = !dateRange.startDate || expense.expenseDate >= dateRange.startDate;
     const endDateMatch = !dateRange.endDate || expense.expenseDate <= dateRange.endDate;
-    
+
     return categoryMatch && searchMatch && startDateMatch && endDateMatch;
   });
 
@@ -110,17 +110,17 @@ const Expenses = () => {
 
   const confirmDelete = async () => {
     if (!expenseToDelete) return;
-    
+
     try {
       await deleteExpense(expenseToDelete.id);
-      
+
       // Update expenses list
       setExpenses(expenses.filter(exp => exp.id !== expenseToDelete.id));
-      
+
       // Update statistics
       const statsData = await getExpenseStatistics(activeShopId);
       setStatistics(statsData);
-      
+
       setShowDeleteModal(false);
       setExpenseToDelete(null);
     } catch (error) {
@@ -139,95 +139,80 @@ const Expenses = () => {
     <>
       <MainNavbar />
       <Container className="pb-4">
-        <PageHeader 
-          title="Expenses" 
-          icon="bi-wallet2" 
+        <PageHeader
+          title="Expenses"
+          icon="bi-wallet2"
           subtitle="Track day-to-day spending, filter by category, and stay on top of costs."
         />
         <div className="page-header-actions">
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             onClick={() => navigate('/add-expense')}
           >
             <Translate textKey="addExpense" fallback="Add Expense" />
           </Button>
-          <Button 
-            variant="outline-primary" 
+          <Button
+            variant="outline-primary"
             onClick={() => navigate('/expense-categories')}
           >
             <Translate textKey="manageCategories" fallback="Manage Categories" />
           </Button>
         </div>
-        
+
         {error && <Alert variant="danger">{error}</Alert>}
-        
+
         {/* Statistics Cards */}
         {statistics && (
-          <Row className="mb-4 g-3">
-            <Col md={6} lg={3}>
-              <Card className="shadow-sm h-100">
-                <Card.Body className="text-center">
-                  <h6><Translate textKey="totalExpensesThisMonth" fallback="Total Expenses This Month" /></h6>
-                  <h3>{formatCurrency(statistics.totalCurrentMonth)}</h3>
-                  <small className="text-muted">
-                    <Translate 
-                      textKey="fromRecords" 
-                      fallback="From {count} records"
-                      values={{ count: statistics.currentMonthCount }}
-                    />
-                  </small>
-                </Card.Body>
-              </Card>
-            </Col>
-            <Col md={6} lg={3}>
-              <Card className="shadow-sm h-100">
-                <Card.Body className="text-center">
-                  <h6><Translate textKey="totalExpensesAllTime" fallback="Total Expenses All Time" /></h6>
-                  <h3>{formatCurrency(statistics.totalAllTime)}</h3>
-                  <small className="text-muted">
-                    <Translate 
-                      textKey="fromRecords" 
-                      fallback="From {count} records"
-                      values={{ count: statistics.recordCount }}
-                    />
-                  </small>
-                </Card.Body>
-              </Card>
-            </Col>
-            <Col md={6} lg={3}>
-              <Card className="shadow-sm h-100">
-                <Card.Body className="text-center">
-                  <h6><Translate textKey="averageMonthlyExpense" fallback="Average Monthly Expense" /></h6>
-                  <h3>
-                    {statistics.recordCount > 0 
-                      ? formatCurrency(statistics.totalAllTime / (statistics.recordCount > 0 ? statistics.recordCount : 1))
-                      : formatCurrency(0)
-                    }
-                  </h3>
-                  <small className="text-muted">
-                    <Translate textKey="perExpense" fallback="Per expense" />
-                  </small>
-                </Card.Body>
-              </Card>
-            </Col>
-            <Col md={6} lg={3}>
-              <Card className="shadow-sm h-100">
-                <Card.Body className="text-center">
-                  <h6><Translate textKey="filteredTotal" fallback="Filtered Total" /></h6>
-                  <h3>{formatCurrency(filteredTotal)}</h3>
-                  <small className="text-muted">
-                    <Translate 
-                      textKey="fromRecords" 
-                      fallback="From {count} records"
-                      values={{ count: filteredExpenses.length }}
-                    />
-                  </small>
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
+          <div className="dashboard-stats-grid-v2 mb-4">
+            {/* Total Expenses This Month - Red */}
+            <div className="stat-card-v2 stat-card-v2--red slide-in-up">
+              <div className="stat-card-v2__value">
+                {formatCurrency(statistics.totalCurrentMonth).replace('RS', 'RS ')}
+              </div>
+              <div className="stat-card-v2__label">
+                <Translate textKey="totalExpensesThisMonth" fallback="Total Expenses This Month" />
+              </div>
+              <i className="bi bi-calendar-month stat-card-v2__icon"></i>
+            </div>
+
+            {/* Total Expenses All Time - Purple */}
+            <div className="stat-card-v2 stat-card-v2--purple slide-in-up" style={{ animationDelay: '0.1s' }}>
+              <div className="stat-card-v2__value">
+                {formatCurrency(statistics.totalAllTime).replace('RS', 'RS ')}
+              </div>
+              <div className="stat-card-v2__label">
+                <Translate textKey="totalExpensesAllTime" fallback="Total Expenses All Time" />
+              </div>
+              <i className="bi bi-history stat-card-v2__icon"></i>
+            </div>
+
+            {/* Average Per Expense - Orange */}
+            <div className="stat-card-v2 stat-card-v2--orange slide-in-up" style={{ animationDelay: '0.2s' }}>
+              <div className="stat-card-v2__value">
+                {statistics.recordCount > 0
+                  ? formatCurrency(statistics.totalAllTime / statistics.recordCount).replace('RS', 'RS ')
+                  : formatCurrency(0).replace('RS', 'RS ')
+                }
+              </div>
+              <div className="stat-card-v2__label">
+                <Translate textKey="averageMonthlyExpense" fallback="Average Expense" />
+              </div>
+              <i className="bi bi-calculator stat-card-v2__icon"></i>
+            </div>
+
+            {/* Filtered Total - Blue */}
+            <div className="stat-card-v2 stat-card-v2--blue slide-in-up" style={{ animationDelay: '0.3s' }}>
+              <div className="stat-card-v2__value">
+                {formatCurrency(filteredTotal).replace('RS', 'RS ')}
+              </div>
+              <div className="stat-card-v2__label">
+                <Translate textKey="filteredTotal" fallback="Filtered Total" />
+              </div>
+              <i className="bi bi-funnel stat-card-v2__icon"></i>
+            </div>
+          </div>
         )}
-        
+
         {/* Filters */}
         <Card className="mb-4 shadow-sm">
           <Card.Body>
@@ -236,7 +221,7 @@ const Expenses = () => {
               <Col md={4}>
                 <Form.Group>
                   <Form.Label><Translate textKey="category" fallback="Category" /></Form.Label>
-                  <Form.Select 
+                  <Form.Select
                     value={selectedCategory}
                     onChange={handleCategoryChange}
                   >
@@ -252,8 +237,8 @@ const Expenses = () => {
               <Col md={4}>
                 <Form.Group>
                   <Form.Label><Translate textKey="search" fallback="Search" /></Form.Label>
-                  <Form.Control 
-                    type="text" 
+                  <Form.Control
+                    type="text"
                     placeholder="Search in description or notes"
                     value={searchTerm}
                     onChange={handleSearchChange}
@@ -263,8 +248,8 @@ const Expenses = () => {
               <Col md={2}>
                 <Form.Group>
                   <Form.Label><Translate textKey="startDate" fallback="Start Date" /></Form.Label>
-                  <Form.Control 
-                    type="date" 
+                  <Form.Control
+                    type="date"
                     name="startDate"
                     value={dateRange.startDate}
                     onChange={handleDateRangeChange}
@@ -274,8 +259,8 @@ const Expenses = () => {
               <Col md={2}>
                 <Form.Group>
                   <Form.Label><Translate textKey="endDate" fallback="End Date" /></Form.Label>
-                  <Form.Control 
-                    type="date" 
+                  <Form.Control
+                    type="date"
                     name="endDate"
                     value={dateRange.endDate}
                     onChange={handleDateRangeChange}
@@ -285,7 +270,7 @@ const Expenses = () => {
             </Row>
           </Card.Body>
         </Card>
-        
+
         {/* Expenses Table */}
         <Card className="shadow-sm">
           <Card.Body>
@@ -320,16 +305,16 @@ const Expenses = () => {
                         </td>
                         <td className="text-end">{formatCurrency(expense.amount)}</td>
                         <td>
-                          <Button 
-                            variant="outline-primary" 
+                          <Button
+                            variant="outline-primary"
                             size="sm"
                             className="me-1"
                             onClick={() => navigate(`/edit-expense/${expense.id}`)}
                           >
                             <Translate textKey="edit" fallback="Edit" />
                           </Button>
-                          <Button 
-                            variant="outline-danger" 
+                          <Button
+                            variant="outline-danger"
                             size="sm"
                             onClick={() => handleDeleteClick(expense)}
                           >
@@ -349,15 +334,15 @@ const Expenses = () => {
           </Card.Body>
         </Card>
       </Container>
-      
+
       {/* Delete Confirmation Modal */}
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title><Translate textKey="confirmDelete" fallback="Confirm Delete" /></Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <Translate 
-            textKey="confirmDeleteExpenseMessage" 
+          <Translate
+            textKey="confirmDeleteExpenseMessage"
             fallback="Are you sure you want to delete this expense? This action cannot be undone."
           />
           {expenseToDelete && (

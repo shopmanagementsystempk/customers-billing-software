@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
-import { Translate } from '../utils';
+import { Translate, useTranslatedAttribute } from '../utils';
 import { getLedgerEntries, deleteLedgerEntry, getLedgerAccounts } from '../utils/ledgerUtils';
 import { formatCurrency } from '../utils/receiptUtils';
 import { formatDisplayDate } from '../utils/dateUtils';
@@ -12,137 +12,138 @@ import { formatDisplayDate } from '../utils/dateUtils';
 const LedgerEntries = () => {
   const { currentUser, activeShopId } = useAuth();
   const navigate = useNavigate();
-  
+  const getTranslatedAttr = useTranslatedAttribute();
+
   const [entries, setEntries] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   // Filters
   const [selectedAccount, setSelectedAccount] = useState('all');
   const [dateRange, setDateRange] = useState({
     startDate: '',
     endDate: ''
   });
-  
+
   // Delete confirmation
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState(null);
-  
+
   // Fetch entries and accounts
   useEffect(() => {
     const fetchData = async () => {
       if (!currentUser || !activeShopId) return;
-      
+
       setLoading(true);
       setError('');
-      
+
       try {
         const accountsData = await getLedgerAccounts(activeShopId);
         setAccounts(accountsData);
-        
+
         const filters = selectedAccount !== 'all' ? { accountId: selectedAccount } : {};
         const entriesData = await getLedgerEntries(activeShopId, filters);
         setEntries(entriesData);
       } catch (error) {
-        console.error('Error fetching ledger data:', error);
-        setError('Failed to load ledger entries. Please try again.');
+        console.error('Error fetching ledger entries:', error);
+        setError(getTranslatedAttr('failedToLoadEntries'));
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchData();
   }, [currentUser, activeShopId, selectedAccount]);
-  
+
   // Filter entries by date range
   const filteredEntries = entries.filter(entry => {
     const startDateMatch = !dateRange.startDate || entry.entryDate >= dateRange.startDate;
     const endDateMatch = !dateRange.endDate || entry.entryDate <= dateRange.endDate;
     return startDateMatch && endDateMatch;
   });
-  
+
   // Get account name by ID
   const getAccountName = (accountId) => {
     const account = accounts.find(acc => acc.id === accountId);
     return account ? account.accountName : 'Unknown';
   };
-  
+
   // Handle delete entry
   const handleDeleteClick = (entry) => {
     setEntryToDelete(entry);
     setShowDeleteModal(true);
   };
-  
+
   const confirmDelete = async () => {
     if (!entryToDelete) return;
-    
+
     try {
       await deleteLedgerEntry(entryToDelete.id);
-      
+
       // Remove entry from state
       setEntries(prev => prev.filter(ent => ent.id !== entryToDelete.id));
-      
+
       setShowDeleteModal(false);
       setEntryToDelete(null);
     } catch (error) {
-      console.error('Error deleting entry:', error);
-      setError('Failed to delete entry. Please try again.');
+      console.error('Error deleting ledger entry:', error);
+      setError(error.message || getTranslatedAttr('error'));
       setShowDeleteModal(false);
     }
   };
-  
+
   // Handle date range change
-  const handleDateRangeChange = (e) => {
+  const handleDateChange = (e) => {
     const { name, value } = e.target;
     setDateRange(prev => ({
       ...prev,
       [name]: value
     }));
   };
-  
+
   return (
     <>
       <MainNavbar />
       <Container className="pb-4">
-        <PageHeader 
-          title="Ledger Entries" 
-          icon="bi-journal-bookmark" 
-          subtitle="View and manage all ledger transactions (debit and credit entries)."
+        <PageHeader
+          title={<Translate textKey="ledgerEntries" />}
+          icon="bi-journal-bookmark"
+          subtitle={<Translate textKey="manageEntriesSubtitle" />}
         />
         <div className="page-header-actions">
-          <Button 
-            variant="outline-secondary" 
+          <Button
+            variant="outline-secondary"
             onClick={() => navigate('/ledger-accounts')}
           >
-            View Accounts
+            <Translate textKey="viewAccounts" />
           </Button>
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             onClick={() => navigate('/add-ledger-entry')}
           >
-            Add Entry
+            <Translate textKey="addEntry" />
           </Button>
         </div>
-        
+
         {error && <Alert variant="danger">{error}</Alert>}
-        
+
         {/* Filters */}
         <Card className="mb-4 shadow-sm">
           <Card.Body>
-            <h5>Filters</h5>
+            <h5><Translate textKey="filters" /></h5>
             <Row className="g-3">
               <Col md={4}>
                 <Form.Group>
-                  <Form.Label>Account</Form.Label>
-                  <Form.Select 
+                  <Form.Label><Translate textKey="account" /></Form.Label>
+                  <Form.Select
                     value={selectedAccount}
                     onChange={(e) => setSelectedAccount(e.target.value)}
                   >
-                    <option value="all">All Accounts</option>
+                    <option value="all"><Translate textKey="allAccounts" /></option>
                     {accounts.map(account => (
                       <option key={account.id} value={account.id}>
-                        {account.accountName} ({account.accountType})
+                        {account.accountName} ({getTranslatedAttr(account.accountType.toLowerCase())})
                       </option>
                     ))}
                   </Form.Select>
@@ -150,83 +151,87 @@ const LedgerEntries = () => {
               </Col>
               <Col md={4}>
                 <Form.Group>
-                  <Form.Label>Start Date</Form.Label>
-                  <Form.Control 
-                    type="date" 
+                  <Form.Label><Translate textKey="startDate" /></Form.Label>
+                  <Form.Control
+                    type="date"
                     name="startDate"
                     value={dateRange.startDate}
-                    onChange={handleDateRangeChange}
+                    onChange={handleDateChange}
                   />
                 </Form.Group>
               </Col>
               <Col md={4}>
                 <Form.Group>
-                  <Form.Label>End Date</Form.Label>
-                  <Form.Control 
-                    type="date" 
+                  <Form.Label><Translate textKey="endDate" /></Form.Label>
+                  <Form.Control
+                    type="date"
                     name="endDate"
                     value={dateRange.endDate}
-                    onChange={handleDateRangeChange}
+                    onChange={handleDateChange}
                   />
                 </Form.Group>
               </Col>
             </Row>
           </Card.Body>
         </Card>
-        
+
         {/* Entries Table */}
         <Card className="shadow-sm">
           <Card.Body>
-            <h5>Ledger Entries ({filteredEntries.length})</h5>
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <h5><Translate textKey="ledgerEntries" /> ({filteredEntries.length})</h5>
+              {filteredEntries.length > 0 && (
+                <Badge bg="info">
+                  <Translate textKey="total" />: {formatCurrency(filteredEntries.reduce((sum, entry) => sum + entry.amount, 0))}
+                </Badge>
+              )}
+            </div>
+
             {loading ? (
               <div className="text-center py-4">
                 <Spinner animation="border" />
-                <p className="mt-2">Loading...</p>
+                <p className="mt-2 text-muted"><Translate textKey="loading" />...</p>
               </div>
-            ) : filteredEntries.length > 0 ? (
+            ) : filteredEntries.length === 0 ? (
+              <Alert variant="info" className="text-center mb-0">
+                <Translate textKey="noDataFound" />
+              </Alert>
+            ) : (
               <div className="table-responsive">
                 <Table hover className="ledger-table">
                   <thead>
                     <tr>
-                      <th>Date</th>
-                      <th>Description</th>
-                      <th>Debit Account</th>
-                      <th>Credit Account</th>
-                      <th className="text-end">Amount</th>
-                      <th>Reference</th>
-                      <th>Actions</th>
+                      <th><Translate textKey="date" /></th>
+                      <th><Translate textKey="description" /></th>
+                      <th><Translate textKey="debitAccount" /></th>
+                      <th><Translate textKey="creditAccount" /></th>
+                      <th className="text-end"><Translate textKey="amount" /></th>
+                      <th><Translate textKey="reference" /></th>
+                      <th><Translate textKey="action" /></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredEntries.map(entry => (
+                    {filteredEntries.map((entry) => (
                       <tr key={entry.id}>
-                        <td>{formatDisplayDate(entry.entryDate)}</td>
+                        <td className="text-nowrap">{formatDisplayDate(entry.entryDate)}</td>
                         <td>{entry.description || '-'}</td>
                         <td>
-                          <Badge bg="danger">{getAccountName(entry.debitAccountId)}</Badge>
+                          <Badge bg="success" className="me-1">Dr</Badge>
+                          {getAccountName(entry.debitAccountId)}
                         </td>
                         <td>
-                          <Badge bg="success">{getAccountName(entry.creditAccountId)}</Badge>
+                          <Badge bg="danger" className="me-1">Cr</Badge>
+                          {getAccountName(entry.creditAccountId)}
                         </td>
-                        <td className="text-end">
-                          <strong>{formatCurrency(entry.amount || 0)}</strong>
-                        </td>
-                        <td>{entry.reference || '-'}</td>
+                        <td className="text-end"><strong>{formatCurrency(entry.amount || 0)}</strong></td>
+                        <td><small className="text-muted">{entry.reference || '-'}</small></td>
                         <td>
-                          <Button 
-                            variant="outline-primary" 
-                            size="sm"
-                            className="me-1"
-                            onClick={() => navigate(`/edit-ledger-entry/${entry.id}`)}
-                          >
-                            Edit
-                          </Button>
-                          <Button 
-                            variant="outline-danger" 
+                          <Button
+                            variant="outline-danger"
                             size="sm"
                             onClick={() => handleDeleteClick(entry)}
                           >
-                            Delete
+                            <Translate textKey="delete" />
                           </Button>
                         </td>
                       </tr>
@@ -234,38 +239,32 @@ const LedgerEntries = () => {
                   </tbody>
                 </Table>
               </div>
-            ) : (
-              <Alert variant="info">
-                No ledger entries found matching your filters.
-              </Alert>
             )}
           </Card.Body>
         </Card>
       </Container>
-      
+
       {/* Delete Confirmation Modal */}
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>Confirm Delete</Modal.Title>
+          <Modal.Title><Translate textKey="confirmDelete" /></Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          Are you sure you want to delete this ledger entry? This action cannot be undone.
+          <Translate textKey="confirmDeleteEntry" />
           {entryToDelete && (
-            <div className="mt-3">
-              <p><strong>Date:</strong> {formatDisplayDate(entryToDelete.entryDate)}</p>
-              <p><strong>Description:</strong> {entryToDelete.description || '-'}</p>
-              <p><strong>Debit Account:</strong> {getAccountName(entryToDelete.debitAccountId)}</p>
-              <p><strong>Credit Account:</strong> {getAccountName(entryToDelete.creditAccountId)}</p>
-              <p><strong>Amount:</strong> {formatCurrency(entryToDelete.amount || 0)}</p>
+            <div className="mt-3 p-3 bg-light rounded">
+              <p className="mb-1"><strong><Translate textKey="date" />:</strong> {formatDisplayDate(entryToDelete.entryDate)}</p>
+              <p className="mb-1"><strong><Translate textKey="description" />:</strong> {entryToDelete.description || '-'}</p>
+              <p className="mb-1"><strong><Translate textKey="amount" />:</strong> {formatCurrency(entryToDelete.amount || 0)}</p>
             </div>
           )}
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
-            Cancel
+            <Translate textKey="cancel" />
           </Button>
           <Button variant="danger" onClick={confirmDelete}>
-            Delete
+            <Translate textKey="delete" />
           </Button>
         </Modal.Footer>
       </Modal>

@@ -6,6 +6,7 @@ import PageHeader from '../components/PageHeader';
 import { useAuth } from '../contexts/AuthContext';
 import { getStockMovements, getShopStock } from '../utils/stockUtils';
 import { formatDisplayDate } from '../utils/dateUtils';
+import { Translate, getTranslatedAttr } from '../components/Translate';
 
 const StockHistory = () => {
   const { currentUser, activeShopId } = useAuth();
@@ -52,30 +53,30 @@ const StockHistory = () => {
       </body></html>
     `);
     win.document.close();
-    setTimeout(()=>win.print(), 200);
+    setTimeout(() => win.print(), 200);
   };
 
   return (
     <>
       <MainNavbar />
       <Container className="mt-3">
-        <PageHeader 
-          title="Stock History" 
-          icon="bi-clock-history" 
-          subtitle="Review all stock in and stock out transactions for your store."
+        <PageHeader
+          title={<Translate textKey="stockHistory" fallback="Stock History" />}
+          icon="bi-clock-history"
+          subtitle={<Translate textKey="stockHistorySubtitle" fallback="Review all stock in and stock out transactions for your store." />}
         />
         <div className="page-header-actions">
           <div className="d-flex gap-2 flex-wrap">
-            <Button variant="outline-secondary" onClick={() => navigate('/stock')}>Back</Button>
-            <Button variant="primary" onClick={printHistory}>Print</Button>
+            <Button variant="outline-secondary" onClick={() => navigate('/stock')}><Translate textKey="back" /></Button>
+            <Button variant="primary" onClick={printHistory}><Translate textKey="print" /></Button>
           </div>
         </div>
         <Card>
           <Card.Body>
             <div className="d-flex align-items-center gap-2 mb-3">
-              <Form.Label className="mb-0">Filter item:</Form.Label>
-              <Form.Select value={filterItem} onChange={(e)=>setFilterItem(e.target.value)} style={{maxWidth: 280}}>
-                <option value="">All items</option>
+              <Form.Label className="mb-0"><Translate textKey="filterItem" fallback="Filter item:" /></Form.Label>
+              <Form.Select value={filterItem} onChange={(e) => setFilterItem(e.target.value)} style={{ maxWidth: 280 }}>
+                <option value=""><Translate textKey="allCategories" fallback="All items" /></option>
                 {items.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
               </Form.Select>
             </div>
@@ -83,29 +84,29 @@ const StockHistory = () => {
               <Table hover size="sm">
                 <thead>
                   <tr>
-                    <th>Item</th>
-                    <th>Type</th>
-                    <th>Qty</th>
-                    <th>Unit</th>
-                    <th>Supplier</th>
-                    <th>Note</th>
-                    <th>Time</th>
+                    <th><Translate textKey="item" /></th>
+                    <th><Translate textKey="type" /></th>
+                    <th><Translate textKey="quantity" /></th>
+                    <th><Translate textKey="unit" /></th>
+                    <th><Translate textKey="supplier" /></th>
+                    <th><Translate textKey="notes" /></th>
+                    <th><Translate textKey="time" /></th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map(m => (
                     <tr key={m.id}>
                       <td>{m.itemName || '-'}</td>
-                      <td>{m.type}</td>
+                      <td><Translate textKey={m.type === 'Stock In' ? 'stockInType' : (m.type === 'Stock Out' ? 'stockOutType' : m.type)} fallback={m.type} /></td>
                       <td>{m.quantity}</td>
-                      <td>{m.unit || '-'}</td>
+                      <td><Translate textKey={m.unit} fallback={m.unit || '-'} /></td>
                       <td>{m.supplier || '-'}</td>
                       <td>{m.note || '-'}</td>
                       <td>{formatDisplayDate(m.createdAt)}</td>
                     </tr>
                   ))}
                   {filtered.length === 0 && (
-                    <tr><td colSpan={7} className="text-center text-muted">No movements</td></tr>
+                    <tr><td colSpan={7} className="text-center text-muted"><Translate textKey="noDataFound" /></td></tr>
                   )}
                 </tbody>
               </Table>

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
-import { Translate } from '../utils';
+import { Translate, useTranslatedAttribute } from '../utils';
 import { getAccountingReport } from '../utils/ledgerUtils';
 import { formatCurrency } from '../utils/receiptUtils';
 import { formatDisplayDate } from '../utils/dateUtils';
@@ -13,7 +13,8 @@ import jsPDF from 'jspdf';
 const AccountingReports = () => {
   const { currentUser, activeShopId } = useAuth();
   const navigate = useNavigate();
-  
+  const getTranslatedAttr = useTranslatedAttribute();
+
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
     date.setDate(1); // First day of current month
@@ -24,29 +25,29 @@ const AccountingReports = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [generatingPDF, setGeneratingPDF] = useState(false);
-  
+
   // Fetch accounting report data
   useEffect(() => {
     const fetchReportData = async () => {
       if (!currentUser || !activeShopId) return;
-      
+
       setLoading(true);
       setError('');
-      
+
       try {
         const data = await getAccountingReport(activeShopId, startDate, endDate);
         setReportData(data);
       } catch (error) {
         console.error('Error fetching accounting report:', error);
-        setError('Failed to load accounting report. Please try again.');
+        setError(getTranslatedAttr('failedToLoadReport'));
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchReportData();
   }, [currentUser, activeShopId, startDate, endDate]);
-  
+
   const handleDateChange = (e) => {
     const { name, value } = e.target;
     if (name === 'startDate') {
@@ -90,15 +91,15 @@ const AccountingReports = () => {
       // Title
       pdf.setFontSize(18);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Accounting Report', margin, yPosition);
+      pdf.text(getTranslatedAttr('accountingReport'), margin, yPosition);
       yPosition += lineHeight;
 
       // Period
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Period: ${formatDisplayDate(startDate)} to ${formatDisplayDate(endDate)}`, margin, yPosition);
+      pdf.text(`${getTranslatedAttr('period')}: ${formatDisplayDate(startDate)} - ${formatDisplayDate(endDate)}`, margin, yPosition);
       yPosition += lineHeight;
-      pdf.text(`Generated: ${formatDisplayDate(new Date().toISOString())}`, margin, yPosition);
+      pdf.text(`${getTranslatedAttr('generated')}: ${formatDisplayDate(new Date().toISOString())}`, margin, yPosition);
       yPosition += sectionSpacing;
       drawLine();
       yPosition += sectionSpacing;
@@ -106,19 +107,19 @@ const AccountingReports = () => {
       // Summary Section
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Financial Summary', margin, yPosition);
+      pdf.text(getTranslatedAttr('financialSummary'), margin, yPosition);
       yPosition += lineHeight + 2;
 
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      
+
       const summaryData = [
-        ['Total Income', formatCurrency(reportData.totalsByType.Income)],
-        ['Total Expenses', formatCurrency(reportData.totalsByType.Expense)],
-        ['Net Income', formatCurrency(reportData.netIncome)],
-        ['Total Assets', formatCurrency(reportData.totalsByType.Asset)],
-        ['Total Liabilities', formatCurrency(reportData.totalsByType.Liability)],
-        ['Total Equity', formatCurrency(reportData.totalEquity)]
+        [getTranslatedAttr('totalIncome'), formatCurrency(reportData.totalsByType.Income)],
+        [getTranslatedAttr('totalExpenses'), formatCurrency(reportData.totalsByType.Expense)],
+        [getTranslatedAttr('netIncome'), formatCurrency(reportData.netIncome)],
+        [getTranslatedAttr('totalAssets'), formatCurrency(reportData.totalsByType.Asset)],
+        [getTranslatedAttr('totalLiabilities'), formatCurrency(reportData.totalsByType.Liability)],
+        [getTranslatedAttr('totalEquity'), formatCurrency(reportData.totalEquity)]
       ];
 
       summaryData.forEach(([label, value]) => {
@@ -136,15 +137,15 @@ const AccountingReports = () => {
       if (Object.keys(reportData.paymentMethodBreakdown).length > 0) {
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Payment Method Breakdown', margin, yPosition);
+        pdf.text(getTranslatedAttr('paymentMethodBreakdown'), margin, yPosition);
         yPosition += lineHeight + 2;
 
         // Table header
         pdf.setFontSize(9);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Payment Method', margin, yPosition);
-        pdf.text('Transactions', margin + 60, yPosition);
-        pdf.text('Total Sales', pageWidth - margin - 30, yPosition, { align: 'right' });
+        pdf.text(getTranslatedAttr('paymentMethod'), margin, yPosition);
+        pdf.text(getTranslatedAttr('transactionsCount'), margin + 60, yPosition);
+        pdf.text(getTranslatedAttr('totalSales'), pageWidth - margin - 30, yPosition, { align: 'right' });
         yPosition += lineHeight;
         drawLine();
         yPosition += 2;
@@ -153,7 +154,8 @@ const AccountingReports = () => {
         pdf.setFont('helvetica', 'normal');
         Object.entries(reportData.paymentMethodBreakdown).forEach(([method, data]) => {
           checkPageBreak(lineHeight + 2);
-          pdf.text(method, margin, yPosition);
+          const translatedMethod = getTranslatedAttr(method.toLowerCase()) || method;
+          pdf.text(translatedMethod, margin, yPosition);
           pdf.text(data.count.toString(), margin + 60, yPosition);
           pdf.text(formatCurrency(data.total), pageWidth - margin - 30, yPosition, { align: 'right' });
           yPosition += lineHeight;
@@ -167,14 +169,14 @@ const AccountingReports = () => {
       if (reportData.accountsByType.Asset.length > 0) {
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Assets', margin, yPosition);
+        pdf.text(getTranslatedAttr('asset'), margin, yPosition);
         yPosition += lineHeight + 2;
 
         // Table header
         pdf.setFontSize(9);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Account Name', margin, yPosition);
-        pdf.text('Balance', pageWidth - margin - 30, yPosition, { align: 'right' });
+        pdf.text(getTranslatedAttr('account'), margin, yPosition);
+        pdf.text(getTranslatedAttr('currentBalance'), pageWidth - margin - 30, yPosition, { align: 'right' });
         yPosition += lineHeight;
         drawLine();
         yPosition += 2;
@@ -191,7 +193,7 @@ const AccountingReports = () => {
 
         // Total
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Total Assets', margin, yPosition);
+        pdf.text(getTranslatedAttr('totalAssets'), margin, yPosition);
         pdf.text(formatCurrency(reportData.totalsByType.Asset), pageWidth - margin - 30, yPosition, { align: 'right' });
         yPosition += lineHeight + sectionSpacing;
         checkPageBreak(20);
@@ -201,14 +203,14 @@ const AccountingReports = () => {
       if (reportData.accountsByType.Liability.length > 0) {
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Liabilities', margin, yPosition);
+        pdf.text(getTranslatedAttr('liability'), margin, yPosition);
         yPosition += lineHeight + 2;
 
         // Table header
         pdf.setFontSize(9);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Account Name', margin, yPosition);
-        pdf.text('Balance', pageWidth - margin - 30, yPosition, { align: 'right' });
+        pdf.text(getTranslatedAttr('account'), margin, yPosition);
+        pdf.text(getTranslatedAttr('currentBalance'), pageWidth - margin - 30, yPosition, { align: 'right' });
         yPosition += lineHeight;
         drawLine();
         yPosition += 2;
@@ -225,7 +227,7 @@ const AccountingReports = () => {
 
         // Total
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Total Liabilities', margin, yPosition);
+        pdf.text(getTranslatedAttr('totalLiabilities'), margin, yPosition);
         pdf.text(formatCurrency(reportData.totalsByType.Liability), pageWidth - margin - 30, yPosition, { align: 'right' });
         yPosition += lineHeight + sectionSpacing;
         checkPageBreak(20);
@@ -235,14 +237,14 @@ const AccountingReports = () => {
       if (reportData.accountsByType.Income.length > 0) {
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Income', margin, yPosition);
+        pdf.text(getTranslatedAttr('income'), margin, yPosition);
         yPosition += lineHeight + 2;
 
         // Table header
         pdf.setFontSize(9);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Account Name', margin, yPosition);
-        pdf.text('Balance', pageWidth - margin - 30, yPosition, { align: 'right' });
+        pdf.text(getTranslatedAttr('account'), margin, yPosition);
+        pdf.text(getTranslatedAttr('currentBalance'), pageWidth - margin - 30, yPosition, { align: 'right' });
         yPosition += lineHeight;
         drawLine();
         yPosition += 2;
@@ -259,7 +261,7 @@ const AccountingReports = () => {
 
         // Total
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Total Income', margin, yPosition);
+        pdf.text(getTranslatedAttr('totalIncome'), margin, yPosition);
         pdf.text(formatCurrency(reportData.totalsByType.Income), pageWidth - margin - 30, yPosition, { align: 'right' });
         yPosition += lineHeight + sectionSpacing;
         checkPageBreak(20);
@@ -269,14 +271,14 @@ const AccountingReports = () => {
       if (reportData.accountsByType.Expense.length > 0) {
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Expenses', margin, yPosition);
+        pdf.text(getTranslatedAttr('expense'), margin, yPosition);
         yPosition += lineHeight + 2;
 
         // Table header
         pdf.setFontSize(9);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Account Name', margin, yPosition);
-        pdf.text('Balance', pageWidth - margin - 30, yPosition, { align: 'right' });
+        pdf.text(getTranslatedAttr('account'), margin, yPosition);
+        pdf.text(getTranslatedAttr('currentBalance'), pageWidth - margin - 30, yPosition, { align: 'right' });
         yPosition += lineHeight;
         drawLine();
         yPosition += 2;
@@ -293,7 +295,7 @@ const AccountingReports = () => {
 
         // Total
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Total Expenses', margin, yPosition);
+        pdf.text(getTranslatedAttr('totalExpenses'), margin, yPosition);
         pdf.text(formatCurrency(reportData.totalsByType.Expense), pageWidth - margin - 30, yPosition, { align: 'right' });
         yPosition += lineHeight;
       }
@@ -302,74 +304,74 @@ const AccountingReports = () => {
       yPosition = pageHeight - margin;
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'italic');
-      pdf.text(`Total Entries: ${reportData.totalEntries}`, margin, yPosition, { align: 'left' });
-      pdf.text(`Page ${pdf.internal.pages.length}`, pageWidth - margin, yPosition, { align: 'right' });
+      pdf.text(`${getTranslatedAttr('totalEntries')}: ${reportData.totalEntries}`, margin, yPosition, { align: 'left' });
+      pdf.text(`${getTranslatedAttr('page')} ${pdf.internal.pages.length}`, pageWidth - margin, yPosition, { align: 'right' });
 
       // Save PDF
       const fileName = `Accounting_Report_${startDate}_to_${endDate}.pdf`;
       pdf.save(fileName);
     } catch (error) {
       console.error('Error generating PDF:', error);
-      setError('Failed to generate PDF. Please try again.');
+      setError(getTranslatedAttr('failedToGeneratePDF'));
     } finally {
       setGeneratingPDF(false);
     }
   };
-  
+
   return (
     <>
       <MainNavbar />
       <Container className="pb-4">
-        <PageHeader 
-          title="Accounting Reports" 
-          icon="bi-graph-up" 
-          subtitle="Comprehensive financial reports and accounting statements."
+        <PageHeader
+          title={<Translate textKey="accountingReports" />}
+          icon="bi-graph-up"
+          subtitle={<Translate textKey="accountingReportsSubtitle" />}
         />
         <div className="page-header-actions">
-          <Button 
-            variant="outline-secondary" 
+          <Button
+            variant="outline-secondary"
             onClick={() => navigate('/ledger-accounts')}
           >
-            View Accounts
+            <Translate textKey="viewAccounts" />
           </Button>
-          <Button 
-            variant="outline-primary" 
+          <Button
+            variant="outline-primary"
             onClick={() => navigate('/daily-closing')}
           >
-            Daily Closing
+            <Translate textKey="dailyClosing" />
           </Button>
           {reportData && (
-            <Button 
-              variant="success" 
+            <Button
+              variant="success"
               onClick={generatePDFReport}
               disabled={generatingPDF || !reportData}
             >
               {generatingPDF ? (
                 <>
                   <Spinner animation="border" size="sm" className="me-2" />
-                  Generating PDF...
+                  <Translate textKey="generatingPDF" />...
                 </>
               ) : (
                 <>
                   <i className="bi bi-file-earmark-pdf me-2"></i>
-                  Download PDF
+                  <Translate textKey="downloadPDF" />
                 </>
               )}
             </Button>
           )}
         </div>
-        
+
         {error && <Alert variant="danger">{error}</Alert>}
-        
+
         {/* Date Range Selector */}
         <Card className="mb-4 shadow-sm">
           <Card.Body>
             <Row>
               <Col md={4}>
                 <Form.Group>
-                  <Form.Label>Start Date</Form.Label>
-                  <Form.Control 
-                    type="date" 
+                  <Form.Label><Translate textKey="startDate" /></Form.Label>
+                  <Form.Control
+                    type="date"
                     name="startDate"
                     value={startDate}
                     onChange={handleDateChange}
@@ -378,9 +380,9 @@ const AccountingReports = () => {
               </Col>
               <Col md={4}>
                 <Form.Group>
-                  <Form.Label>End Date</Form.Label>
-                  <Form.Control 
-                    type="date" 
+                  <Form.Label><Translate textKey="endDate" /></Form.Label>
+                  <Form.Control
+                    type="date"
                     name="endDate"
                     value={endDate}
                     onChange={handleDateChange}
@@ -388,8 +390,8 @@ const AccountingReports = () => {
                 </Form.Group>
               </Col>
               <Col md={4} className="d-flex align-items-end">
-                <Button 
-                  variant="primary" 
+                <Button
+                  variant="primary"
                   onClick={() => {
                     const today = new Date();
                     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -397,10 +399,10 @@ const AccountingReports = () => {
                     setEndDate(today.toISOString().split('T')[0]);
                   }}
                 >
-                  This Month
+                  <Translate textKey="thisMonth" />
                 </Button>
-                <Button 
-                  variant="outline-primary" 
+                <Button
+                  variant="outline-primary"
                   className="ms-2"
                   onClick={() => {
                     const today = new Date();
@@ -408,88 +410,89 @@ const AccountingReports = () => {
                     setEndDate(today.toISOString().split('T')[0]);
                   }}
                 >
-                  Today
+                  <Translate textKey="today" />
                 </Button>
               </Col>
             </Row>
           </Card.Body>
         </Card>
-        
+
         {loading ? (
           <div className="text-center py-4">
             <Spinner animation="border" />
-            <p className="mt-2">Generating accounting report...</p>
+            <p className="mt-2"><Translate textKey="generatingReport" /></p>
           </div>
         ) : reportData ? (
           <>
             {/* Summary Cards */}
-            <Row className="mb-4 g-3">
-              <Col md={6} lg={3}>
-                <Card className="shadow-sm h-100 border-success">
-                  <Card.Body className="text-center">
-                    <h6 className="text-muted">Total Income</h6>
-                    <h3 className="text-success">{formatCurrency(reportData.totalsByType.Income)}</h3>
-                    <small className="text-muted">
-                      {reportData.accountsByType.Income.length} accounts
-                    </small>
-                  </Card.Body>
-                </Card>
-              </Col>
-              <Col md={6} lg={3}>
-                <Card className="shadow-sm h-100 border-danger">
-                  <Card.Body className="text-center">
-                    <h6 className="text-muted">Total Expenses</h6>
-                    <h3 className="text-danger">{formatCurrency(reportData.totalsByType.Expense)}</h3>
-                    <small className="text-muted">
-                      {reportData.accountsByType.Expense.length} accounts
-                    </small>
-                  </Card.Body>
-                </Card>
-              </Col>
-              <Col md={6} lg={3}>
-                <Card className="shadow-sm h-100 border-primary">
-                  <Card.Body className="text-center">
-                    <h6 className="text-muted">Net Income</h6>
-                    <h3 className={reportData.netIncome >= 0 ? 'text-success' : 'text-danger'}>
-                      {formatCurrency(reportData.netIncome)}
-                    </h3>
-                    <small className="text-muted">Profit/Loss</small>
-                  </Card.Body>
-                </Card>
-              </Col>
-              <Col md={6} lg={3}>
-                <Card className="shadow-sm h-100 border-info">
-                  <Card.Body className="text-center">
-                    <h6 className="text-muted">Total Assets</h6>
-                    <h3 className="text-info">{formatCurrency(reportData.totalsByType.Asset)}</h3>
-                    <small className="text-muted">
-                      {reportData.accountsByType.Asset.length} accounts
-                    </small>
-                  </Card.Body>
-                </Card>
-              </Col>
-            </Row>
-            
+            <div className="dashboard-stats-grid-v2 mb-4">
+              {/* Total Income - Green */}
+              <div className="stat-card-v2 stat-card-v2--green slide-in-up">
+                <div className="stat-card-v2__value">
+                  {formatCurrency(reportData.totalsByType.Income).replace('RS', 'RS ')}
+                </div>
+                <div className="stat-card-v2__label">
+                  <Translate textKey="totalIncome" />
+                </div>
+                <i className="bi bi-cash-stack stat-card-v2__icon"></i>
+              </div>
+
+              {/* Total Expenses - Red */}
+              <div className="stat-card-v2 stat-card-v2--red slide-in-up" style={{ animationDelay: '0.1s' }}>
+                <div className="stat-card-v2__value">
+                  {formatCurrency(reportData.totalsByType.Expense).replace('RS', 'RS ')}
+                </div>
+                <div className="stat-card-v2__label">
+                  <Translate textKey="totalExpenses" />
+                </div>
+                <i className="bi bi-cart-x stat-card-v2__icon"></i>
+              </div>
+
+              {/* Net Income - Teal/Purple */}
+              <div className={`stat-card-v2 ${reportData.netIncome >= 0 ? 'stat-card-v2--teal' : 'stat-card-v2--purple'} slide-in-up`} style={{ animationDelay: '0.2s' }}>
+                <div className="stat-card-v2__value">
+                  {formatCurrency(reportData.netIncome).replace('RS', 'RS ')}
+                </div>
+                <div className="stat-card-v2__label">
+                  <Translate textKey="netIncomePL" />
+                </div>
+                <i className={`bi ${reportData.netIncome >= 0 ? 'bi-graph-up-arrow' : 'bi-graph-down-arrow'} stat-card-v2__icon`}></i>
+              </div>
+
+              {/* Total Assets - Blue */}
+              <div className="stat-card-v2 stat-card-v2--blue slide-in-up" style={{ animationDelay: '0.3s' }}>
+                <div className="stat-card-v2__value">
+                  {formatCurrency(reportData.totalsByType.Asset).replace('RS', 'RS ')}
+                </div>
+                <div className="stat-card-v2__label">
+                  <Translate textKey="totalAssets" />
+                </div>
+                <i className="bi bi-bank stat-card-v2__icon"></i>
+              </div>
+            </div>
+
             {/* Payment Method Breakdown */}
             {Object.keys(reportData.paymentMethodBreakdown).length > 0 && (
               <Card className="mb-4 shadow-sm">
                 <Card.Header>
-                  <h5 className="mb-0">Payment Method Breakdown</h5>
+                  <h5 className="mb-0"><Translate textKey="paymentMethodBreakdown" /></h5>
                 </Card.Header>
                 <Card.Body>
                   <Table hover responsive>
                     <thead>
                       <tr>
-                        <th>Payment Method</th>
-                        <th className="text-end">Transactions</th>
-                        <th className="text-end">Total Sales</th>
+                        <th><Translate textKey="paymentMethod" /></th>
+                        <th className="text-end"><Translate textKey="transactionsCount" /></th>
+                        <th className="text-end"><Translate textKey="totalSales" /></th>
                       </tr>
                     </thead>
                     <tbody>
                       {Object.entries(reportData.paymentMethodBreakdown).map(([method, data]) => (
                         <tr key={method}>
                           <td>
-                            <Badge bg="secondary">{method}</Badge>
+                            <Badge bg="secondary">
+                              {getTranslatedAttr(method.toLowerCase()) || method}
+                            </Badge>
                           </td>
                           <td className="text-end">{data.count}</td>
                           <td className="text-end">
@@ -502,21 +505,21 @@ const AccountingReports = () => {
                 </Card.Body>
               </Card>
             )}
-            
+
             {/* Account Balances by Type */}
             <Row className="mb-4">
               <Col md={6}>
                 <Card className="shadow-sm h-100">
                   <Card.Header>
-                    <h5 className="mb-0">Assets</h5>
+                    <h5 className="mb-0"><Translate textKey="asset" /></h5>
                   </Card.Header>
                   <Card.Body>
                     {reportData.accountsByType.Asset.length > 0 ? (
                       <Table hover size="sm">
                         <thead>
                           <tr>
-                            <th>Account</th>
-                            <th className="text-end">Balance</th>
+                            <th><Translate textKey="account" /></th>
+                            <th className="text-end"><Translate textKey="currentBalance" /></th>
                           </tr>
                         </thead>
                         <tbody>
@@ -533,7 +536,7 @@ const AccountingReports = () => {
                         </tbody>
                         <tfoot>
                           <tr>
-                            <th>Total Assets</th>
+                            <th><Translate textKey="totalAssets" /></th>
                             <th className="text-end text-success">
                               {formatCurrency(reportData.totalsByType.Asset)}
                             </th>
@@ -541,7 +544,7 @@ const AccountingReports = () => {
                         </tfoot>
                       </Table>
                     ) : (
-                      <Alert variant="info">No asset accounts</Alert>
+                      <Alert variant="info"><Translate textKey="noAssetAccounts" /></Alert>
                     )}
                   </Card.Body>
                 </Card>
@@ -549,15 +552,15 @@ const AccountingReports = () => {
               <Col md={6}>
                 <Card className="shadow-sm h-100">
                   <Card.Header>
-                    <h5 className="mb-0">Liabilities</h5>
+                    <h5 className="mb-0"><Translate textKey="liability" /></h5>
                   </Card.Header>
                   <Card.Body>
                     {reportData.accountsByType.Liability.length > 0 ? (
                       <Table hover size="sm">
                         <thead>
                           <tr>
-                            <th>Account</th>
-                            <th className="text-end">Balance</th>
+                            <th><Translate textKey="account" /></th>
+                            <th className="text-end"><Translate textKey="currentBalance" /></th>
                           </tr>
                         </thead>
                         <tbody>
@@ -574,7 +577,7 @@ const AccountingReports = () => {
                         </tbody>
                         <tfoot>
                           <tr>
-                            <th>Total Liabilities</th>
+                            <th><Translate textKey="totalLiabilities" /></th>
                             <th className="text-end text-danger">
                               {formatCurrency(reportData.totalsByType.Liability)}
                             </th>
@@ -582,26 +585,26 @@ const AccountingReports = () => {
                         </tfoot>
                       </Table>
                     ) : (
-                      <Alert variant="info">No liability accounts</Alert>
+                      <Alert variant="info"><Translate textKey="noLiabilityAccounts" /></Alert>
                     )}
                   </Card.Body>
                 </Card>
               </Col>
             </Row>
-            
+
             <Row className="mb-4">
               <Col md={6}>
                 <Card className="shadow-sm h-100">
                   <Card.Header>
-                    <h5 className="mb-0">Income</h5>
+                    <h5 className="mb-0"><Translate textKey="income" /></h5>
                   </Card.Header>
                   <Card.Body>
                     {reportData.accountsByType.Income.length > 0 ? (
                       <Table hover size="sm">
                         <thead>
                           <tr>
-                            <th>Account</th>
-                            <th className="text-end">Balance</th>
+                            <th><Translate textKey="account" /></th>
+                            <th className="text-end"><Translate textKey="currentBalance" /></th>
                           </tr>
                         </thead>
                         <tbody>
@@ -618,7 +621,7 @@ const AccountingReports = () => {
                         </tbody>
                         <tfoot>
                           <tr>
-                            <th>Total Income</th>
+                            <th><Translate textKey="totalIncome" /></th>
                             <th className="text-end text-success">
                               {formatCurrency(reportData.totalsByType.Income)}
                             </th>
@@ -626,7 +629,7 @@ const AccountingReports = () => {
                         </tfoot>
                       </Table>
                     ) : (
-                      <Alert variant="info">No income accounts</Alert>
+                      <Alert variant="info"><Translate textKey="noIncomeAccounts" /></Alert>
                     )}
                   </Card.Body>
                 </Card>
@@ -634,15 +637,15 @@ const AccountingReports = () => {
               <Col md={6}>
                 <Card className="shadow-sm h-100">
                   <Card.Header>
-                    <h5 className="mb-0">Expenses</h5>
+                    <h5 className="mb-0"><Translate textKey="expense" /></h5>
                   </Card.Header>
                   <Card.Body>
                     {reportData.accountsByType.Expense.length > 0 ? (
                       <Table hover size="sm">
                         <thead>
                           <tr>
-                            <th>Account</th>
-                            <th className="text-end">Balance</th>
+                            <th><Translate textKey="account" /></th>
+                            <th className="text-end"><Translate textKey="currentBalance" /></th>
                           </tr>
                         </thead>
                         <tbody>
@@ -659,7 +662,7 @@ const AccountingReports = () => {
                         </tbody>
                         <tfoot>
                           <tr>
-                            <th>Total Expenses</th>
+                            <th><Translate textKey="totalExpenses" /></th>
                             <th className="text-end text-danger">
                               {formatCurrency(reportData.totalsByType.Expense)}
                             </th>
@@ -667,17 +670,17 @@ const AccountingReports = () => {
                         </tfoot>
                       </Table>
                     ) : (
-                      <Alert variant="info">No expense accounts</Alert>
+                      <Alert variant="info"><Translate textKey="noExpenseAccounts" /></Alert>
                     )}
                   </Card.Body>
                 </Card>
               </Col>
             </Row>
-            
+
             {/* Financial Summary */}
             <Card className="shadow-sm">
               <Card.Header>
-                <h5 className="mb-0">Financial Summary</h5>
+                <h5 className="mb-0"><Translate textKey="financialSummary" /></h5>
               </Card.Header>
               <Card.Body>
                 <Row>
@@ -685,19 +688,19 @@ const AccountingReports = () => {
                     <Table hover>
                       <tbody>
                         <tr>
-                          <td><strong>Total Income</strong></td>
+                          <td><strong><Translate textKey="totalIncome" /></strong></td>
                           <td className="text-end text-success">
                             <strong>{formatCurrency(reportData.totalsByType.Income)}</strong>
                           </td>
                         </tr>
                         <tr>
-                          <td><strong>Total Expenses</strong></td>
+                          <td><strong><Translate textKey="totalExpenses" /></strong></td>
                           <td className="text-end text-danger">
                             <strong>{formatCurrency(reportData.totalsByType.Expense)}</strong>
                           </td>
                         </tr>
                         <tr>
-                          <td><strong>Net Income</strong></td>
+                          <td><strong><Translate textKey="netIncome" /></strong></td>
                           <td className={`text-end ${reportData.netIncome >= 0 ? 'text-success' : 'text-danger'}`}>
                             <strong className="fs-5">{formatCurrency(reportData.netIncome)}</strong>
                           </td>
@@ -709,19 +712,19 @@ const AccountingReports = () => {
                     <Table hover>
                       <tbody>
                         <tr>
-                          <td><strong>Total Assets</strong></td>
+                          <td><strong><Translate textKey="totalAssets" /></strong></td>
                           <td className="text-end text-info">
                             <strong>{formatCurrency(reportData.totalsByType.Asset)}</strong>
                           </td>
                         </tr>
                         <tr>
-                          <td><strong>Total Liabilities</strong></td>
+                          <td><strong><Translate textKey="totalLiabilities" /></strong></td>
                           <td className="text-end text-danger">
                             <strong>{formatCurrency(reportData.totalsByType.Liability)}</strong>
                           </td>
                         </tr>
                         <tr>
-                          <td><strong>Total Equity</strong></td>
+                          <td><strong><Translate textKey="totalEquity" /></strong></td>
                           <td className={`text-end ${reportData.totalEquity >= 0 ? 'text-success' : 'text-danger'}`}>
                             <strong className="fs-5">{formatCurrency(reportData.totalEquity)}</strong>
                           </td>
@@ -733,8 +736,8 @@ const AccountingReports = () => {
                 <hr />
                 <div className="text-center">
                   <small className="text-muted">
-                    Report Period: {formatDisplayDate(startDate)} to {formatDisplayDate(endDate)} | 
-                    Total Entries: {reportData.totalEntries}
+                    <Translate textKey="period" />: {formatDisplayDate(startDate)} - {formatDisplayDate(endDate)} |
+                    <Translate textKey="totalEntries" />: {reportData.totalEntries}
                   </small>
                 </div>
               </Card.Body>
@@ -742,7 +745,7 @@ const AccountingReports = () => {
           </>
         ) : (
           <Alert variant="info">
-            No data available for the selected period.
+            <Translate textKey="noDataAvailable" />
           </Alert>
         )}
       </Container>

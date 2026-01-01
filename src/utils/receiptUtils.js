@@ -1,12 +1,34 @@
 import { v4 as uuidv4 } from 'uuid';
-import { addDoc, collection, doc, getDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, deleteDoc, updateDoc, runTransaction } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { restoreStockQuantity } from './stockUtils';
 import { formatDisplayDate } from './dateUtils';
 
 // Generate a unique transaction ID
-export const generateTransactionId = () => {
-  return uuidv4().substring(0, 8).toUpperCase();
+export const generateTransactionId = (shopId = null) => {
+  // If no shopId provided, keep existing UUID-based behavior to avoid breaking other flows
+  if (!shopId) {
+    return uuidv4().substring(0, 8).toUpperCase();
+  }
+  
+  // When shopId is provided, generate a sequential invoice number starting from 1 using Firestore transaction
+  return runTransaction(db, async (tx) => {
+    const shopRef = doc(db, 'shops', shopId);
+    const shopSnap = await tx.get(shopRef);
+
+    let nextNumber = 1;
+    if (shopSnap.exists()) {
+      const data = shopSnap.data() || {};
+      const current = typeof data.nextInvoiceNumber === 'number' ? data.nextInvoiceNumber : 0;
+      nextNumber = current + 1;
+    }
+    
+    // Persist the next invoice number back to the shop document
+    tx.set(shopRef, { nextInvoiceNumber: nextNumber }, { merge: true });
+
+    // Return as string to match existing usage patterns
+    return String(nextNumber);
+  });
 };
 
 // Calculate the total amount of all items with optional discount

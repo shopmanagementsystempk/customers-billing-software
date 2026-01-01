@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
+import { Translate, getTranslatedAttr } from '../components/Translate';
 import { addStockItem as addStockItemToFirestore } from '../utils/stockUtils';
 import { getInventoryCategories, addInventoryCategory, updateInventoryCategory, deleteInventoryCategory } from '../utils/categoryUtils';
 
@@ -130,47 +131,47 @@ const AddStockItem = () => {
   // Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     setError('');
     setLoading(true);
-    
+
     // Validation
     if (!name.trim()) {
       setError('Item name is required');
       setLoading(false);
       return;
     }
-    
+
     if (isNaN(parseFloat(price)) || parseFloat(price) < 0) {
       setError('Price must be a valid number');
       setLoading(false);
       return;
     }
-    
+
     if (isNaN(parseFloat(quantity)) || parseFloat(quantity) < 0) {
       setError('Quantity must be a valid number');
       setLoading(false);
       return;
     }
-    
+
     if (costPrice && (isNaN(parseFloat(costPrice)) || parseFloat(costPrice) < 0)) {
       setError('Cost price must be a valid number');
       setLoading(false);
       return;
     }
-    
+
     if (lowStockAlert && (isNaN(parseFloat(lowStockAlert)) || parseFloat(lowStockAlert) < 0)) {
       setError('Low stock alert must be a valid number');
       setLoading(false);
       return;
     }
-    
+
     if (!activeShopId) {
       setError('Please select a branch before adding stock.');
       setLoading(false);
       return;
     }
-    
+
     // Create stock item data
     const itemData = {
       name: name.trim(),
@@ -186,7 +187,7 @@ const AddStockItem = () => {
       purchaseDate: purchaseDate || new Date().toISOString(),
       lowStockAlert: lowStockAlert ? parseFloat(lowStockAlert) : null // Include low stock alert
     };
-    
+
     // Save to Firestore
     addStockItemToFirestore(activeShopId, itemData)
       .then(() => {
@@ -206,9 +207,9 @@ const AddStockItem = () => {
       <MainNavbar />
       <Container className="pos-content">
         <PageHeader
-          title="Add New Stock Item"
+          title={<Translate textKey="addNewItem" fallback="Add New Stock Item" />}
           icon="bi-bag-plus"
-          subtitle="Register fresh inventory, set pricing, and keep your catalog up to date."
+          subtitle={<Translate textKey="addItemSubtitle" fallback="Register fresh inventory, set pricing, and keep your catalog up to date." />}
         >
           <div className="hero-metrics__item">
             <span className="hero-metrics__label">Default Unit</span>
@@ -228,23 +229,23 @@ const AddStockItem = () => {
           </div>
         </PageHeader>
         <div className="page-header-actions">
-          <Button 
-            variant="outline-secondary" 
+          <Button
+            variant="outline-secondary"
             onClick={() => navigate('/stock')}
           >
             Back to Inventory
           </Button>
         </div>
-        
+
         {error && <Alert variant="danger">{error}</Alert>}
-        
+
         <Card>
           <Card.Body>
             <Form onSubmit={handleSubmit}>
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Item Name*</Form.Label>
+                    <Form.Label><Translate textKey="itemNameLabel" fallback="Item Name*" /></Form.Label>
                     <Form.Control
                       type="text"
                       required
@@ -264,7 +265,7 @@ const AddStockItem = () => {
                         onClick={() => setShowCategoryModal(true)}
                         style={{ fontSize: '0.75rem' }}
                       >
-                        <i className="bi bi-pencil-square me-1"></i>Manage Categories
+                        <i className="bi bi-pencil-square me-1"></i><Translate textKey="manageCategories" fallback="Manage Categories" />
                       </Button>
                     </div>
                     <Form.Select
@@ -285,7 +286,7 @@ const AddStockItem = () => {
                   </Form.Group>
                 </Col>
               </Row>
-              
+
               <Form.Group className="mb-3">
                 <Form.Label>Description</Form.Label>
                 <Form.Control
@@ -296,11 +297,11 @@ const AddStockItem = () => {
                   placeholder="Product details, specifications, etc."
                 />
               </Form.Group>
-              
+
               <Row>
                 <Col md={4}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Selling Price (RS)*</Form.Label>
+                    <Form.Label><Translate textKey="sellingPriceLabel" fallback="Selling Price (RS)*" /></Form.Label>
                     <Form.Control
                       type="number"
                       step="0.01"
@@ -313,20 +314,20 @@ const AddStockItem = () => {
                 </Col>
                 <Col md={4}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Cost Price (RS)</Form.Label>
+                    <Form.Label><Translate textKey="costPriceLabel" fallback="Cost Price (RS)" /></Form.Label>
                     <Form.Control
                       type="number"
                       step="0.01"
                       min="0"
                       value={costPrice}
                       onChange={(e) => setCostPrice(e.target.value)}
-                      placeholder="Optional"
+                      placeholder={getTranslatedAttr("optional")}
                     />
                   </Form.Group>
                 </Col>
                 <Col md={4}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Quantity*</Form.Label>
+                    <Form.Label><Translate textKey="quantityLabel" fallback="Quantity*" /></Form.Label>
                     <Row>
                       <Col xs={7}>
                         <Form.Control
@@ -339,19 +340,19 @@ const AddStockItem = () => {
                         />
                       </Col>
                       <Col xs={5}>
-                        <Form.Select 
+                        <Form.Select
                           value={quantityUnit}
                           onChange={(e) => setQuantityUnit(e.target.value)}
                         >
-                          <option value="units">Units</option>
-                          <option value="kg">KG</option>
+                          <option value="units"><Translate textKey="units" fallback="Units" /></option>
+                          <option value="kg"><Translate textKey="kg" fallback="KG" /></option>
                         </Form.Select>
                       </Col>
                     </Row>
                   </Form.Group>
                 </Col>
               </Row>
-              
+
               <Row>
                 <Col md={4}>
                   <Form.Group className="mb-3">
@@ -415,22 +416,22 @@ const AddStockItem = () => {
                   </Form.Group>
                 </Col>
               </Row>
-              
+
               <div className="d-flex mt-4">
-                <Button 
-                  variant="success" 
-                  type="submit" 
+                <Button
+                  variant="success"
+                  type="submit"
                   disabled={loading}
                   className="me-2"
                 >
-                  Add Item
+                  <Translate textKey="addItem" fallback="Add Item" />
                 </Button>
-                <Button 
-                  variant="outline-secondary" 
+                <Button
+                  variant="outline-secondary"
                   onClick={() => navigate('/stock')}
                   disabled={loading}
                 >
-                  Cancel
+                  <Translate textKey="cancel" />
                 </Button>
               </div>
             </Form>
@@ -445,9 +446,9 @@ const AddStockItem = () => {
           <Modal.Body>
             {categoryError && <Alert variant="danger" dismissible onClose={() => setCategoryError('')}>{categoryError}</Alert>}
             {categorySuccess && <Alert variant="success" dismissible onClose={() => setCategorySuccess('')}>{categorySuccess}</Alert>}
-            
+
             <Form onSubmit={handleAddCategory} className="mb-4">
-              <h6>Add New Category</h6>
+              <h6><Translate textKey="addNewCategory" fallback="Add New Category" /></h6>
               <Row className="g-2">
                 <Col md={5}>
                   <Form.Control

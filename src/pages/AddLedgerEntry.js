@@ -4,13 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
-import { Translate } from '../utils';
+import { Translate, useTranslatedAttribute } from '../utils';
 import { addLedgerEntry, getLedgerAccounts } from '../utils/ledgerUtils';
 
 const AddLedgerEntry = () => {
   const { currentUser, activeShopId } = useAuth();
   const navigate = useNavigate();
-  
+  const getTranslatedAttr = useTranslatedAttribute();
+
   const [formData, setFormData] = useState({
     entryDate: new Date().toISOString().split('T')[0],
     description: '',
@@ -19,35 +20,35 @@ const AddLedgerEntry = () => {
     amount: '',
     reference: ''
   });
-  
+
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  
+
   // Fetch accounts
   useEffect(() => {
     const fetchAccounts = async () => {
       if (!currentUser || !activeShopId) return;
-      
+
       setLoading(true);
       setError('');
-      
+
       try {
         const accountsData = await getLedgerAccounts(activeShopId);
         setAccounts(accountsData);
       } catch (error) {
         console.error('Error fetching accounts:', error);
-        setError('Failed to load accounts. Please try again.');
+        setError(getTranslatedAttr('failedToLoadAccounts'));
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchAccounts();
   }, [currentUser, activeShopId]);
-  
+
   // Handle form input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -56,47 +57,47 @@ const AddLedgerEntry = () => {
       [name]: value
     }));
   };
-  
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!currentUser || !activeShopId) return;
-    
+
     // Validate form
     if (!formData.description.trim()) {
       setError('Description is required');
       return;
     }
-    
+
     if (!formData.debitAccountId) {
       setError('Debit account is required');
       return;
     }
-    
+
     if (!formData.creditAccountId) {
       setError('Credit account is required');
       return;
     }
-    
+
     if (formData.debitAccountId === formData.creditAccountId) {
       setError('Debit and credit accounts cannot be the same');
       return;
     }
-    
+
     if (!formData.amount || isNaN(formData.amount) || parseFloat(formData.amount) <= 0) {
       setError('Please enter a valid amount greater than zero');
       return;
     }
-    
+
     if (!formData.entryDate) {
       setError('Date is required');
       return;
     }
-    
+
     setSubmitting(true);
     setError('');
-    
+
     try {
       // Prepare entry data
       const entryData = {
@@ -104,12 +105,12 @@ const AddLedgerEntry = () => {
         amount: parseFloat(formData.amount),
         shopId: activeShopId
       };
-      
+
       // Add entry to database
       await addLedgerEntry(entryData);
-      
+
       setSuccess(true);
-      
+
       // Reset form
       setFormData({
         entryDate: new Date().toISOString().split('T')[0],
@@ -119,19 +120,19 @@ const AddLedgerEntry = () => {
         amount: '',
         reference: ''
       });
-      
+
       // Redirect after a short delay
       setTimeout(() => {
         navigate('/ledger-entries');
       }, 1500);
     } catch (error) {
       console.error('Error adding ledger entry:', error);
-      setError(error.message || 'Failed to add ledger entry. Please try again.');
+      setError(error.message || getTranslatedAttr('failedToSaveEntry'));
     } finally {
       setSubmitting(false);
     }
   };
-  
+
   // Group accounts by type
   const accountsByType = {
     Asset: accounts.filter(a => a.accountType === 'Asset'),
@@ -139,40 +140,40 @@ const AddLedgerEntry = () => {
     Income: accounts.filter(a => a.accountType === 'Income'),
     Expense: accounts.filter(a => a.accountType === 'Expense')
   };
-  
+
   return (
     <>
       <MainNavbar />
       <Container className="pb-4">
-        <PageHeader 
-          title="Add Ledger Entry" 
-          icon="bi-journal-plus" 
-          subtitle="Record a new debit and credit transaction in your ledger."
+        <PageHeader
+          title={<Translate textKey="addEntry" />}
+          icon="bi-journal-plus"
+          subtitle={<Translate textKey="addEntrySubtitle" />}
         />
         <div className="page-header-actions">
-          <Button 
-            variant="outline-secondary" 
+          <Button
+            variant="outline-secondary"
             onClick={() => navigate('/ledger-entries')}
           >
-            Back to Entries
+            <Translate textKey="back" />
           </Button>
         </div>
-        
+
         {success && (
           <Alert variant="success">
-            Ledger entry added successfully!
+            <Translate textKey="entryAddedSuccess" />
           </Alert>
         )}
-        
+
         {error && <Alert variant="danger">{error}</Alert>}
-        
+
         <Card className="shadow-sm">
           <Card.Body>
             <Form onSubmit={handleSubmit}>
               <Row className="g-3">
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Entry Date *</Form.Label>
+                    <Form.Label><Translate textKey="date" /> *</Form.Label>
                     <Form.Control
                       type="date"
                       name="entryDate"
@@ -183,39 +184,39 @@ const AddLedgerEntry = () => {
                     />
                   </Form.Group>
                 </Col>
-                
+
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Reference (Optional)</Form.Label>
+                    <Form.Label><Translate textKey="reference" /> (<Translate textKey="optional" />)</Form.Label>
                     <Form.Control
                       type="text"
                       name="reference"
                       value={formData.reference}
                       onChange={handleChange}
-                      placeholder="Invoice #, Receipt #, etc."
+                      placeholder={getTranslatedAttr('reference')}
                       disabled={submitting}
                     />
                   </Form.Group>
                 </Col>
-                
+
                 <Col md={12}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Description *</Form.Label>
+                    <Form.Label><Translate textKey="description" /> *</Form.Label>
                     <Form.Control
                       type="text"
                       name="description"
                       value={formData.description}
                       onChange={handleChange}
                       required
-                      placeholder="Brief description of the transaction"
+                      placeholder={getTranslatedAttr('description')}
                       disabled={submitting}
                     />
                   </Form.Group>
                 </Col>
-                
+
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Debit Account *</Form.Label>
+                    <Form.Label><Translate textKey="debitAccount" /> *</Form.Label>
                     <Form.Select
                       name="debitAccountId"
                       value={formData.debitAccountId}
@@ -223,10 +224,10 @@ const AddLedgerEntry = () => {
                       required
                       disabled={submitting || loading}
                     >
-                      <option value="">Select Debit Account</option>
+                      <option value="">{getTranslatedAttr('selectOption')}</option>
                       {Object.keys(accountsByType).map(type => (
                         accountsByType[type].length > 0 && (
-                          <optgroup key={type} label={type}>
+                          <optgroup key={type} label={getTranslatedAttr(type.toLowerCase())}>
                             {accountsByType[type].map(account => (
                               <option key={account.id} value={account.id}>
                                 {account.accountName}
@@ -237,14 +238,14 @@ const AddLedgerEntry = () => {
                       ))}
                     </Form.Select>
                     <Form.Text className="text-muted">
-                      Debit increases Assets/Expenses, decreases Liabilities/Income
+                      <Translate textKey="debitHelpText" fallback="Debit increases Assets/Expenses, decreases Liabilities/Income" />
                     </Form.Text>
                   </Form.Group>
                 </Col>
-                
+
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Credit Account *</Form.Label>
+                    <Form.Label><Translate textKey="creditAccount" /> *</Form.Label>
                     <Form.Select
                       name="creditAccountId"
                       value={formData.creditAccountId}
@@ -252,10 +253,10 @@ const AddLedgerEntry = () => {
                       required
                       disabled={submitting || loading}
                     >
-                      <option value="">Select Credit Account</option>
+                      <option value="">{getTranslatedAttr('selectOption')}</option>
                       {Object.keys(accountsByType).map(type => (
                         accountsByType[type].length > 0 && (
-                          <optgroup key={type} label={type}>
+                          <optgroup key={type} label={getTranslatedAttr(type.toLowerCase())}>
                             {accountsByType[type].map(account => (
                               <option key={account.id} value={account.id}>
                                 {account.accountName}
@@ -266,14 +267,14 @@ const AddLedgerEntry = () => {
                       ))}
                     </Form.Select>
                     <Form.Text className="text-muted">
-                      Credit decreases Assets/Expenses, increases Liabilities/Income
+                      <Translate textKey="creditHelpText" fallback="Credit decreases Assets/Expenses, increases Liabilities/Income" />
                     </Form.Text>
                   </Form.Group>
                 </Col>
-                
+
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Amount *</Form.Label>
+                    <Form.Label><Translate textKey="amount" /> *</Form.Label>
                     <Form.Control
                       type="number"
                       name="amount"
@@ -286,40 +287,40 @@ const AddLedgerEntry = () => {
                       disabled={submitting}
                     />
                     <Form.Text className="text-muted">
-                      Enter the transaction amount
+                      <Translate textKey="amountHelpText" fallback="Enter the transaction amount" />
                     </Form.Text>
                   </Form.Group>
                 </Col>
-                
+
                 <Col md={12}>
                   <Alert variant="info" className="mt-3">
-                    <strong>Double Entry Bookkeeping:</strong> Every transaction must have equal debits and credits. 
+                    <strong>Double Entry Bookkeeping:</strong> Every transaction must have equal debits and credits.
                     The amount entered will be debited to the debit account and credited to the credit account.
                   </Alert>
                 </Col>
-                
+
                 <Col md={12}>
                   <div className="d-flex justify-content-end mt-3">
-                    <Button 
-                      variant="secondary" 
+                    <Button
+                      variant="secondary"
                       className="me-2"
                       onClick={() => navigate('/ledger-entries')}
                       disabled={submitting}
                     >
-                      Cancel
+                      <Translate textKey="cancel" />
                     </Button>
-                    <Button 
-                      variant="primary" 
+                    <Button
+                      variant="primary"
                       type="submit"
                       disabled={submitting}
                     >
                       {submitting ? (
                         <>
                           <Spinner animation="border" size="sm" className="me-1" />
-                          Saving...
+                          <Translate textKey="saving" />...
                         </>
                       ) : (
-                        'Save Entry'
+                        <Translate textKey="save" />
                       )}
                     </Button>
                   </div>

@@ -3,12 +3,14 @@ import { Container, Card, Form, Button, Alert, InputGroup } from 'react-bootstra
 import { useAuth } from '../contexts/AuthContext';
 import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
+import { Translate, useTranslatedAttribute } from '../utils';
 import { validatePassword } from '../utils/passwordPolicy';
 import { auth } from '../firebase/config';
 import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 
 const ManagePasswords = () => {
   const { changePassword } = useAuth();
+  const getTranslatedAttr = useTranslatedAttribute();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -25,7 +27,7 @@ const ManagePasswords = () => {
     setSuccess('');
 
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
+      setError(getTranslatedAttr('passwordsDoNotMatch'));
       return;
     }
 
@@ -43,12 +45,12 @@ const ManagePasswords = () => {
       const credential = EmailAuthProvider.credential(auth.currentUser.email, currentPassword);
       await reauthenticateWithCredential(auth.currentUser, credential);
       await changePassword(newPassword);
-      setSuccess('Password updated successfully');
+      setSuccess(getTranslatedAttr('passwordUpdatedSuccess'));
       setNewPassword('');
       setConfirmPassword('');
       setCurrentPassword('');
     } catch (err) {
-      setError(err.message || 'Failed to update password');
+      setError(err.message || getTranslatedAttr('failedToUpdatePassword'));
     } finally {
       setLoading(false);
     }
@@ -58,14 +60,18 @@ const ManagePasswords = () => {
     <>
       <MainNavbar />
       <Container className="pos-content">
-        <PageHeader title="Manage Passwords" icon="lock_reset" subtitle="Change your account password." />
+        <PageHeader
+          title={<Translate textKey="managePasswords" />}
+          icon="lock_reset"
+          subtitle={<Translate textKey="managePasswordsSubtitle" />}
+        />
         <Card>
           <Card.Body>
             {error && <Alert variant="danger" onClose={() => setError('')} dismissible>{error}</Alert>}
             {success && <Alert variant="success" onClose={() => setSuccess('')} dismissible>{success}</Alert>}
             <Form onSubmit={handleSubmit}>
               <Form.Group className="mb-3">
-                <Form.Label>Current Password</Form.Label>
+                <Form.Label><Translate textKey="currentPassword" /></Form.Label>
                 <InputGroup>
                   <Form.Control type={showCurrent ? 'text' : 'password'} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required />
                   <Button variant="outline-secondary" onClick={() => setShowCurrent(!showCurrent)} aria-label="Toggle current password visibility">
@@ -74,17 +80,17 @@ const ManagePasswords = () => {
                 </InputGroup>
               </Form.Group>
               <Form.Group className="mb-3">
-                <Form.Label>New Password</Form.Label>
+                <Form.Label><Translate textKey="newPassword" /></Form.Label>
                 <InputGroup>
                   <Form.Control type={showNew ? 'text' : 'password'} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
                   <Button variant="outline-secondary" onClick={() => setShowNew(!showNew)} aria-label="Toggle new password visibility">
                     <i className={`bi ${showNew ? 'bi-eye-slash' : 'bi-eye'}`}></i>
                   </Button>
                 </InputGroup>
-                <Form.Text className="text-muted">At least 8 characters, include uppercase, lowercase, number, and special character.</Form.Text>
+                <Form.Text className="text-muted"><Translate textKey="passwordHelp" /></Form.Text>
               </Form.Group>
               <Form.Group className="mb-3">
-                <Form.Label>Confirm Password</Form.Label>
+                <Form.Label><Translate textKey="confirmPassword" /></Form.Label>
                 <InputGroup>
                   <Form.Control type={showConfirm ? 'text' : 'password'} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
                   <Button variant="outline-secondary" onClick={() => setShowConfirm(!showConfirm)} aria-label="Toggle confirm password visibility">
@@ -92,7 +98,7 @@ const ManagePasswords = () => {
                   </Button>
                 </InputGroup>
               </Form.Group>
-              <Button type="submit" variant="primary" disabled={loading}>{loading ? 'Updating...' : 'Update Password'}</Button>
+              <Button type="submit" variant="primary" disabled={loading}>{loading ? <Translate textKey="updating" /> : <Translate textKey="updatePassword" />}</Button>
             </Form>
           </Card.Body>
         </Card>

@@ -3,6 +3,7 @@ import { Container, Form, Button, Row, Col, Card, Alert, Modal, Table, Spinner }
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import MainNavbar from '../components/Navbar';
+import { Translate, getTranslatedAttr } from '../components/Translate';
 import { getStockItemById, updateStockItem } from '../utils/stockUtils';
 import { getInventoryCategories, addInventoryCategory, updateInventoryCategory, deleteInventoryCategory } from '../utils/categoryUtils';
 
@@ -46,14 +47,14 @@ const EditStockItem = () => {
   // Fetch stock item data
   useEffect(() => {
     if (!currentUser || !id || !activeShopId) return;
-    
+
     getStockItemById(id)
       .then(item => {
         // Check if item belongs to selected branch
         if (item.shopId !== activeShopId) {
           throw new Error('You do not have permission to edit this item');
         }
-        
+
         // Populate form fields
         setName(item.name || '');
         setDescription(item.description || '');
@@ -173,41 +174,41 @@ const EditStockItem = () => {
   // Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     setError('');
     setLoading(true);
-    
+
     // Validation
     if (!name.trim()) {
       setError('Item name is required');
       setLoading(false);
       return;
     }
-    
+
     if (isNaN(parseFloat(price)) || parseFloat(price) < 0) {
       setError('Price must be a valid number');
       setLoading(false);
       return;
     }
-    
+
     if (isNaN(parseFloat(quantity)) || parseFloat(quantity) < 0) {
       setError('Quantity must be a valid number');
       setLoading(false);
       return;
     }
-    
+
     if (costPrice && (isNaN(parseFloat(costPrice)) || parseFloat(costPrice) < 0)) {
       setError('Cost price must be a valid number');
       setLoading(false);
       return;
     }
-    
+
     if (lowStockAlert && (isNaN(parseFloat(lowStockAlert)) || parseFloat(lowStockAlert) < 0)) {
       setError('Low stock alert must be a valid number');
       setLoading(false);
       return;
     }
-    
+
     // Create updated item data
     const itemData = {
       name: name.trim(),
@@ -223,7 +224,7 @@ const EditStockItem = () => {
       expiryDate: expiryDate || null,
       lowStockAlert: lowStockAlert ? parseFloat(lowStockAlert) : null // Include low stock alert
     };
-    
+
     // Update in Firestore
     updateStockItem(id, itemData)
       .then(() => {
@@ -255,8 +256,8 @@ const EditStockItem = () => {
         <MainNavbar />
         <Container className="mt-4">
           <Alert variant="danger">{error}</Alert>
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             onClick={() => navigate('/stock')}
           >
             Back to Inventory
@@ -271,24 +272,24 @@ const EditStockItem = () => {
       <MainNavbar />
       <Container>
         <div className="d-flex justify-content-between align-items-center mb-4">
-          <h2>Edit Stock Item</h2>
-          <Button 
-            variant="outline-secondary" 
+          <h2><Translate textKey="editStockItem" fallback="Edit Stock Item" /></h2>
+          <Button
+            variant="outline-secondary"
             onClick={() => navigate('/stock')}
           >
-            Back to Inventory
+            <Translate textKey="backToInventory" />
           </Button>
         </div>
-        
+
         {error && <Alert variant="danger">{error}</Alert>}
-        
+
         <Card>
           <Card.Body>
             <Form onSubmit={handleSubmit}>
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Item Name*</Form.Label>
+                    <Form.Label><Translate textKey="itemNameLabel" /></Form.Label>
                     <Form.Control
                       type="text"
                       required
@@ -308,7 +309,7 @@ const EditStockItem = () => {
                         onClick={() => setShowCategoryModal(true)}
                         style={{ fontSize: '0.75rem' }}
                       >
-                        <i className="bi bi-pencil-square me-1"></i>Manage Categories
+                        <i className="bi bi-pencil-square me-1"></i><Translate textKey="manageCategories" />
                       </Button>
                     </div>
                     <Form.Select
@@ -329,7 +330,7 @@ const EditStockItem = () => {
                   </Form.Group>
                 </Col>
               </Row>
-              
+
               <Form.Group className="mb-3">
                 <Form.Label>Description</Form.Label>
                 <Form.Control
@@ -340,11 +341,11 @@ const EditStockItem = () => {
                   placeholder="Product details, specifications, etc."
                 />
               </Form.Group>
-              
+
               <Row>
                 <Col md={4}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Selling Price (RS)*</Form.Label>
+                    <Form.Label><Translate textKey="sellingPriceLabel" /></Form.Label>
                     <Form.Control
                       type="number"
                       step="0.01"
@@ -357,7 +358,7 @@ const EditStockItem = () => {
                 </Col>
                 <Col md={4}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Cost Price (RS)</Form.Label>
+                    <Form.Label><Translate textKey="costPriceLabel" /></Form.Label>
                     <Form.Control
                       type="number"
                       step="0.01"
@@ -370,7 +371,7 @@ const EditStockItem = () => {
                 </Col>
                 <Col md={4}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Quantity*</Form.Label>
+                    <Form.Label><Translate textKey="quantityLabel" /></Form.Label>
                     <Row>
                       <Col xs={7}>
                         <Form.Control
@@ -383,19 +384,19 @@ const EditStockItem = () => {
                         />
                       </Col>
                       <Col xs={5}>
-                        <Form.Select 
+                        <Form.Select
                           value={quantityUnit}
                           onChange={(e) => setQuantityUnit(e.target.value)}
                         >
-                          <option value="units">Units</option>
-                          <option value="kg">KG</option>
+                          <option value="units"><Translate textKey="units" /></option>
+                          <option value="kg"><Translate textKey="kg" /></option>
                         </Form.Select>
                       </Col>
                     </Row>
                   </Form.Group>
                 </Col>
               </Row>
-              
+
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
@@ -422,18 +423,18 @@ const EditStockItem = () => {
                         placeholder="Click Generate to create barcode"
                         className="me-2"
                       />
-                      <Button 
-                        variant="outline-primary" 
+                      <Button
+                        variant="outline-primary"
                         onClick={generateBarcode}
                         disabled={loading}
                       >
-                        Generate
+                        <Translate textKey="generate" />
                       </Button>
                     </div>
                   </Form.Group>
                 </Col>
               </Row>
-              
+
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
@@ -462,22 +463,22 @@ const EditStockItem = () => {
                   </Form.Group>
                 </Col>
               </Row>
-              
+
               <div className="d-flex mt-4">
-                <Button 
-                  variant="primary" 
-                  type="submit" 
+                <Button
+                  variant="primary"
+                  type="submit"
                   disabled={loading}
                   className="me-2"
                 >
-                  Save Changes
+                  <Translate textKey="saveChanges" fallback="Save Changes" />
                 </Button>
-                <Button 
-                  variant="outline-secondary" 
+                <Button
+                  variant="outline-secondary"
                   onClick={() => navigate('/stock')}
                   disabled={loading}
                 >
-                  Cancel
+                  <Translate textKey="cancel" />
                 </Button>
               </div>
             </Form>
@@ -492,7 +493,7 @@ const EditStockItem = () => {
           <Modal.Body>
             {categoryError && <Alert variant="danger" dismissible onClose={() => setCategoryError('')}>{categoryError}</Alert>}
             {categorySuccess && <Alert variant="success" dismissible onClose={() => setCategorySuccess('')}>{categorySuccess}</Alert>}
-            
+
             <Form onSubmit={handleAddCategory} className="mb-4">
               <h6>Add New Category</h6>
               <Row className="g-2">

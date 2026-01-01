@@ -9,10 +9,10 @@ import { db } from '../firebase/config';
 
 const ShopProfile = () => {
   const { shopData, currentUser, updateShopData } = useAuth();
-  
+
   // Get translations for attributes
   const getTranslatedAttr = useTranslatedAttribute();
-  
+
   // Owner and business information
   const [ownerNames, setOwnerNames] = useState('');
   const [ownerCnicNo, setOwnerCnicNo] = useState('');
@@ -22,12 +22,12 @@ const ShopProfile = () => {
   const [bankAccountNo, setBankAccountNo] = useState('');
   const [easypaisaNo, setEasypaisaNo] = useState('');
   const [jazzcashNo, setJazzcashNo] = useState('');
-  
+
   // UI states
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  
+
   // Load shop profile data
   useEffect(() => {
     if (shopData) {
@@ -41,14 +41,14 @@ const ShopProfile = () => {
       setJazzcashNo(shopData.jazzcashNo || '');
     }
   }, [shopData]);
-  
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     setError('');
     setLoading(true);
-    
+
     try {
       // Create updated shop profile data
       const updatedData = {
@@ -62,57 +62,57 @@ const ShopProfile = () => {
         jazzcashNo: jazzcashNo.trim(),
         updatedAt: new Date().toISOString()
       };
-      
+
       // Update shop data in Firestore
       await updateShopData(updatedData);
-      
-      setSuccess('Shop profile updated successfully');
+
+      setSuccess(getTranslatedAttr('shopProfileUpdated'));
       setTimeout(() => setSuccess(''), 5000);
     } catch (error) {
-      setError('Failed to update shop profile: ' + error.message);
+      setError(getTranslatedAttr('failedToUpdateProfile') + error.message);
       console.error('Error updating shop profile:', error);
     } finally {
       setLoading(false);
     }
   };
-  
+
   return (
     <>
       <MainNavbar />
       <Container>
-        <PageHeader 
-          title="Shop Profile" 
-          icon="bi-person-badge" 
-          subtitle="Manage owner information, business details, and payment accounts."
+        <PageHeader
+          title={<Translate textKey="shopProfile" />}
+          icon="bi-person-badge"
+          subtitle={<Translate textKey="shopProfileSubtitle" />}
         />
-        
+
         {error && <Alert variant="danger">{error}</Alert>}
         {success && <Alert variant="success">{success}</Alert>}
-        
+
         <Card className="mb-4">
           <Card.Body>
             <Form onSubmit={handleSubmit}>
-              <h4 className="mb-3">Owner Information</h4>
+              <h4 className="mb-3"><Translate textKey="ownerInformation" /></h4>
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Owner Names</Form.Label>
+                    <Form.Label><Translate textKey="ownerNames" /></Form.Label>
                     <Form.Control
                       type="text"
                       value={ownerNames}
                       onChange={(e) => setOwnerNames(e.target.value)}
-                      placeholder="Enter owner names"
+                      placeholder={getTranslatedAttr("enterOwnerNames")}
                     />
                   </Form.Group>
                 </Col>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Owner CNIC No</Form.Label>
+                    <Form.Label><Translate textKey="ownerCnic" /></Form.Label>
                     <Form.Control
                       type="text"
                       value={ownerCnicNo}
                       onChange={(e) => setOwnerCnicNo(e.target.value)}
-                      placeholder="Enter CNIC number"
+                      placeholder={getTranslatedAttr("enterCnic")}
                     />
                   </Form.Group>
                 </Col>
@@ -120,64 +120,64 @@ const ShopProfile = () => {
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Owner Mobile No</Form.Label>
+                    <Form.Label><Translate textKey="ownerMobile" /></Form.Label>
                     <Form.Control
                       type="text"
                       value={ownerMobileNo}
                       onChange={(e) => setOwnerMobileNo(e.target.value)}
-                      placeholder="Enter mobile number"
+                      placeholder={getTranslatedAttr("enterMobile")}
                     />
                   </Form.Group>
                 </Col>
               </Row>
-              
-              <h4 className="mb-3 mt-4">Business Information</h4>
+
+              <h4 className="mb-3 mt-4"><Translate textKey="businessInformation" /></h4>
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>NTN NO</Form.Label>
+                    <Form.Label><Translate textKey="ntnNo" /></Form.Label>
                     <Form.Control
                       type="text"
                       value={ntnNo}
                       onChange={(e) => setNtnNo(e.target.value)}
-                      placeholder="Enter NTN number"
+                      placeholder={getTranslatedAttr("enterNtn")}
                     />
                   </Form.Group>
                 </Col>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Sales Tax NO</Form.Label>
+                    <Form.Label><Translate textKey="salesTaxNo" /></Form.Label>
                     <Form.Control
                       type="text"
                       value={salesTaxNo}
                       onChange={(e) => setSalesTaxNo(e.target.value)}
-                      placeholder="Enter sales tax number"
+                      placeholder={getTranslatedAttr("enterSalesTax")}
                     />
                   </Form.Group>
                 </Col>
               </Row>
-              
-              <h4 className="mb-3 mt-4">Payment Information</h4>
+
+              <h4 className="mb-3 mt-4"><Translate textKey="paymentInformation" /></h4>
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Bank Account NO</Form.Label>
+                    <Form.Label><Translate textKey="bankAccountNo" /></Form.Label>
                     <Form.Control
                       type="text"
                       value={bankAccountNo}
                       onChange={(e) => setBankAccountNo(e.target.value)}
-                      placeholder="Enter bank account number"
+                      placeholder={getTranslatedAttr("enterBankAccount")}
                     />
                   </Form.Group>
                 </Col>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Easy Paisa NO</Form.Label>
+                    <Form.Label><Translate textKey="easypaisaNo" /></Form.Label>
                     <Form.Control
                       type="text"
                       value={easypaisaNo}
                       onChange={(e) => setEasypaisaNo(e.target.value)}
-                      placeholder="Enter Easy Paisa number"
+                      placeholder={getTranslatedAttr("enterEasypaisa")}
                     />
                   </Form.Group>
                 </Col>
@@ -185,24 +185,24 @@ const ShopProfile = () => {
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>JazzCash NO</Form.Label>
+                    <Form.Label><Translate textKey="jazzcashNo" /></Form.Label>
                     <Form.Control
                       type="text"
                       value={jazzcashNo}
                       onChange={(e) => setJazzcashNo(e.target.value)}
-                      placeholder="Enter JazzCash number"
+                      placeholder={getTranslatedAttr("enterJazzcash")}
                     />
                   </Form.Group>
                 </Col>
               </Row>
-              
+
               <div className="d-flex justify-content-end mt-4">
-                <Button 
-                  variant="primary" 
-                  type="submit" 
+                <Button
+                  variant="primary"
+                  type="submit"
                   disabled={loading}
                 >
-                  {loading ? 'Saving...' : 'Save'}
+                  {loading ? <Translate textKey="saving" /> : <Translate textKey="save" />}
                 </Button>
               </div>
             </Form>

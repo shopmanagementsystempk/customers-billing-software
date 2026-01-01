@@ -30,7 +30,8 @@ const NewReceipt = () => {
   const [tax, setTax] = useState('');
   const [enterAmount, setEnterAmount] = useState('');
   const [loanAmount, setLoanAmount] = useState('');
-  const [transactionId] = useState(generateTransactionId());
+  const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [transactionId, setTransactionId] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -69,6 +70,26 @@ const NewReceipt = () => {
       }, 100);
     }
   }, [stockLoaded]);
+
+  // Initialize transaction ID (sequential per shop)
+  useEffect(() => {
+    let isMounted = true;
+    const initTransactionId = async () => {
+      try {
+        if (activeShopId) {
+          const id = await generateTransactionId(activeShopId);
+          if (isMounted) setTransactionId(id);
+        } else {
+          const id = generateTransactionId();
+          if (isMounted) setTransactionId(id);
+        }
+      } catch (err) {
+        if (isMounted) setTransactionId(generateTransactionId());
+      }
+    };
+    initTransactionId();
+    return () => { isMounted = false; };
+  }, [activeShopId]);
 
   // Fetch employees
   useEffect(() => {
@@ -131,18 +152,27 @@ const NewReceipt = () => {
   // Handle barcode scan from scanner hardware
   const handleScan = (data) => {
     if (!data) return;
-    
-    const matchingItem = stockItems.find(item => 
+
+    const matchingItem = stockItems.find(item =>
       item.sku && item.sku.toLowerCase() === data.toLowerCase());
-    
+
     if (matchingItem) {
+      // Block scanning if out of stock
+      if ((parseFloat(matchingItem.quantity || 0)) <= 0) {
+        setError(translations[language]?.outOfStock || 'Out of stock');
+        setTimeout(() => setError(''), 3000);
+        setSelectedProduct('');
+        setProductCode('');
+        return;
+      }
+
       setSelectedProduct(matchingItem.name);
       setProductCode(matchingItem.sku || '');
-      
+
       // Add to items if not already exists
-      const existingIndex = items.findIndex(item => 
+      const existingIndex = items.findIndex(item =>
         item.name.toLowerCase() === matchingItem.name.toLowerCase());
-      
+
       if (existingIndex >= 0) {
         const newItems = [...items];
         newItems[existingIndex].quantity = (parseInt(newItems[existingIndex].quantity) + 1).toString();
@@ -162,7 +192,7 @@ const NewReceipt = () => {
           category: matchingItem.category || 'Uncategorized'
         }]);
       }
-      
+
       // Clear the fields
       setSelectedProduct('');
       setProductCode('');
@@ -173,16 +203,24 @@ const NewReceipt = () => {
   const handleCodeInput = (e) => {
     const code = e.target.value;
     setProductCode(code);
-    
+
     // Look for matching product by SKU/code
-      const matchingItem = stockItems.find(item => 
+    const matchingItem = stockItems.find(item =>
       item.sku && item.sku.toLowerCase() === code.toLowerCase());
-    
+
     if (matchingItem && code.length > 0) {
+      // Block adding if out of stock
+      if ((parseFloat(matchingItem.quantity || 0)) <= 0) {
+        setError(translations[language]?.outOfStock || 'Out of stock');
+        setTimeout(() => setError(''), 3000);
+        setSelectedProduct('');
+        setProductCode('');
+        return;
+      }
       // Add product to items list
-      const existingIndex = items.findIndex(item => 
+      const existingIndex = items.findIndex(item =>
         item.name.toLowerCase() === matchingItem.name.toLowerCase());
-      
+
       if (existingIndex >= 0) {
         // If item already exists, increment quantity
         const newItems = [...items];
@@ -204,7 +242,7 @@ const NewReceipt = () => {
           category: matchingItem.category || 'Uncategorized'
         }]);
       }
-      
+
       // Clear the fields after adding
       setSelectedProduct('');
       setProductCode('');
@@ -217,15 +255,24 @@ const NewReceipt = () => {
       const productName = option.value;
       setSelectedProduct(productName);
       const matchingItem = stockItems.find(item => item.name === productName);
-      
+
       if (matchingItem) {
+        // Block selection if out of stock
+        if ((parseFloat(matchingItem.quantity || 0)) <= 0) {
+          setError(translations[language]?.outOfStock || 'Out of stock');
+          setTimeout(() => setError(''), 3000);
+          setSelectedProduct('');
+          setProductCode('');
+          return;
+        }
+
         const itemCode = matchingItem.sku || '';
         setProductCode(itemCode);
-        
+
         // Automatically add the product to the items list
-        const existingIndex = items.findIndex(item => 
+        const existingIndex = items.findIndex(item =>
           item.name.toLowerCase() === productName.toLowerCase());
-        
+
         if (existingIndex >= 0) {
           // If item already exists, increment quantity
           const newItems = [...items];
@@ -233,7 +280,7 @@ const NewReceipt = () => {
           setItems(newItems);
         } else {
           // Add as new item
-          setItems([...items, { 
+          setItems([...items, {
             code: itemCode,
             name: productName,
             inStock: matchingItem.quantity || 0,
@@ -247,7 +294,7 @@ const NewReceipt = () => {
             category: matchingItem.category || 'Uncategorized'
           }]);
         }
-        
+
         // Clear the selection to allow for next item
         setSelectedProduct('');
         setProductCode('');
@@ -256,9 +303,9 @@ const NewReceipt = () => {
   };
 
   const totals = useMemo(() => {
-    const totalQuantities = items.reduce((sum, item) => 
+    const totalQuantities = items.reduce((sum, item) =>
       sum + parseFloat(item.quantity || 0), 0);
-    const totalAmount = items.reduce((sum, item) => 
+    const totalAmount = items.reduce((sum, item) =>
       sum + (parseFloat(item.salePrice || 0) * parseFloat(item.quantity || 1)), 0);
     const discountAmount = parseFloat(discount || 0);
     const subtotalAfterDiscount = totalAmount - discountAmount;
@@ -270,7 +317,7 @@ const NewReceipt = () => {
     const loanAmt = Math.max(0, Math.min(parseFloat(loanAmount || 0) || 0, payable));
     const effectivePayable = Math.max(0, payable - loanAmt);
     const balance = receivedAmount - effectivePayable;
-    
+
     return {
       totalQuantities: totalQuantities.toFixed(2),
       totalAmount: totalAmount.toFixed(2),
@@ -288,12 +335,12 @@ const NewReceipt = () => {
   const handleItemChange = (index, field, value) => {
     const newItems = [...items];
     newItems[index][field] = value;
-    
+
     // If price field is entered, calculate quantity based on price / unit price
     if (field === 'itemPrice') {
       const itemPrice = value === '' ? 0 : parseFloat(value || 0);
       const unitPrice = parseFloat(newItems[index].salePrice || 0);
-      
+
       if (itemPrice > 0 && unitPrice > 0) {
         // Calculate quantity: quantity = price / unit price
         const calculatedQuantity = (itemPrice / unitPrice).toFixed(4);
@@ -312,11 +359,11 @@ const NewReceipt = () => {
       const price = parseFloat(newItems[index].salePrice || 0);
       const newTotal = (quantity * price).toFixed(2);
       newItems[index].total = newTotal;
-      
+
       // Update itemPrice to match the new total to keep fields in sync
       newItems[index].itemPrice = newTotal;
     }
-    
+
     setItems(newItems);
   };
 
@@ -327,23 +374,32 @@ const NewReceipt = () => {
       setTimeout(() => setError(''), 3000);
       return;
     }
-    
+
     const matchingItem = stockItems.find(item => item.name === selectedProduct);
     if (!matchingItem) {
       setError('Product not found in stock');
       setTimeout(() => setError(''), 3000);
       return;
     }
-    
+
+    // Block adding if out of stock
+    if ((parseFloat(matchingItem.quantity || 0)) <= 0) {
+      setError(translations[language]?.outOfStock || 'Out of stock');
+      setTimeout(() => setError(''), 3000);
+      setSelectedProduct('');
+      setProductCode('');
+      return;
+    }
+
     // Check if already in list
-    const existingIndex = items.findIndex(item => 
+    const existingIndex = items.findIndex(item =>
       item.name.toLowerCase() === selectedProduct.toLowerCase());
-    
+
     if (existingIndex >= 0) {
       const newItems = [...items];
       newItems[existingIndex].quantity = (parseInt(newItems[existingIndex].quantity) + 1).toString();
       setItems(newItems);
-      } else {
+    } else {
       setItems([...items, {
         code: productCode || matchingItem.sku || '',
         name: selectedProduct,
@@ -358,7 +414,7 @@ const NewReceipt = () => {
         category: matchingItem.category || 'Uncategorized'
       }]);
     }
-    
+
     setSelectedProduct('');
     setProductCode('');
   };
@@ -378,11 +434,20 @@ const NewReceipt = () => {
     setDiscount('');
     setTax('');
     setEnterAmount('');
+    setPaymentMethod('Cash');
     setSelectedEmployee(null);
     setError('');
     setSuccess('');
     setSavedReceiptId(null);
-  }, []);
+    // Regenerate a new transaction ID for the next receipt
+    if (activeShopId) {
+      generateTransactionId(activeShopId)
+        .then((id) => setTransactionId(id))
+        .catch(() => setTransactionId(generateTransactionId()));
+    } else {
+      setTransactionId(generateTransactionId());
+    }
+  }, [activeShopId]);
 
   const printReceipt = useCallback(() => {
     const existingIframe = document.getElementById('print-iframe');
@@ -402,6 +467,17 @@ const NewReceipt = () => {
 
     const currentDate = formatDisplayDate(new Date());
     const currentTime = new Date().toLocaleTimeString();
+
+    // Get translated payment method label
+    const paymentMethodsList = [
+      { id: 'Cash', labelKey: 'cash' },
+      { id: 'Cards', labelKey: 'cards' },
+      { id: 'Mobile Wallet', labelKey: 'mobileWallets' },
+      { id: 'QR Code', labelKey: 'qrPayment' },
+      { id: 'Bank Transfer', labelKey: 'bankLinked' }
+    ];
+    const methodObj = paymentMethodsList.find(m => m.id === paymentMethod);
+    const translatedPaymentMethod = methodObj ? (translations[language]?.[methodObj.labelKey] || paymentMethod) : paymentMethod;
 
     const receiptHTML = `
       <!DOCTYPE html>
@@ -467,14 +543,16 @@ const NewReceipt = () => {
             ${shopData?.address ? `<div class="shop-address">${shopData.address}</div>` : ''}
             <div class="shop-phone">${translations[language]?.phone || 'Phone'} # ${shopData?.phoneNumbers?.[0] || shopData?.phoneNumber || ''}</div>
           </div>
-
+ 
           <div class="sep"></div>
           <div class="meta">
             <div>${translations[language]?.invoice || 'Invoice'}: ${transactionId}</div>
             <div class="meta-right">${currentDate} ${currentTime}</div>
+            <div>${translations[language]?.paymentMethod || 'Payment'}:</div>
+            <div class="meta-right">${translatedPaymentMethod}</div>
           </div>
           <div class="sep"></div>
-
+ 
           <table class="receipt">
             <colgroup>
               <col class="sr" />
@@ -494,12 +572,12 @@ const NewReceipt = () => {
             </thead>
             <tbody>
               ${items.map((item, idx) => {
-                const qty = parseFloat(item.quantity || 1);
-                const rate = Math.round(parseFloat(item.salePrice || 0));
-                const amount = Math.round(qty * rate);
-                const name = (item.name || '').replace(/\n/g, '\n');
-                const unit = item.quantityUnit && item.quantityUnit.toLowerCase() !== 'units' ? item.quantityUnit.toUpperCase() : '';
-                return `
+      const qty = parseFloat(item.quantity || 1);
+      const rate = Math.round(parseFloat(item.salePrice || 0));
+      const amount = Math.round(qty * rate);
+      const name = (item.name || '').replace(/\n/g, '\n');
+      const unit = item.quantityUnit && item.quantityUnit.toLowerCase() !== 'units' ? item.quantityUnit.toUpperCase() : '';
+      return `
                   <tr>
                     <td class="c">${idx + 1}</td>
                     <td class="wrap">${name}</td>
@@ -508,10 +586,10 @@ const NewReceipt = () => {
                     <td class="r">${amount}</td>
                   </tr>
                 `;
-              }).join('')}
+    }).join('')}
             </tbody>
           </table>
-
+ 
             <div class="totals">
             <div class="line"><span>${translations[language]?.total || 'Total'}</span><span>${parseFloat(totals.totalQuantities).toFixed(2)}</span></div>
             ${parseFloat(discount) > 0 ? `<div class="line"><span>${translations[language]?.discount || 'Discount'}</span><span>${Math.round(parseFloat(discount))}</span></div>` : ''}
@@ -519,7 +597,7 @@ const NewReceipt = () => {
             <div class="line"><span>${translations[language]?.netTotal || 'Net Total'}</span><span>${Math.round(parseFloat(totals.payable))}</span></div>
             ${parseFloat(totals.loanAmount) > 0 ? `<div class="line"><span>${translations[language]?.loan || 'Loan'}</span><span>${Math.round(parseFloat(totals.loanAmount))}</span></div>` : ''}
           </div>
-
+ 
           <div class="net">${Math.round(parseFloat(totals.payable))}</div>
           <div class="thanks">${translations[language]?.thankYouShopping || 'Thank you For Shoping !'}</div>
           <div class="dev">${translations[language]?.softwareDevelopedBy || 'software developed by'} Soft Verse 03311041968</div>
@@ -542,20 +620,21 @@ const NewReceipt = () => {
         }
       }, 1000);
     }, 250);
-  }, [discount, items, shopData, tax, totals, transactionId, language]);
+  }, [discount, items, shopData, tax, totals, transactionId, language, paymentMethod]);
+
 
   // Handle form submission
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-    
+
     if (items.length === 0) {
       setError(translations[language]?.pleaseAddOneItem || 'Please add at least one item');
       setLoading(false);
       return;
     }
-    
+
     try {
       const receiptItems = items.map(item => ({
         name: item.name,
@@ -565,26 +644,26 @@ const NewReceipt = () => {
         quantityUnit: item.quantityUnit || 'units',
         category: item.category || 'Uncategorized'
       }));
-      
-    const receiptData = {
-      shopId: activeShopId,
-      shopDetails: {
-        name: shopData.shopName,
-        address: shopData.address,
-        phone: shopData.phoneNumbers && shopData.phoneNumbers.length > 0 
-               ? shopData.phoneNumbers.join(', ') 
-               : shopData.phoneNumber || '',
-        logoUrl: shopData.logoUrl || '',
-        receiptDescription: shopData.receiptDescription || ''
-      },
-      transactionId,
+
+      const receiptData = {
+        shopId: activeShopId,
+        shopDetails: {
+          name: shopData.shopName,
+          address: shopData.address,
+          phone: shopData.phoneNumbers && shopData.phoneNumbers.length > 0
+            ? shopData.phoneNumbers.join(', ')
+            : shopData.phoneNumber || '',
+          logoUrl: shopData.logoUrl || '',
+          receiptDescription: shopData.receiptDescription || ''
+        },
+        transactionId,
         cashierName: 'Cashier',
         managerName: 'Manager',
         createdBy: currentUser.uid,
         items: receiptItems,
         totalAmount: calculateTotal(receiptItems, discount),
         discount: parseFloat(discount) || 0,
-        paymentMethod: 'Cash',
+        paymentMethod: paymentMethod,
         cashGiven: parseFloat(enterAmount) || 0,
         change: (parseFloat(enterAmount) || 0) - Math.max(parseFloat(totals.payable) - (parseFloat(loanAmount || 0) || 0), 0),
         employeeName: selectedEmployee ? selectedEmployee.name : null,
@@ -593,17 +672,17 @@ const NewReceipt = () => {
         isLoan: (parseFloat(loanAmount || 0) || 0) > 0,
         loanAmount: Math.max(parseFloat(loanAmount || 0) || 0, 0)
       };
-      
+
       // Save receipt (this is the only blocking operation)
       const receiptId = await saveReceipt(receiptData);
-      
+
       // Show success immediately - don't wait for background operations
       setSuccess(translations[language]?.receiptSavedSuccess || 'Receipt saved successfully');
       setSavedReceiptId(receiptId);
-      
+
       // All background operations run in parallel (non-blocking)
       const backgroundOperations = [];
-      
+
       // 1. Create automatic ledger entry (non-blocking)
       backgroundOperations.push(
         createSaleLedgerEntry({
@@ -615,7 +694,7 @@ const NewReceipt = () => {
           console.error('Error creating ledger entry:', ledgerError);
         })
       );
-      
+
       // 2. Update stock (non-blocking)
       backgroundOperations.push(
         updateStockQuantity(activeShopId, receiptItems.map(item => ({
@@ -626,7 +705,7 @@ const NewReceipt = () => {
           console.error('Error updating stock:', stockError);
         })
       );
-      
+
       // 3. Create customer loan if needed (non-blocking)
       if ((parseFloat(loanAmount || 0) || 0) > 0 && customer && customer !== 'Walk-in Customer') {
         backgroundOperations.push(
@@ -643,28 +722,28 @@ const NewReceipt = () => {
           })
         );
       }
-      
+
       // Run all background operations in parallel (fire and forget)
       Promise.all(backgroundOperations).catch(err => {
         console.error('Error in background operations:', err);
       });
-      
+
       // Auto print if enabled
       if (autoPrint) {
         setTimeout(() => {
           printReceipt();
         }, 500);
       }
-        
+
       // Reset form after delay
       setTimeout(() => {
         resetForm();
       }, 5000);
-      
+
     } catch (error) {
       setError('Error saving receipt: ' + error.message);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   }, [
     activeShopId,
@@ -689,7 +768,7 @@ const NewReceipt = () => {
     const handleKeyPress = (e) => {
       if (e.key === 'Enter' && !loading && items.length > 0) {
         const activeElement = document.activeElement;
-        
+
         // Check if we're in Product Select or Barcode field
         // These fields have their own Enter handlers to add items
         const isProductSelect = activeElement && (
@@ -698,17 +777,17 @@ const NewReceipt = () => {
           activeElement.closest('[id*="react-select"]') !== null
         );
         const isBarcodeField = activeElement && activeElement === barcodeInputRef.current;
-        
+
         // If in Product Select with selected product, let its handler work (it will add item)
         if (isProductSelect && selectedProduct) {
           return; // Let the product select handler work
         }
-        
+
         // If in Barcode field with code, let its handler work (it will add item)
         if (isBarcodeField && productCode.trim() !== '') {
           return; // Let the barcode handler work
         }
-        
+
         // For all other fields (including empty barcode/product select), trigger Pay & Save
         e.preventDefault();
         handleSubmit(e);
@@ -722,14 +801,18 @@ const NewReceipt = () => {
   }, [loading, items, handleSubmit, selectedProduct, productCode]);
 
   // Get product options for select
-  const productOptions = stockLoaded ? 
-    stockItems.map(item => ({ value: item.name, label: item.name })) : [];
+  const productOptions = stockLoaded ?
+    stockItems.map(item => ({
+      value: item.name,
+      label: item.name + ((parseFloat(item.quantity || 0)) <= 0 ? ` (${translations[language]?.outOfStock || 'Out of stock'})` : ''),
+      quantity: parseFloat(item.quantity || 0)
+    })) : [];
 
   // Get employee options for select
-  const employeeOptions = employeesLoaded ? 
+  const employeeOptions = employeesLoaded ?
     employees.map(emp => ({ value: emp.id, label: emp.name })) : [];
 
-  const customerOptions = customersLoaded 
+  const customerOptions = customersLoaded
     ? [{ value: 'Walk-in Customer', label: 'Walk-in Customer' }, ...customers.map(c => ({ value: c.name, label: c.name }))]
     : [{ value: 'Walk-in Customer', label: 'Walk-in Customer' }];
 
@@ -1037,6 +1120,33 @@ const NewReceipt = () => {
                     <span className="text-muted" style={{ fontSize: '0.8rem' }}><Translate textKey="tax" fallback="Tax" /> ({tax || 0}%):</span>
                     <span style={{ fontSize: '0.8rem' }}>+{formatCurrency(totals.taxAmount)}</span>
                   </div>
+                  <div className="border-top pt-2 mb-3">
+                    <Form.Label className="mb-2" style={{ fontSize: '0.875rem', fontWeight: 'bold' }}>
+                      <Translate textKey="paymentMethod" fallback="Payment Method" />
+                    </Form.Label>
+                    <div className="d-flex flex-wrap gap-2 mb-3">
+                      {[
+                        { id: 'Cash', icon: 'bi-cash', labelKey: 'cash' },
+                        { id: 'Cards', icon: 'bi-credit-card', labelKey: 'cards' },
+                        { id: 'Mobile Wallet', icon: 'bi-phone', labelKey: 'mobileWallets' },
+                        { id: 'QR Code', icon: 'bi-qr-code', labelKey: 'qrPayment' },
+                        { id: 'Bank Transfer', icon: 'bi-bank', labelKey: 'bankLinked' }
+                      ].map((method) => (
+                        <Button
+                          key={method.id}
+                          variant={paymentMethod === method.id ? 'primary' : 'outline-secondary'}
+                          size="sm"
+                          className="d-flex align-items-center gap-2 px-3 py-2 flex-grow-1"
+                          onClick={() => setPaymentMethod(method.id)}
+                          style={{ fontSize: '0.8rem', borderRadius: '8px', transition: 'all 0.2s' }}
+                        >
+                          <i className={`bi ${method.icon}`}></i>
+                          <Translate textKey={method.labelKey} fallback={method.id} />
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="d-flex justify-content-between mb-2 pt-1 border-top">
                     <span className="fw-bold" style={{ fontSize: '0.9rem' }}><Translate textKey="totalPayable" fallback="Total Payable" />:</span>
                     <strong className="text-primary" style={{ fontSize: '1rem' }}>{formatCurrency(totals.payable)}</strong>

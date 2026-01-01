@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Navbar, Nav, Container, Button, Offcanvas, Collapse, Form, InputGroup, Modal } from 'react-bootstrap';
+import { Navbar, Nav, Container, Button, Offcanvas, Collapse, Form, InputGroup, Modal, Dropdown } from 'react-bootstrap';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 import LanguageToggle from './LanguageToggle';
 import Translate from './Translate';
 import '../styles/sidebar.css';
 
 const MainNavbar = () => {
-  const { 
-    currentUser, 
-    logout, 
-    shopData, 
-    staffData, 
-    isStaff, 
+  const {
+    currentUser,
+    logout,
+    shopData,
+    staffData,
+    isStaff,
     isGuest,
     branches,
     activeBranchId,
@@ -23,6 +24,7 @@ const MainNavbar = () => {
     deleteBranch
   } = useAuth();
   const { language } = useLanguage();
+  const { theme, setTheme, themeOptions } = useTheme();
   const navigate = useNavigate();
   const [showSidebar, setShowSidebar] = useState(false);
   const location = useLocation();
@@ -32,7 +34,7 @@ const MainNavbar = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [branchToDelete, setBranchToDelete] = useState(null);
   const [deletingBranch, setDeletingBranch] = useState(false);
-  
+
   // Check if we're on an expenses page to auto-open the menu
   const isExpensesPage = location.pathname === '/expenses' || location.pathname === '/add-expense' || location.pathname === '/expense-categories';
   const [expensesOpen, setExpensesOpen] = useState(isExpensesPage);
@@ -210,21 +212,21 @@ const MainNavbar = () => {
   const renderNavItem = (path, iconKey, label, closeSidebar = false) => {
     const iconStyle = googleIconPalette[iconKey] || defaultGoogleIconStyle;
     return (
-    <Nav.Link
-      as={Link}
-      to={path}
-      className={`sidebar-link ${isActive(path) ? 'active' : ''}`}
-      onClick={() => {
-        if (closeSidebar) {
-          setShowSidebar(false);
-        }
-      }}
-    >
-      <span className="sidebar-icon" style={iconStyle}>
-        <span className="material-icons-outlined google-icon">{iconKey}</span>
-      </span>
-      <span className="sidebar-text">{label}</span>
-    </Nav.Link>
+      <Nav.Link
+        as={Link}
+        to={path}
+        className={`sidebar-link ${isActive(path) ? 'active' : ''}`}
+        onClick={() => {
+          if (closeSidebar) {
+            setShowSidebar(false);
+          }
+        }}
+      >
+        <span className="sidebar-icon" style={iconStyle}>
+          <span className="material-icons-outlined google-icon">{iconKey}</span>
+        </span>
+        <span className="sidebar-text">{label}</span>
+      </Nav.Link>
     );
   };
 
@@ -253,7 +255,7 @@ const MainNavbar = () => {
 
     return (
       <>
-        <div 
+        <div
           className={`sidebar-link ${isExpensesActive ? 'active' : ''}`}
           style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
           onClick={() => setIsOpen(!isOpen)}
@@ -287,7 +289,7 @@ const MainNavbar = () => {
 
     return (
       <>
-        <div 
+        <div
           className={`sidebar-link ${isAttendanceActive ? 'active' : ''}`}
           style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
           onClick={() => setIsOpen(!isOpen)}
@@ -319,7 +321,7 @@ const MainNavbar = () => {
 
     return (
       <>
-        <div 
+        <div
           className={`sidebar-link ${isEmployeesActive ? 'active' : ''}`}
           style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
           onClick={() => setIsOpen(!isOpen)}
@@ -350,7 +352,7 @@ const MainNavbar = () => {
 
     return (
       <>
-        <div 
+        <div
           className={`sidebar-link ${isContactsActive ? 'active' : ''}`}
           style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
           onClick={() => setIsOpen(!isOpen)}
@@ -379,7 +381,7 @@ const MainNavbar = () => {
 
     return (
       <>
-        <div 
+        <div
           className={`sidebar-link ${isLedgerActive ? 'active' : ''}`}
           style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
           onClick={() => setIsOpen(!isOpen)}
@@ -470,14 +472,31 @@ const MainNavbar = () => {
             ))
           )}
         </Form.Select>
+        {!isStaff && !isGuest && (
+          <div className="mt-3 px-1">
+            <small className="text-muted fw-bold d-block mb-2">THEME</small>
+            <div className="theme-grid">
+              {themeOptions.map((opt) => (
+                <div
+                  key={opt.id}
+                  className={`theme-swatch ${theme === opt.id ? 'active' : ''}`}
+                  style={{ backgroundColor: opt.color }}
+                  onClick={() => setTheme(opt.id)}
+                  title={opt.name}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         {!isStaff && !isGuest && (branches || []).length > 0 && (
           <div className="mt-2">
             {(branches || []).map(branch => {
               const isMainBranch = branch.id === primaryShopId;
               const isActive = branch.id === activeBranchId;
               return (
-                <div 
-                  key={branch.id} 
+                <div
+                  key={branch.id}
                   className={`d-flex justify-content-between align-items-center mb-1 p-1 rounded ${isActive ? 'bg-light' : ''}`}
                   style={{ fontSize: '0.85rem' }}
                 >
@@ -540,8 +559,8 @@ const MainNavbar = () => {
           <p className="text-muted small mb-0">This action cannot be undone. All data associated with this branch will remain, but you won't be able to access it through this branch.</p>
         </Modal.Body>
         <Modal.Footer>
-          <Button 
-            variant="secondary" 
+          <Button
+            variant="secondary"
             onClick={() => {
               setShowDeleteModal(false);
               setBranchToDelete(null);
@@ -551,8 +570,8 @@ const MainNavbar = () => {
           >
             Cancel
           </Button>
-          <Button 
-            variant="danger" 
+          <Button
+            variant="danger"
             onClick={handleConfirmDelete}
             disabled={deletingBranch}
           >
@@ -568,8 +587,8 @@ const MainNavbar = () => {
       {/* Mobile Top Bar with Menu Button */}
       <Navbar bg="primary" variant="dark" className="mobile-top-navbar d-lg-none">
         <Container fluid className="mobile-top-navbar__container">
-          <Navbar.Brand 
-            as={Link} 
+          <Navbar.Brand
+            as={Link}
             to={currentUser ? '/dashboard' : '/login'}
             className="mobile-top-navbar__brand"
             title={shopData ? shopData.shopName : 'Shop Billing System'}
@@ -584,17 +603,38 @@ const MainNavbar = () => {
             )}
           </Navbar.Brand>
           <div className="mobile-top-navbar__actions">
+            {!isStaff && !isGuest && (
+              <Dropdown align="end" className="me-2">
+                <Dropdown.Toggle variant="light" className="theme-toggle-btn border-0 p-1 bg-transparent">
+                  <i className="bi bi-palette text-white fs-5"></i>
+                </Dropdown.Toggle>
+                <Dropdown.Menu className="theme-dropdown-menu">
+                  <Dropdown.Header>Select Theme</Dropdown.Header>
+                  <div className="theme-grid">
+                    {themeOptions.map((opt) => (
+                      <div
+                        key={opt.id}
+                        className={`theme-swatch ${theme === opt.id ? 'active' : ''}`}
+                        style={{ backgroundColor: opt.color }}
+                        onClick={() => setTheme(opt.id)}
+                        title={opt.name}
+                      />
+                    ))}
+                  </div>
+                </Dropdown.Menu>
+              </Dropdown>
+            )}
             {currentUser && (
-              <LanguageToggle 
-                isCompact 
+              <LanguageToggle
+                isCompact
                 variant="outline-light"
                 className="mobile-top-navbar__lang"
                 aria-label="Toggle language"
               />
             )}
-            <Button 
-              variant="light" 
-              className="mobile-top-navbar__menu" 
+            <Button
+              variant="light"
+              className="mobile-top-navbar__menu"
               onClick={() => setShowSidebar(true)}
               aria-label="Open menu"
             >
@@ -649,12 +689,12 @@ const MainNavbar = () => {
                 {hasPermission('canManageExpenses') && (
                   renderExpensesMenu(true, true)
                 )}
-              {hasPermission('canMarkAttendance') && (
-                renderAttendanceMenu(true, true)
-              )}
-              {renderContactsMenu(true, true)}
-              {renderLedgerMenu(true, true)}
-              {!isStaff && !isGuest && (
+                {hasPermission('canMarkAttendance') && (
+                  renderAttendanceMenu(true, true)
+                )}
+                {renderContactsMenu(true, true)}
+                {renderLedgerMenu(true, true)}
+                {!isStaff && !isGuest && (
                   renderNavItem('/settings', 'settings', <Translate textKey="settings" />, true)
                 )}
                 {!isStaff && !isGuest && (
@@ -668,8 +708,8 @@ const MainNavbar = () => {
                 )}
                 <div className="d-flex mt-3">
                   <LanguageToggle />
-                  <Button 
-                    variant="outline-danger" 
+                  <Button
+                    variant="outline-danger"
                     className="ms-2"
                     onClick={() => { handleLogout(); setShowSidebar(false); }}
                   >
@@ -748,20 +788,20 @@ const MainNavbar = () => {
           )}
         </Nav>
         <div className="sidebar-footer">
-            {currentUser ? (
-              <>
-                <LanguageToggle />
+          {currentUser ? (
+            <>
+              <LanguageToggle />
               <Button variant="outline-danger" className="ms-2" onClick={handleLogout}>
                 <Translate textKey="logout" />
               </Button>
-              </>
-            ) : (
-              <>
-                <Nav.Link as={Link} to="/login"><Translate textKey="login" /></Nav.Link>
-                <Nav.Link as={Link} to="/register"><Translate textKey="register" /></Nav.Link>
-                <LanguageToggle />
-              </>
-            )}
+            </>
+          ) : (
+            <>
+              <Nav.Link as={Link} to="/login"><Translate textKey="login" /></Nav.Link>
+              <Nav.Link as={Link} to="/register"><Translate textKey="register" /></Nav.Link>
+              <LanguageToggle />
+            </>
+          )}
         </div>
       </div>
 

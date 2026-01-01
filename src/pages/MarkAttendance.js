@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Card, Table, Button, Form, Row, Col, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  addDoc, 
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
   updateDoc,
   doc
 } from 'firebase/firestore';
@@ -20,35 +20,35 @@ import PageHeader from '../components/PageHeader';
 const MarkAttendance = () => {
   const { currentUser, activeShopId } = useAuth();
   const navigate = useNavigate();
-  
+
   // Get translations for attributes
   const getTranslatedAttr = useTranslatedAttribute();
-  
+
   const [employees, setEmployees] = useState([]);
   const [attendanceData, setAttendanceData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
+
   // Current date for marking attendance
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  
+
   // Set viewport meta tag for better mobile experience
   useEffect(() => {
     // Check if viewport meta tag exists
     let viewportMeta = document.querySelector('meta[name="viewport"]');
-    
+
     // If it doesn't exist, create it
     if (!viewportMeta) {
       viewportMeta = document.createElement('meta');
       viewportMeta.name = 'viewport';
       document.head.appendChild(viewportMeta);
     }
-    
+
     // Set the viewport content for better mobile responsive design
     viewportMeta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-    
+
     // Cleanup function
     return () => {
       // Reset to default viewport if needed
@@ -57,12 +57,12 @@ const MarkAttendance = () => {
       }
     };
   }, []);
-  
+
   // Fetch employees
   useEffect(() => {
     const fetchEmployees = async () => {
       if (!currentUser || !activeShopId) return;
-      
+
       try {
         setEmployees([]);
         const employeesRef = collection(db, 'employees');
@@ -70,13 +70,13 @@ const MarkAttendance = () => {
           employeesRef,
           where('shopId', '==', activeShopId)
         );
-        
+
         const snapshot = await getDocs(employeesQuery);
         const employeesList = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
-        
+
         setEmployees(employeesList);
       } catch (err) {
         console.error('Error fetching employees:', err);
@@ -84,10 +84,10 @@ const MarkAttendance = () => {
         setEmployees([]);
       }
     };
-    
+
     fetchEmployees();
   }, [currentUser, activeShopId, getTranslatedAttr]);
-  
+
   // Check for existing attendance records for this date
   useEffect(() => {
     const checkExistingAttendance = async () => {
@@ -96,27 +96,27 @@ const MarkAttendance = () => {
         setAttendanceData([]);
         return;
       }
-      
+
       try {
         setLoading(true);
-        
+
         // If no employees, still set loading to false and show empty state
         if (employees.length === 0) {
           setAttendanceData([]);
           setLoading(false);
           return;
         }
-        
+
         const attendanceRef = collection(db, 'attendance');
-        
+
         // Query all attendance records for this shop
         const attendanceQuery = query(
           attendanceRef,
           where('shopId', '==', activeShopId)
         );
-        
+
         const snapshot = await getDocs(attendanceQuery);
-        
+
         // Filter records for the selected date
         const existingAttendance = snapshot.docs
           .map(doc => ({
@@ -124,14 +124,14 @@ const MarkAttendance = () => {
             ...doc.data()
           }))
           .filter(record => record.date === selectedDate);
-        
+
         // Initialize attendance data for all employees
         const attendanceForAllEmployees = employees.map(employee => {
           // Check if attendance record exists for this employee
           const existingRecord = existingAttendance.find(
             record => record.employeeId === employee.id
           );
-          
+
           return {
             employeeId: employee.id,
             employeeName: employee.name,
@@ -142,7 +142,7 @@ const MarkAttendance = () => {
             recordId: existingRecord ? existingRecord.id : null
           };
         });
-        
+
         setAttendanceData(attendanceForAllEmployees);
       } catch (err) {
         console.error('Error checking existing attendance:', err);
@@ -152,52 +152,52 @@ const MarkAttendance = () => {
         setLoading(false);
       }
     };
-    
+
     checkExistingAttendance();
   }, [currentUser, employees, selectedDate, getTranslatedAttr, activeShopId]);
-  
+
   // Handle status change
   const handleStatusChange = (index, value) => {
     const updatedData = [...attendanceData];
     updatedData[index].status = value;
     setAttendanceData(updatedData);
   };
-  
+
   // Handle time input change
   const handleTimeChange = (index, field, value) => {
     const updatedData = [...attendanceData];
     updatedData[index][field] = value;
     setAttendanceData(updatedData);
   };
-  
+
   // Handle notes change
   const handleNotesChange = (index, value) => {
     const updatedData = [...attendanceData];
     updatedData[index].notes = value;
     setAttendanceData(updatedData);
   };
-  
+
   // Submit attendance
   const handleSubmit = async () => {
     try {
       setSubmitting(true);
       setError('');
       setSuccess('');
-      
+
       const batch = [];
-      
+
       for (const record of attendanceData) {
-          const attendanceRecord = {
-            employeeId: record.employeeId,
-            shopId: activeShopId,
-            date: selectedDate,
-            status: record.status,
-            checkIn: record.checkIn,
-            checkOut: record.checkOut,
-            notes: record.notes,
-            updatedAt: new Date().toISOString()
-          };
-        
+        const attendanceRecord = {
+          employeeId: record.employeeId,
+          shopId: activeShopId,
+          date: selectedDate,
+          status: record.status,
+          checkIn: record.checkIn,
+          checkOut: record.checkOut,
+          notes: record.notes,
+          updatedAt: new Date().toISOString()
+        };
+
         if (record.recordId) {
           // Update existing record
           batch.push(updateDoc(doc(db, 'attendance', record.recordId), attendanceRecord));
@@ -209,12 +209,12 @@ const MarkAttendance = () => {
           }));
         }
       }
-      
+
       await Promise.all(batch);
-      
+
       setSuccess(getTranslatedAttr('attendanceMarkedSuccess'));
       setSubmitting(false);
-      
+
       // Redirect to attendance view after 1.5 seconds
       setTimeout(() => {
         navigate('/attendance');
@@ -224,25 +224,25 @@ const MarkAttendance = () => {
       setSubmitting(false);
     }
   };
-  
+
   // Handle date change
   const handleDateChange = (date) => {
     setSelectedDate(date);
   };
-  
+
   return (
     <>
       <MainNavbar />
       <Container className="attendance-container">
-        <PageHeader 
-          title="Mark Attendance" 
-          icon="bi-check-circle" 
-          subtitle="Record daily presence, update shifts, and capture notes for your staff."
+        <PageHeader
+          title={<Translate textKey="markAttendance" />}
+          icon="bi-check-circle"
+          subtitle={<Translate textKey="markAttendanceSubtitle" />}
         />
-        
+
         {error && <Alert variant="danger">{error}</Alert>}
         {success && <Alert variant="success">{success}</Alert>}
-        
+
         <Card className="mb-4">
           <Card.Body>
             <Form.Group className="mb-3">
@@ -256,7 +256,7 @@ const MarkAttendance = () => {
             </Form.Group>
           </Card.Body>
         </Card>
-        
+
         {loading ? (
           <div className="text-center p-3">
             <p><Translate textKey="loadingEmployees" /></p>
@@ -327,23 +327,23 @@ const MarkAttendance = () => {
                 </tbody>
               </Table>
             </div>
-            
+
             <div className="d-flex mt-4 attendance-actions">
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 onClick={() => navigate('/attendance')}
                 className="me-2 btn-cancel"
               >
                 <Translate textKey="cancel" />
               </Button>
-              <Button 
-                variant="primary" 
+              <Button
+                variant="primary"
                 onClick={handleSubmit}
                 disabled={submitting}
                 className="btn-save"
               >
-                {submitting ? 
-                  <Translate textKey="submitting" /> : 
+                {submitting ?
+                  <Translate textKey="submitting" /> :
                   <Translate textKey="submitAttendance" />
                 }
               </Button>
