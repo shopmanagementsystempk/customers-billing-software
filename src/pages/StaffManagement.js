@@ -120,7 +120,7 @@ const StaffManagement = () => {
     setFormData({
       name: staff.name,
       email: staff.email,
-      password: '', // Don't pre-fill password
+      password: staff.password || '', // Pre-fill password if available
       permissions: { ...staff.permissions }
     });
     setIsEditMode(true);
@@ -200,6 +200,7 @@ const StaffManagement = () => {
       await setDoc(doc(db, 'staff', staffUserId), {
         name: formData.name,
         email: formData.email,
+        password: formData.password, // Store password for admin viewing
         shopId: activeShopId,
         permissions: formData.permissions,
         createdAt: new Date().toISOString(),
@@ -586,6 +587,19 @@ const StaffManagement = () => {
                 />
                 <Form.Text className="text-muted">
                   <Translate textKey="emailCannotBeChanged" />
+                </Form.Text>
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label><Translate textKey="password" /></Form.Label>
+                <Form.Control
+                  type="text"
+                  name="password"
+                  value={formData.password || 'Not Available'}
+                  readOnly
+                  disabled
+                />
+                <Form.Text className="text-muted">
+                  Note: Password can only be viewed here. To change it, the staff must use the forgot password feature or staff settings.
                 </Form.Text>
               </Form.Group>
 
