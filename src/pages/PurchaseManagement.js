@@ -69,6 +69,7 @@ const PurchaseManagement = () => {
   const [unitsLoading, setUnitsLoading] = useState(false);
   const [showUnitModal, setShowUnitModal] = useState(false);
   const [newUnitName, setNewUnitName] = useState('');
+  const fileInputRef = React.useRef(null);
 
   const totalCost = useMemo(() => {
     return rows.reduce((sum, row) => sum + calculateRowTotal(row), 0);
@@ -360,6 +361,88 @@ const PurchaseManagement = () => {
     setPurchaseDate(new Date().toISOString().slice(0, 10));
   };
 
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const processCSV = (content) => {
+    try {
+      const lines = content.split(/\r\n|\n/).filter(line => line.trim());
+      if (lines.length < 2) {
+        setError('File appears to be empty or missing headers');
+        return;
+      }
+
+      const headers = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+      const newRows = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        // Regex to split by comma ignoring commas in quotes
+        const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^"|"$/g, ''));
+
+        if (values.length < 2) continue; // Skip empty/invalid lines
+
+        const row = { ...createEmptyRow() };
+        let hasData = false;
+
+        headers.forEach((header, index) => {
+          const value = values[index];
+          if (!value) return;
+
+          if (header.includes('name') || header.includes('item')) { row.name = value; hasData = true; }
+          else if (header.includes('category')) { row.category = value; }
+          else if (header.includes('qty') || header.includes('quantity')) { row.quantity = value; hasData = true; }
+          else if (header.includes('cost')) { row.costPrice = value; }
+          else if (header.includes('sell') || header.includes('price')) { row.sellingPrice = value; }
+          else if (header.includes('unit')) { row.unit = value; }
+          else if (header.includes('barcode') || header.includes('sku')) { row.barcode = value; }
+          else if (header.includes('description')) { row.description = value; }
+          else if (header.includes('expiry') || header.includes('date')) { row.expiryDate = value; }
+          else if (header.includes('alert') || header.includes('stock')) { row.lowStockAlert = value; }
+        });
+
+        if (hasData && row.name) {
+          newRows.push(row);
+        }
+      }
+
+      if (newRows.length > 0) {
+        setRows(prev => {
+          // If the only row is empty, replace it
+          if (prev.length === 1 && !prev[0].name.trim() && !prev[0].quantity) {
+            return newRows;
+          }
+          return [...prev, ...newRows];
+        });
+        setSuccess(`Successfully imported ${newRows.length} items from CSV.`);
+        setTimeout(() => setSuccess(''), 5000);
+      } else {
+        setError('No valid items found in the file. Please check columns: Name, Quantity, Cost, etc.');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Failed to parse CSV file');
+    }
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+      setError('Please save your Excel file as CSV (Comma delimited) to import it here.');
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      processCSV(evt.target.result);
+      e.target.value = '';
+    };
+    reader.readAsText(file);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -611,7 +694,22 @@ const PurchaseManagement = () => {
               </Row>
 
               <div className="mt-4">
-                <h5 className="mb-3"><Translate textKey="items" /></h5>
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h5 className="mb-0"><Translate textKey="items" /></h5>
+                  <div>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      accept=".csv,.txt"
+                      style={{ display: 'none' }}
+                    />
+                    <Button variant="outline-success" size="sm" onClick={handleImportClick}>
+                      <i className="bi bi-file-earmark-spreadsheet me-1"></i>
+                      Import from Excel (CSV)
+                    </Button>
+                  </div>
+                </div>
                 {rows.map((row, idx) => (
                   <Card key={idx} className="mb-3">
                     <Card.Body>
