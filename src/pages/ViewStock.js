@@ -428,12 +428,14 @@ const ViewStock = () => {
 
       // Table Header Settings
       const columns = [
-        { title: "Item Name", width: 60 },
-        { title: "Category", width: 40 },
-        { title: "Company", width: 40 },
-        { title: "Store", width: 40 },
-        { title: "Price", width: 25 },
-        { title: "Quantity", width: 25 },
+        { title: "S.#", width: 12 },
+        { title: "Item Name", width: 50 },
+        { title: "Category", width: 35 },
+        { title: "Company", width: 35 },
+        { title: "Store", width: 35 },
+        { title: "Pur. Price", width: 25 },
+        { title: "Sale Price", width: 25 },
+        { title: "Qty", width: 25 },
         { title: "Last Updated", width: 35 }
       ];
 
@@ -480,10 +482,14 @@ const ViewStock = () => {
           return str.length > maxLen ? str.substring(0, maxLen - 3) + "..." : str;
         };
 
-        pdf.text(truncate(item.name, 35), curX + 2, y); curX += 60;
-        pdf.text(truncate(item.category, 20), curX + 2, y); curX += 40;
-        pdf.text(truncate(item.companyName, 20), curX + 2, y); curX += 40;
-        pdf.text(truncate(item.storeName, 20), curX + 2, y); curX += 40;
+        // Draw Serial Number
+        pdf.text((index + 1).toString(), curX + 2, y); curX += 12;
+
+        pdf.text(truncate(item.name, 30), curX + 2, y); curX += 50;
+        pdf.text(truncate(item.category, 18), curX + 2, y); curX += 35;
+        pdf.text(truncate(item.companyName, 18), curX + 2, y); curX += 35;
+        pdf.text(truncate(item.storeName, 18), curX + 2, y); curX += 35;
+        pdf.text(`RS ${parseFloat(item.costPrice || 0).toFixed(2)}`, curX + 2, y); curX += 25;
         pdf.text(`RS ${parseFloat(item.price || 0).toFixed(2)}`, curX + 2, y); curX += 25;
         pdf.text(`${item.quantity || 0} ${item.quantityUnit || 'Units'}`, curX + 2, y); curX += 25;
         pdf.text(formatDisplayDate(item.updatedAt), curX + 2, y);
@@ -494,6 +500,34 @@ const ViewStock = () => {
 
         y += 7;
       });
+
+      // Calculate totals
+      const totalCostValue = filteredItems.reduce((sum, item) => sum + ((parseFloat(item.costPrice) || 0) * (parseFloat(item.quantity) || 0)), 0);
+      const totalSaleValue = filteredItems.reduce((sum, item) => sum + ((parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 0)), 0);
+
+      // Draw Totals Section
+      if (y > pageHeight - 35) {
+        pdf.addPage();
+        y = margin + 15;
+      } else {
+        y += 5;
+      }
+
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(10);
+      pdf.setDrawColor(0);
+      pdf.line(margin, y - 2, pageWidth - margin, y - 2);
+
+      // Total Items and Unit Price sum
+      pdf.text(`Total Items: ${filteredItems.length}`, margin + 2, y);
+      pdf.text(`Total Purchase Value: RS ${totalCostValue.toFixed(2)}`, margin + 180, y, { align: 'right' });
+      y += 7;
+
+      pdf.text(`Total Sale Value: RS ${totalSaleValue.toFixed(2)}`, margin + 180, y, { align: 'right' });
+      y += 7;
+
+      const potentialProfit = totalSaleValue - totalCostValue;
+      pdf.text(`Potential Margin/Profit: RS ${potentialProfit.toFixed(2)}`, margin + 180, y, { align: 'right' });
 
       pdf.save(`Inventory_Report_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (error) {
