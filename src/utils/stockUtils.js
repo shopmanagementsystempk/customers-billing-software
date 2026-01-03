@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, query, where, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
 // Mock data for testing/fallback
@@ -279,4 +279,36 @@ export const getStockMovements = async (shopId, itemId) => {
     .filter(m => (itemId ? m.itemId === itemId : true))
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   return list;
+};
+
+// Delete ALL stock items for a shop
+export const deleteAllShopStock = async (shopId) => {
+  try {
+    const stockRef = collection(db, 'stock');
+    const q = query(stockRef, where('shopId', '==', shopId));
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) return 0;
+
+    const BATCH_SIZE = 450;
+    const chunks = [];
+    for (let i = 0; i < snapshot.docs.length; i += BATCH_SIZE) {
+      chunks.push(snapshot.docs.slice(i, i + BATCH_SIZE));
+    }
+
+    let count = 0;
+    for (const chunk of chunks) {
+      const chunkBatch = writeBatch(db);
+      chunk.forEach(doc => {
+        chunkBatch.delete(doc.ref);
+        count++;
+      });
+      await chunkBatch.commit();
+    }
+
+    return count;
+  } catch (error) {
+    console.error('Error deleting all stock items:', error);
+    throw error;
+  }
 };
