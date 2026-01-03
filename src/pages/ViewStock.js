@@ -10,6 +10,7 @@ import './ViewStock.css'; // Import the custom CSS
 import { Translate, useTranslatedAttribute } from '../utils';
 import { formatDisplayDate } from '../utils/dateUtils';
 import JsBarcode from 'jsbarcode';
+import jsPDF from 'jspdf';
 
 const ViewStock = () => {
   const { currentUser, activeShopId } = useAuth();
@@ -42,6 +43,7 @@ const ViewStock = () => {
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
   const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
   const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [generatingPDF, setGeneratingPDF] = useState(false);
   const navigate = useNavigate();
 
   // Get translations for attributes
@@ -388,6 +390,120 @@ const ViewStock = () => {
     }
   };
 
+  // Generate PDF Report for Current Filtered Items
+  const generatePDFReport = () => {
+    if (filteredItems.length === 0) {
+      alert("No items to export.");
+      return;
+    }
+
+    setGeneratingPDF(true);
+    try {
+      const pdf = new jsPDF('l', 'mm', 'a4'); // Landscape for more columns
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+      let y = margin + 10;
+
+      // Header
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text("Inventory Stock Report", pageWidth / 2, y, { align: 'center' });
+      y += 10;
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      const filterText = [];
+      if (categoryFilter) filterText.push(`Category: ${categoryFilter}`);
+      if (storeFilter) filterText.push(`Store: ${storeFilter}`);
+      if (companyFilter) filterText.push(`Company: ${companyFilter}`);
+      if (searchTerm) filterText.push(`Search: ${searchTerm}`);
+
+      pdf.text(`Generated on: ${new Date().toLocaleString()}`, margin, y);
+      if (filterText.length > 0) {
+        y += 5;
+        pdf.text(`Filters: ${filterText.join(', ')}`, margin, y);
+      }
+      y += 10;
+
+      // Table Header Settings
+      const columns = [
+        { title: "Item Name", width: 60 },
+        { title: "Category", width: 40 },
+        { title: "Company", width: 40 },
+        { title: "Store", width: 40 },
+        { title: "Price", width: 25 },
+        { title: "Quantity", width: 25 },
+        { title: "Last Updated", width: 35 }
+      ];
+
+      // Draw Header Row
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFillColor(240, 240, 240);
+      pdf.rect(margin, y - 5, pageWidth - (2 * margin), 7, 'F');
+
+      let x = margin;
+      columns.forEach(col => {
+        pdf.text(col.title, x + 2, y);
+        x += col.width;
+      });
+      y += 7;
+
+      // Draw Rows
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+
+      filteredItems.forEach((item, index) => {
+        // Page break check
+        if (y > pageHeight - 15) {
+          pdf.addPage();
+          y = margin + 15;
+
+          // Redraw header on new page
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFillColor(240, 240, 240);
+          pdf.rect(margin, y - 5, pageWidth - (2 * margin), 7, 'F');
+          let curX = margin;
+          columns.forEach(col => {
+            pdf.text(col.title, curX + 2, y);
+            curX += col.width;
+          });
+          pdf.setFont('helvetica', 'normal');
+          y += 7;
+        }
+
+        let curX = margin;
+
+        // Truncate long strings if necessary
+        const truncate = (str, maxLen) => {
+          if (!str) return "-";
+          return str.length > maxLen ? str.substring(0, maxLen - 3) + "..." : str;
+        };
+
+        pdf.text(truncate(item.name, 35), curX + 2, y); curX += 60;
+        pdf.text(truncate(item.category, 20), curX + 2, y); curX += 40;
+        pdf.text(truncate(item.companyName, 20), curX + 2, y); curX += 40;
+        pdf.text(truncate(item.storeName, 20), curX + 2, y); curX += 40;
+        pdf.text(`RS ${parseFloat(item.price || 0).toFixed(2)}`, curX + 2, y); curX += 25;
+        pdf.text(`${item.quantity || 0} ${item.quantityUnit || 'Units'}`, curX + 2, y); curX += 25;
+        pdf.text(formatDisplayDate(item.updatedAt), curX + 2, y);
+
+        // Draw line separator
+        pdf.setDrawColor(230, 230, 230);
+        pdf.line(margin, y + 2, pageWidth - margin, y + 2);
+
+        y += 7;
+      });
+
+      pdf.save(`Inventory_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error("PDF Export error:", error);
+      alert("Failed to generate PDF. Please try again.");
+    } finally {
+      setGeneratingPDF(false);
+    }
+  };
+
   const handleEditCategory = (category) => {
     setEditCategory({ id: category.id, name: category.name, description: category.description || '' });
     setShowEditCategoryModal(true);
@@ -485,6 +601,14 @@ const ViewStock = () => {
               onClick={() => navigate('/add-stock')}
             >
               <Translate textKey="addNewItem" />
+            </Button>
+            <Button
+              variant="outline-info"
+              onClick={generatePDFReport}
+              disabled={generatingPDF}
+            >
+              <i className="bi bi-file-earmark-pdf me-1"></i>
+              {generatingPDF ? "Generating PDF..." : "Download Report (PDF)"}
             </Button>
             <Button
               variant="outline-primary"
