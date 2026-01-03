@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
-import { getShopStock, deleteStockItem } from '../utils/stockUtils';
+import { getShopStock, deleteStockItem, deleteAllShopStock } from '../utils/stockUtils';
 import { getInventoryCategories, addInventoryCategory, updateInventoryCategory, deleteInventoryCategory } from '../utils/categoryUtils';
 import './ViewStock.css'; // Import the custom CSS
 import { Translate, useTranslatedAttribute } from '../utils';
@@ -39,10 +39,34 @@ const ViewStock = () => {
   const [categorySuccess, setCategorySuccess] = useState('');
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [alertItems, setAlertItems] = useState([]);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const navigate = useNavigate();
 
   // Get translations for attributes
   const getTranslatedAttr = useTranslatedAttribute();
+
+  // Delete ALL items
+  const handleDeleteAll = () => {
+    if (deleteConfirmationText !== 'DELETE ALL' || !activeShopId) return;
+
+    setIsDeletingAll(true);
+    deleteAllShopStock(activeShopId)
+      .then((count) => {
+        setStockItems([]);
+        setShowDeleteAllModal(false);
+        setDeleteConfirmationText('');
+        alert(`Successfully deleted ${count} items.`);
+      })
+      .catch(error => {
+        console.error('Error deleting all items:', error);
+        alert('Failed to delete items. Please try again.');
+      })
+      .finally(() => {
+        setIsDeletingAll(false);
+      });
+  };
 
   const fetchStock = useCallback(() => {
     if (!currentUser || !activeShopId) return;
@@ -469,6 +493,13 @@ const ViewStock = () => {
               <i className="bi bi-tags me-1"></i>
               <Translate textKey="manageCategories" fallback="Manage Categories" />
             </Button>
+            <Button
+              variant="outline-danger"
+              onClick={() => setShowDeleteAllModal(true)}
+            >
+              <i className="bi bi-trash me-1"></i>
+              <Translate textKey="deleteAll" fallback="Delete All Inventory" />
+            </Button>
           </div>
         </div>
 
@@ -696,6 +727,38 @@ const ViewStock = () => {
             </Button>
             <Button variant="danger" onClick={handleDelete}>
               <Translate textKey="delete" />
+            </Button>
+          </Modal.Footer>
+        </Modal>
+
+        {/* Delete All Confirmation Modal */}
+        <Modal show={showDeleteAllModal} onHide={() => { setShowDeleteAllModal(false); setDeleteConfirmationText(''); }}>
+          <Modal.Header closeButton className="bg-danger text-white">
+            <Modal.Title>⚠ DANGER: Delete All Inventory</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Alert variant="danger">
+              <strong>Warning:</strong> This action cannot be undone. This will permanently delete <strong>ALL</strong> {stockItems.length} items in your inventory.
+            </Alert>
+            <p>To confirm, please type <strong>DELETE ALL</strong> in the box below:</p>
+            <Form.Control
+              type="text"
+              placeholder="Type DELETE ALL to confirm"
+              value={deleteConfirmationText}
+              onChange={(e) => setDeleteConfirmationText(e.target.value)}
+              className="border-danger"
+            />
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => { setShowDeleteAllModal(false); setDeleteConfirmationText(''); }}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleDeleteAll}
+              disabled={deleteConfirmationText !== 'DELETE ALL' || isDeletingAll}
+            >
+              {isDeletingAll ? 'Deleting...' : 'Permanently Delete Everything'}
             </Button>
           </Modal.Footer>
         </Modal>
