@@ -19,6 +19,8 @@ const ViewStock = () => {
   const [sortField, setSortField] = useState('name');
   const [sortDirection, setSortDirection] = useState('asc');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [storeFilter, setStoreFilter] = useState('');
+  const [companyFilter, setCompanyFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
@@ -100,6 +102,10 @@ const ViewStock = () => {
   const stockCategories = [...new Set(stockItems.map(item => item.category))].filter(Boolean);
   const allCategories = [...new Set([...inventoryCategories.map(cat => cat.name), ...stockCategories])].sort();
 
+  // Get unique stores and companies
+  const allStores = [...new Set(stockItems.map(item => item.storeName))].filter(Boolean).sort();
+  const allCompanies = [...new Set(stockItems.map(item => item.companyName))].filter(Boolean).sort();
+
   // Handle search and filtering
   // Helper functions for status filtering
   const isExpired = (item) => {
@@ -122,6 +128,8 @@ const ViewStock = () => {
         item.category?.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesCategory = categoryFilter ? item.category === categoryFilter : true;
+      const matchesStore = storeFilter ? (item.storeName === storeFilter) : true;
+      const matchesCompany = companyFilter ? (item.companyName === companyFilter) : true;
 
       const matchesStatus = statusFilter === ''
         ? true
@@ -131,7 +139,7 @@ const ViewStock = () => {
             ? isExpired(item)
             : true;
 
-      return matchesSearch && matchesCategory && matchesStatus;
+      return matchesSearch && matchesCategory && matchesStatus && matchesStore && matchesCompany;
     })
     .sort((a, b) => {
       // Handle client-side sorting
@@ -515,6 +523,35 @@ const ViewStock = () => {
                     <option value=""><Translate textKey="allCategories" fallback="All items" /></option>
                     <option value="low"><Translate textKey="lowStock" fallback="Low Stock" /></option>
                     <option value="expired"><Translate textKey="expired" fallback="Expired" /></option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+
+              <Col md={6} lg={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Filter by Store</Form.Label>
+                  <Form.Select
+                    value={storeFilter}
+                    onChange={(e) => setStoreFilter(e.target.value)}
+                  >
+                    <option value="">All Stores</option>
+                    {allStores.map((store, index) => (
+                      <option key={index} value={store}>{store}</option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={6} lg={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Filter by Company</Form.Label>
+                  <Form.Select
+                    value={companyFilter}
+                    onChange={(e) => setCompanyFilter(e.target.value)}
+                  >
+                    <option value="">All Companies</option>
+                    {allCompanies.map((company, index) => (
+                      <option key={index} value={company}>{company}</option>
+                    ))}
                   </Form.Select>
                 </Form.Group>
               </Col>
