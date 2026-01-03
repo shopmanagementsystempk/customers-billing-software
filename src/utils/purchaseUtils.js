@@ -9,6 +9,9 @@ const normalizeNumber = (value, fallback = 0) => {
   return Number.isNaN(parsed) ? fallback : parsed;
 };
 
+const MAX_ITEMS_IN_MAIN_DOC = 500;
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 export const createPurchaseOrder = async (shopId, purchasePayload) => {
   if (!shopId) {
     throw new Error('Shop ID is required to create a purchase order');
@@ -28,6 +31,7 @@ export const createPurchaseOrder = async (shopId, purchasePayload) => {
   const operations = []; // Array of { type: 'set'|'update', ref, data }
 
   const pDate = purchaseDate || new Date().toISOString();
+  let totalCost = 0;
 
   // 1. Process all items
   for (const item of items) {
@@ -35,28 +39,28 @@ export const createPurchaseOrder = async (shopId, purchasePayload) => {
     const normalizedCostPrice =
       item.costPrice !== undefined && item.costPrice !== '' ? normalizeNumber(item.costPrice, null) : null;
 
+    totalCost += (normalizedQuantity * (normalizedCostPrice || 0));
+
     const normalizedLowStockAlert = item.lowStockAlert !== undefined && item.lowStockAlert !== '' && item.lowStockAlert !== null
       ? normalizeNumber(item.lowStockAlert, null)
       : null;
 
     if (item.sourceItemId) {
       // --- Existing Item ---
-      // Aggregate stock updates to prevent collision in batches
       const currentUpdate = stockUpdates.get(item.sourceItemId) || { quantity: 0, fields: {} };
-
-      // Sum quantity
       currentUpdate.quantity += normalizedQuantity;
 
-      // Merge other fields (Last one wins logic for metadata)
       const updateFields = { updatedAt: new Date().toISOString() };
       if (item.expiryDate) updateFields.expiryDate = item.expiryDate;
       updateFields.purchaseDate = pDate;
       if (normalizedLowStockAlert !== null) updateFields.lowStockAlert = normalizedLowStockAlert;
 
+      if (item.storeName) updateFields.storeName = item.storeName;
+      if (item.companyName) updateFields.companyName = item.companyName;
+
       currentUpdate.fields = { ...currentUpdate.fields, ...updateFields };
       stockUpdates.set(item.sourceItemId, currentUpdate);
 
-      // Create Movement (Unique doc, no collision)
       const moveRef = doc(movementCollectionRef);
       operations.push({
         type: 'set',
@@ -104,6 +108,8 @@ export const createPurchaseOrder = async (shopId, purchasePayload) => {
         sku: item.sku?.trim() || '',
         expiryDate: item.expiryDate || null,
         lowStockAlert: normalizedLowStockAlert,
+        storeName: item.storeName?.trim() || '',
+        companyName: item.companyName?.trim() || '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -133,41 +139,88 @@ export const createPurchaseOrder = async (shopId, purchasePayload) => {
     operations.push({ type: 'update', ref: stockRef, data: payload });
   });
 
-  // 3. Execute Batches (Parallelized)
-  const BATCH_SIZE = 450; // Safety margin below 500
-  const batchPromises = [];
+  try {
+    // 3. Execute Stock & Movement Batches (SEQUENTIAL + THROTTLED)
+    const BATCH_SIZE = 250;
+    const opChunks = [];
+    for (let i = 0; i < operations.length; i += BATCH_SIZE) {
+      opChunks.push(operations.slice(i, i + BATCH_SIZE));
+    }
 
-  for (let i = 0; i < operations.length; i += BATCH_SIZE) {
-    const batch = writeBatch(db);
-    const chunk = operations.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < opChunks.length; i++) {
+      const chunk = opChunks[i];
+      const batch = writeBatch(db);
+      chunk.forEach(op => {
+        if (op.type === 'set') batch.set(op.ref, op.data);
+        else if (op.type === 'update') batch.update(op.ref, op.data);
+      });
 
-    chunk.forEach(op => {
-      if (op.type === 'set') {
-        batch.set(op.ref, op.data);
-      } else if (op.type === 'update') {
-        batch.update(op.ref, op.data);
+      await batch.commit();
+
+      // Artificial Delay to avoid rate limiting
+      if (i < opChunks.length - 1) {
+        await delay(300);
       }
-    });
+    }
 
-    batchPromises.push(batch.commit());
+    // 4. Save Purchase Order
+    const isLargeOrder = preparedItems.length > MAX_ITEMS_IN_MAIN_DOC;
+
+    const payload = {
+      shopId,
+      supplier: supplier?.trim() || '',
+      invoiceNumber: invoiceNumber?.trim() || '',
+      purchaseDate: pDate,
+      note: note?.trim() || '',
+      reference: reference?.trim() || '',
+      createdAt: new Date().toISOString(),
+      totalCost,
+      totalItems: preparedItems.length,
+      isLargeOrder,
+      items: isLargeOrder ? [] : preparedItems
+    };
+
+    const docRef = await addDoc(purchaseCollectionRef, payload);
+
+    // 5. If large order, save items to subcollection (SEQUENTIAL + THROTTLED)
+    if (isLargeOrder) {
+      const itemsSubRef = collection(docRef, 'items');
+      const itemChunks = [];
+      for (let i = 0; i < preparedItems.length; i += BATCH_SIZE) {
+        itemChunks.push(preparedItems.slice(i, i + BATCH_SIZE));
+      }
+
+      for (let i = 0; i < itemChunks.length; i++) {
+        const chunk = itemChunks[i];
+        const batch = writeBatch(db);
+        chunk.forEach(item => {
+          const ref = doc(itemsSubRef);
+          batch.set(ref, item);
+        });
+
+        await batch.commit();
+        if (i < itemChunks.length - 1) {
+          await delay(300);
+        }
+      }
+    }
+
+    return { id: docRef.id, ...payload };
+
+  } catch (error) {
+    console.error("Purchase Creation Error:", error);
+    if (error.code === 'resource-exhausted') {
+      throw new Error("Daily Write Quota Exceeded. You have hit the limit of Firestore writes for today. Please wait for the quota to reset or upgrade your Firebase plan.");
+    }
+    throw error;
   }
+};
 
-  await Promise.all(batchPromises);
-
-  // 4. Save Purchase Order
-  const payload = {
-    shopId,
-    supplier: supplier?.trim() || '',
-    invoiceNumber: invoiceNumber?.trim() || '',
-    purchaseDate: pDate,
-    note: note?.trim() || '',
-    reference: reference?.trim() || '',
-    items: preparedItems,
-    createdAt: new Date().toISOString(),
-  };
-
-  const docRef = await addDoc(purchaseCollectionRef, payload);
-  return { id: docRef.id, ...payload };
+export const getPurchaseOrderItems = async (purchaseId) => {
+  if (!purchaseId) return [];
+  const itemsRef = collection(db, purchaseCollection, purchaseId, 'items');
+  const snapshot = await getDocs(itemsRef);
+  return snapshot.docs.map(doc => doc.data());
 };
 
 export const getPurchaseOrders = async (shopId) => {
@@ -178,5 +231,3 @@ export const getPurchaseOrders = async (shopId) => {
   const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   return list.sort((a, b) => new Date(b.purchaseDate || b.createdAt) - new Date(a.purchaseDate || a.createdAt));
 };
-
-
