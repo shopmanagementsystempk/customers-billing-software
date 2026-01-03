@@ -299,10 +299,10 @@ export const deleteAllShopStock = async (shopId) => {
     let count = 0;
     for (const chunk of chunks) {
       const chunkBatch = writeBatch(db);
-      chunk.forEach(doc => {
+      for (const doc of chunk) {
         chunkBatch.delete(doc.ref);
         count++;
-      });
+      }
       await chunkBatch.commit();
     }
 
