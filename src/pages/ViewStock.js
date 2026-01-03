@@ -580,6 +580,8 @@ const ViewStock = () => {
                         </th>
                         <th className="description-column"><Translate textKey="description" /></th>
                         <th><Translate textKey="category" /></th>
+                        <th>Company</th>
+                        <th>Store</th>
                         <th
                           className="cursor-pointer"
                           onClick={() => handleSort('price')}
@@ -620,6 +622,8 @@ const ViewStock = () => {
                             </div>
                           </td>
                           <td data-label={getTranslatedAttr("category")}>{item.category || '-'}</td>
+                          <td data-label="Company">{item.companyName || '-'}</td>
+                          <td data-label="Store">{item.storeName || '-'}</td>
                           <td data-label={getTranslatedAttr("price")}>RS{parseFloat(item.price).toFixed(2)}</td>
                           <td data-label={getTranslatedAttr("quantity")}>
                             <Badge bg={getQuantityBadgeVariant(item.quantity)}>
