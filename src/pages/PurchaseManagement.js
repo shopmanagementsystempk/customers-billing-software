@@ -23,7 +23,9 @@ const defaultRow = {
   sellingPrice: '',
   expiryDate: '',
   barcode: '',
-  lowStockAlert: ''
+  lowStockAlert: '',
+  storeName: '',
+  companyName: ''
 };
 const createEmptyRow = () => ({ ...defaultRow });
 
@@ -326,7 +328,9 @@ const PurchaseManagement = () => {
         lowStockAlert:
           selectedItem.lowStockAlert !== undefined && selectedItem.lowStockAlert !== null
             ? selectedItem.lowStockAlert.toString()
-            : next[index].lowStockAlert
+            : next[index].lowStockAlert,
+        storeName: selectedItem.storeName || next[index].storeName || '',
+        companyName: selectedItem.companyName || next[index].companyName || ''
       };
 
       return next;
@@ -350,7 +354,9 @@ const PurchaseManagement = () => {
       sellingPrice: row.sellingPrice ? parseFloat(row.sellingPrice) : null,
       expiryDate: row.expiryDate || null,
       sku: (row.barcode || '').trim(),
-      lowStockAlert: row.lowStockAlert ? parseFloat(row.lowStockAlert) : null
+      lowStockAlert: row.lowStockAlert ? parseFloat(row.lowStockAlert) : null,
+      storeName: row.storeName ? row.storeName.trim() : '',
+      companyName: row.companyName ? row.companyName.trim() : ''
     }));
   };
 
@@ -427,9 +433,9 @@ const PurchaseManagement = () => {
             row.category = value;
             catValue = value;
           }
-          else if (header.includes('qty') || header.includes('quantity')) { row.quantity = value; hasData = true; }
-          else if (header.includes('cost')) { row.costPrice = value; }
-          else if (header.includes('sell') || header.includes('price')) { row.sellingPrice = value; }
+          else if (header.includes('qty') || header.includes('quantity')) { row.quantity = value.replace(/,/g, ''); hasData = true; }
+          else if (header.includes('cost')) { row.costPrice = value.replace(/,/g, ''); }
+          else if (header.includes('sell') || header.includes('price')) { row.sellingPrice = value.replace(/,/g, ''); }
           else if (header.includes('unit')) {
             row.unit = value;
             unitValue = value;
@@ -438,6 +444,8 @@ const PurchaseManagement = () => {
           else if (header.includes('description')) { row.description = value; }
           else if (header.includes('expiry') || header.includes('date')) { row.expiryDate = parseDate(value); }
           else if (header.includes('alert') || header.includes('stock')) { row.lowStockAlert = value; }
+          else if (header.includes('store')) { row.storeName = value; }
+          else if (header.includes('company')) { row.companyName = value; }
         });
 
         if (hasData && row.name) {
@@ -592,9 +600,22 @@ const PurchaseManagement = () => {
     }
   };
 
-  const printInvoice = (purchase) => {
+  const printInvoice = async (purchase) => {
     if (!purchase) return;
     try {
+      let itemsToPrint = purchase.items || [];
+      if ((!itemsToPrint.length && purchase.isLargeOrder) || (purchase.totalItems > 0 && !itemsToPrint.length)) {
+        // Fetch items lazily
+        try {
+          const { getPurchaseOrderItems } = await import('../utils/purchaseUtils');
+          itemsToPrint = await getPurchaseOrderItems(purchase.id);
+        } catch (e) {
+          console.error("Failed to load items for printing", e);
+          alert("Could not load items for printing.");
+          return;
+        }
+      }
+
       const iframe = document.createElement('iframe');
       iframe.style.position = 'fixed';
       iframe.style.right = '0';
@@ -604,9 +625,9 @@ const PurchaseManagement = () => {
       iframe.style.border = '0';
       document.body.appendChild(iframe);
 
-      const total = purchase.items.reduce((sum, item) => sum + (item.quantity * (item.costPrice || 0)), 0);
+      const total = purchase.totalCost !== undefined ? purchase.totalCost : itemsToPrint.reduce((sum, item) => sum + (item.quantity * (item.costPrice || 0)), 0);
       const purchaseDateDisplay = formatDisplayDate(purchase.purchaseDate || new Date());
-      const bodyRows = purchase.items.map(item => `
+      const bodyRows = itemsToPrint.map(item => `
         <tr>
           <td>${item.name}</td>
           <td>${item.category || '-'}</td>
@@ -705,14 +726,15 @@ const PurchaseManagement = () => {
         </thead>
         <tbody>
           {history.map(purchase => {
-            const total = purchase.items?.reduce((sum, item) => sum + (item.quantity * (item.costPrice || 0)), 0) || 0;
+            const total = purchase.totalCost !== undefined ? purchase.totalCost : (purchase.items?.reduce((sum, item) => sum + (item.quantity * (item.costPrice || 0)), 0) || 0);
+            const itemCount = purchase.totalItems !== undefined ? purchase.totalItems : (purchase.items?.length || 0);
             return (
               <tr key={purchase.id}>
                 <td>{purchase.invoiceNumber || '-'}</td>
                 <td>{purchase.supplier || '-'}</td>
                 <td>{formatDisplayDate(purchase.purchaseDate)}</td>
                 <td>
-                  <Badge bg="primary">{purchase.items?.length || 0}</Badge>
+                  <Badge bg="primary">{itemCount}</Badge>
                 </td>
                 <td>RS {formatCurrency(total)}</td>
                 <td>
@@ -1019,6 +1041,28 @@ const PurchaseManagement = () => {
                               <Form.Text className="text-muted">
                                 <Translate textKey="lowStockAlertHelp" />
                               </Form.Text>
+                            </Form.Group>
+                          </Col>
+                          <Col md={3}>
+                            <Form.Group>
+                              <Form.Label>Store Name</Form.Label>
+                              <Form.Control
+                                type="text"
+                                value={row.storeName || ''}
+                                onChange={(e) => setRowValue(idx, 'storeName', e.target.value)}
+                                placeholder="Optional"
+                              />
+                            </Form.Group>
+                          </Col>
+                          <Col md={3}>
+                            <Form.Group>
+                              <Form.Label>Company Name</Form.Label>
+                              <Form.Control
+                                type="text"
+                                value={row.companyName || ''}
+                                onChange={(e) => setRowValue(idx, 'companyName', e.target.value)}
+                                placeholder="Optional"
+                              />
                             </Form.Group>
                           </Col>
                         </Row>
