@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Container, Card, Row, Col, Form, Button, Alert, Table, Badge, Spinner, Modal } from 'react-bootstrap';
 import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
@@ -139,26 +139,27 @@ const PurchaseManagement = () => {
     fetchSuppliers();
   }, [fetchSuppliers]);
 
-  useEffect(() => {
+  const fetchUnits = useCallback(async () => {
     if (!currentUser?.uid || !activeShopId) return;
-    const fetchUnits = async () => {
-      try {
-        setUnitsLoading(true);
-        const unitsRef = collection(db, 'units');
-        const q = query(unitsRef, where('shopId', '==', activeShopId));
-        const snapshot = await getDocs(q);
-        const custom = snapshot.docs.map(d => (d.data().name || '').toLowerCase()).filter(Boolean);
-        const defaults = ['units', 'kg', 'litre', 'pack'];
-        const merged = Array.from(new Set([...defaults, ...custom]));
-        setUnits(merged);
-      } catch (e) {
-        console.error('Failed to load units', e);
-      } finally {
-        setUnitsLoading(false);
-      }
-    };
-    fetchUnits();
+    try {
+      setUnitsLoading(true);
+      const unitsRef = collection(db, 'units');
+      const q = query(unitsRef, where('shopId', '==', activeShopId));
+      const snapshot = await getDocs(q);
+      const custom = snapshot.docs.map(d => (d.data().name || '').toLowerCase()).filter(Boolean);
+      const defaults = ['units', 'kg', 'litre', 'pack'];
+      const merged = Array.from(new Set([...defaults, ...custom]));
+      setUnits(merged);
+    } catch (e) {
+      console.error('Failed to load units', e);
+    } finally {
+      setUnitsLoading(false);
+    }
   }, [currentUser, activeShopId]);
+
+  useEffect(() => {
+    fetchUnits();
+  }, [fetchUnits]);
 
   const setRowValue = (index, key, value) => {
     setRows(prev => {
@@ -365,63 +366,173 @@ const PurchaseManagement = () => {
     fileInputRef.current?.click();
   };
 
-  const processCSV = (content) => {
+  const parseDate = (dateStr) => {
+    if (!dateStr) return '';
+    const cleanStr = dateStr.trim();
+    // Already in YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(cleanStr)) return cleanStr;
+
+    // Handle DD/MM/YYYY, DD-MM-YYYY, MM/DD/YYYY
+    // We assume DD-MM-YYYY or DD/MM/YYYY as primary for non-US regions, but lets try to be smart
+    const parts = cleanStr.split(/[\/\-\.]/);
+    if (parts.length === 3) {
+      let [p1, p2, p3] = parts;
+
+      // If first part is 4 digits, it is year: YYYY/MM/DD
+      if (p1.length === 4) {
+        return `${p1}-${p2.padStart(2, '0')}-${p3.padStart(2, '0')}`;
+      }
+
+      // If last part is 2 digits, assume 20xx
+      if (p3.length === 2) p3 = '20' + p3;
+
+      // Assume DD/MM/YYYY
+      // We return YYYY-MM-DD
+      return `${p3}-${p2.padStart(2, '0')}-${p1.padStart(2, '0')}`;
+    }
+    return '';
+  };
+
+  const processCSV = async (content) => {
     try {
+      setLoading(true);
       const lines = content.split(/\r\n|\n/).filter(line => line.trim());
       if (lines.length < 2) {
         setError('File appears to be empty or missing headers');
+        setLoading(false);
         return;
       }
 
       const headers = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-      const newRows = [];
+      const parsedRows = [];
+      const potentialCategories = new Set();
+      const potentialUnits = new Set();
 
       for (let i = 1; i < lines.length; i++) {
-        // Regex to split by comma ignoring commas in quotes
         const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^"|"$/g, ''));
-
-        if (values.length < 2) continue; // Skip empty/invalid lines
+        if (values.length < 2) continue;
 
         const row = { ...createEmptyRow() };
         let hasData = false;
+        let catValue = '';
+        let unitValue = '';
 
         headers.forEach((header, index) => {
           const value = values[index];
           if (!value) return;
 
           if (header.includes('name') || header.includes('item')) { row.name = value; hasData = true; }
-          else if (header.includes('category')) { row.category = value; }
+          else if (header.includes('category')) {
+            row.category = value;
+            catValue = value;
+          }
           else if (header.includes('qty') || header.includes('quantity')) { row.quantity = value; hasData = true; }
           else if (header.includes('cost')) { row.costPrice = value; }
           else if (header.includes('sell') || header.includes('price')) { row.sellingPrice = value; }
-          else if (header.includes('unit')) { row.unit = value; }
+          else if (header.includes('unit')) {
+            row.unit = value;
+            unitValue = value;
+          }
           else if (header.includes('barcode') || header.includes('sku')) { row.barcode = value; }
           else if (header.includes('description')) { row.description = value; }
-          else if (header.includes('expiry') || header.includes('date')) { row.expiryDate = value; }
+          else if (header.includes('expiry') || header.includes('date')) { row.expiryDate = parseDate(value); }
           else if (header.includes('alert') || header.includes('stock')) { row.lowStockAlert = value; }
         });
 
         if (hasData && row.name) {
-          newRows.push(row);
+          if (catValue) potentialCategories.add(catValue);
+          if (unitValue) potentialUnits.add(unitValue);
+          parsedRows.push({ row, rawCategory: catValue, rawUnit: unitValue });
         }
       }
 
-      if (newRows.length > 0) {
+      // 1. Handle Categories
+      const newItemsToCreate = [];
+      const categoryMap = {}; // raw -> db name
+
+      for (const catName of potentialCategories) {
+        const match = categories.find(c => c.name.toLowerCase() === catName.toLowerCase());
+        if (match) {
+          categoryMap[catName] = match.name;
+        } else {
+          // New Category
+          // Capitalize first letter for better formatted storage
+          const formattedName = catName.charAt(0).toUpperCase() + catName.slice(1);
+          newItemsToCreate.push(
+            addInventoryCategory({
+              name: formattedName,
+              description: 'Auto-created from Import',
+              shopId: activeShopId
+            }).then(() => {
+              categoryMap[catName] = formattedName;
+            })
+          );
+        }
+      }
+
+      // 2. Handle Units
+      const newUnitsToCreate = [];
+      const unitMap = {}; // raw -> db name
+
+      for (const unitName of potentialUnits) {
+        const match = units.find(u => u.toLowerCase() === unitName.toLowerCase());
+        if (match) {
+          unitMap[unitName] = match;
+        } else {
+          // New Unit
+          const formattedUnit = unitName.toLowerCase();
+          newUnitsToCreate.push(
+            addDoc(collection(db, 'units'), { shopId: activeShopId, name: formattedUnit })
+              .then(() => {
+                unitMap[unitName] = formattedUnit;
+              })
+          );
+        }
+      }
+
+      // Wait for all creations
+      if (newItemsToCreate.length > 0 || newUnitsToCreate.length > 0) {
+        await Promise.all([...newItemsToCreate, ...newUnitsToCreate]);
+        // Refresh lists so UI works
+        fetchCategories();
+        fetchUnits();
+      }
+
+      // 3. Finalize Rows
+      const finalRows = parsedRows.map(({ row, rawCategory, rawUnit }) => {
+        if (rawCategory && categoryMap[rawCategory]) {
+          row.category = categoryMap[rawCategory];
+        } else if (rawCategory) {
+          // Fallback if creation failed or map logic missed (shouldn't happen)
+          row.category = rawCategory.charAt(0).toUpperCase() + rawCategory.slice(1);
+        }
+
+        if (rawUnit && unitMap[rawUnit]) {
+          row.unit = unitMap[rawUnit];
+        } else if (rawUnit) {
+          row.unit = rawUnit.toLowerCase();
+        }
+        return row;
+      });
+
+      if (finalRows.length > 0) {
         setRows(prev => {
-          // If the only row is empty, replace it
           if (prev.length === 1 && !prev[0].name.trim() && !prev[0].quantity) {
-            return newRows;
+            return finalRows;
           }
-          return [...prev, ...newRows];
+          return [...prev, ...finalRows];
         });
-        setSuccess(`Successfully imported ${newRows.length} items from CSV.`);
+        setSuccess(`Successfully imported ${finalRows.length} items. New categories/units auto-created if missing.`);
         setTimeout(() => setSuccess(''), 5000);
       } else {
-        setError('No valid items found in the file. Please check columns: Name, Quantity, Cost, etc.');
+        setError('No valid items found.');
       }
+
     } catch (err) {
       console.error(err);
-      setError('Failed to parse CSV file');
+      setError('Failed to process CSV file');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -436,8 +547,8 @@ const PurchaseManagement = () => {
     }
 
     const reader = new FileReader();
-    reader.onload = (evt) => {
-      processCSV(evt.target.result);
+    reader.onload = async (evt) => {
+      await processCSV(evt.target.result);
       e.target.value = '';
     };
     reader.readAsText(file);
@@ -446,7 +557,9 @@ const PurchaseManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setError('');
     setSuccess('');
+    if (loading) return; // Prevent double submit
 
     const validRows = validateRows();
     if (!validRows) return;
