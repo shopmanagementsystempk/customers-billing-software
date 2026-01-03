@@ -41,6 +41,7 @@ const calculateRowTotal = (row) => {
 const PurchaseManagement = () => {
   const { currentUser, shopData, activeShopId } = useAuth();
   const [rows, setRows] = useState([createEmptyRow()]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [supplier, setSupplier] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -808,197 +809,256 @@ const PurchaseManagement = () => {
 
               <div className="mt-4">
                 <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h5 className="mb-0"><Translate textKey="items" /></h5>
-                  <div>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileUpload}
-                      accept=".csv,.txt"
-                      style={{ display: 'none' }}
-                    />
-                    <Button variant="outline-success" size="sm" onClick={handleImportClick}>
-                      <i className="bi bi-file-earmark-spreadsheet me-1"></i>
-                      Import from Excel (CSV)
-                    </Button>
-                  </div>
-                </div>
-                {rows.map((row, idx) => (
-                  <Card key={idx} className="mb-3">
-                    <Card.Body>
-                      <Row className="g-3">
-                        <Col md={4}>
-                          <Form.Group>
-                            <Form.Label><Translate textKey="existingProduct" /></Form.Label>
-                            <Select
-                              isDisabled={stockLoading || !stockItems.length}
-                              isClearable
-                              placeholder={stockLoading ? getTranslatedAttr("loading") : getTranslatedAttr("searchInventoryPlaceholder")}
-                              options={stockItems.map(item => ({
-                                value: item.id,
-                                label: `${item.name}${item.barcode ? ` • ${item.barcode}` : ''}`,
-                                barcode: item.barcode || '',
-                                name: item.name || ''
-                              }))}
-                              value={(row.sourceItemId && stockItems.length) ? (() => {
-                                const it = stockItems.find(i => i.id === row.sourceItemId);
-                                return it ? { value: it.id, label: `${it.name}${it.barcode ? ` • ${it.barcode}` : ''}`, barcode: it.barcode || '', name: it.name || '' } : null;
-                              })() : null}
-                              onChange={(selected) => handleSelectExistingProduct(idx, selected ? selected.value : '')}
-                              filterOption={(candidate, input) => {
-                                const text = (input || '').toLowerCase();
-                                return candidate.label.toLowerCase().includes(text) ||
-                                  ((candidate.data && candidate.data.barcode) ? candidate.data.barcode.toLowerCase().includes(text) : false);
-                              }}
-                            />
-                            <Form.Text className="text-muted">
-                              {stockItems.length
-                                ? 'Select to auto-fill item details'
-                                : 'No products in inventory yet'}
-                            </Form.Text>
-                          </Form.Group>
-                        </Col>
-                        <Col md={4}>
-                          <Form.Group>
-                            <Form.Label><Translate textKey="itemNameLabel" /></Form.Label>
-                            <Form.Control value={row.name} onChange={(e) => setRowValue(idx, 'name', e.target.value)} required />
-                          </Form.Group>
-                        </Col>
-                        <Col md={4}>
-                          <Form.Group>
-                            <div className="d-flex justify-content-between align-items-center mb-1">
-                              <Form.Label className="mb-0">Category</Form.Label>
-                              <Button
-                                variant="link"
-                                size="sm"
-                                className="p-0 text-decoration-none"
-                                onClick={() => setShowCategoryModal(true)}
-                                style={{ fontSize: '0.75rem' }}
-                              >
-                                <i className="bi bi-pencil-square me-1"></i><Translate textKey="manageCategories" />
-                              </Button>
-                            </div>
-                            <Form.Select
-                              value={row.category}
-                              onChange={(e) => setRowValue(idx, 'category', e.target.value)}
-                              disabled={categoriesLoading}
-                            >
-                              <option value="">Select a category</option>
-                              {categories.map(cat => (
-                                <option key={cat.id} value={cat.name}>
-                                  {cat.name}
-                                </option>
-                              ))}
-                            </Form.Select>
-                            <Form.Text className="text-muted">
-                              {categoriesLoading ? 'Loading categories...' : categories.length === 0 ? 'No categories yet. Click "Manage Categories" to add.' : ''}
-                            </Form.Text>
-                          </Form.Group>
-                        </Col>
-                      </Row>
-                      <Row className="g-3 mt-1">
-                        <Col md={4}>
-                          <Form.Group>
-                            <div className="d-flex justify-content-between align-items-center mb-1">
-                              <Form.Label className="mb-0">Barcode</Form.Label>
-                              <Button
-                                variant="link"
-                                size="sm"
-                                className="p-0 text-decoration-none"
-                                onClick={() => generateBarcodeForRow(idx)}
-                                style={{ fontSize: '0.75rem' }}
-                              >
-                                <i className="bi bi-upc-scan me-1"></i><Translate textKey="generate" />
-                              </Button>
-                            </div>
-                            <Form.Control value={row.barcode || ''} onChange={(e) => setRowValue(idx, 'barcode', e.target.value)} placeholder={getTranslatedAttr("optional")} />
-                            <Form.Text className="text-muted"><Translate textKey="barcodeScanningHelp" /></Form.Text>
-                          </Form.Group>
-                        </Col>
-                      </Row>
-                      <Row className="g-3 mt-1">
-                        <Col md={12}>
-                          <Form.Group>
-                            <Form.Label><Translate textKey="description" /></Form.Label>
-                            <Form.Control value={row.description} onChange={(e) => setRowValue(idx, 'description', e.target.value)} placeholder={getTranslatedAttr("optional")} />
-                          </Form.Group>
-                        </Col>
-                      </Row>
-                      <Row className="g-3 mt-1">
-                        <Col md={3}>
-                          <Form.Group>
-                            <Form.Label><Translate textKey="quantityLabel" /></Form.Label>
-                            <Form.Control type="number" min="0" step="0.01" value={row.quantity} onChange={(e) => setRowValue(idx, 'quantity', e.target.value)} />
-                          </Form.Group>
-                        </Col>
-                        <Col md={3}>
-                          <Form.Group>
-                            <div className="d-flex justify-content-between align-items-center mb-1">
-                              <Form.Label className="mb-0">Unit</Form.Label>
-                              <Button
-                                variant="link"
-                                size="sm"
-                                className="p-0 text-decoration-none"
-                                onClick={() => setShowUnitModal(true)}
-                                style={{ fontSize: '0.75rem' }}
-                              >
-                                <i className="bi bi-pencil-square me-1"></i><Translate textKey="manageUnits" fallback="Manage Units" />
-                              </Button>
-                            </div>
-                            <Form.Select value={row.unit} onChange={(e) => setRowValue(idx, 'unit', e.target.value)} disabled={unitsLoading}>
-                              {units.map(u => (
-                                <option key={u} value={u}><Translate textKey={u} fallback={u} /></option>
-                              ))}
-                            </Form.Select>
-                            <Form.Text className="text-muted">{unitsLoading ? 'Loading units...' : ''}</Form.Text>
-                          </Form.Group>
-                        </Col>
-                        <Col md={3}>
-                          <Form.Group>
-                            <Form.Label><Translate textKey="costPriceLabel" /></Form.Label>
-                            <Form.Control type="number" min="0" step="0.01" value={row.costPrice} onChange={(e) => setRowValue(idx, 'costPrice', e.target.value)} />
-                          </Form.Group>
-                        </Col>
-                        <Col md={3}>
-                          <Form.Group>
-                            <Form.Label><Translate textKey="sellingPriceLabel" /> ({getTranslatedAttr("optional")})</Form.Label>
-                            <Form.Control type="number" min="0" step="0.01" value={row.sellingPrice} onChange={(e) => setRowValue(idx, 'sellingPrice', e.target.value)} />
-                          </Form.Group>
-                        </Col>
-                        <Col md={3}>
-                          <Form.Group>
-                            <Form.Label><Translate textKey="expiryDateLabel" /></Form.Label>
-                            <Form.Control type="date" value={row.expiryDate || ''} onChange={(e) => setRowValue(idx, 'expiryDate', e.target.value)} />
-                          </Form.Group>
-                        </Col>
-                      </Row>
-                      <Row className="g-3 mt-1">
-                        <Col md={3}>
-                          <Form.Group>
-                            <Form.Label>Low Stock Alert (Optional)</Form.Label>
-                            <Form.Control
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={row.lowStockAlert || ''}
-                              onChange={(e) => setRowValue(idx, 'lowStockAlert', e.target.value)}
-                              placeholder={getTranslatedAttr("lowStockAlert")}
-                            />
-                            <Form.Text className="text-muted">
-                              <Translate textKey="lowStockAlertHelp" />
-                            </Form.Text>
-                          </Form.Group>
-                        </Col>
-                      </Row>
-                      <div className="d-flex justify-content-between align-items-center mt-3">
-                        <div className="text-muted"><Translate textKey="lineTotal" />: RS {formatCurrency(calculateRowTotal(row))}</div>
-                        <Button variant="outline-danger" size="sm" onClick={() => removeRow(idx)} disabled={rows.length === 1}>
-                          <Translate textKey="remove" />
+                  <h5 className="mb-0">
+                    <Translate textKey="items" /> ({rows.length})
+                  </h5>
+                  <div className="d-flex align-items-center gap-2">
+                    {rows.length > 50 && (
+                      <div className="d-flex align-items-center me-3">
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={currentPage === 1}
+                        >
+                          <i className="bi bi-chevron-left"></i>
+                        </Button>
+                        <span className="mx-2 text-muted" style={{ fontSize: '0.9rem' }}>
+                          Page {currentPage} of {Math.ceil(rows.length / 50)}
+                        </span>
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+                          onClick={() => setCurrentPage(p => Math.min(Math.ceil(rows.length / 50), p + 1))}
+                          disabled={currentPage >= Math.ceil(rows.length / 50)}
+                        >
+                          <i className="bi bi-chevron-right"></i>
                         </Button>
                       </div>
-                    </Card.Body>
-                  </Card>
-                ))}
+                    )}
+
+                    <div>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileUpload}
+                        accept=".csv,.txt"
+                        style={{ display: 'none' }}
+                      />
+                      <Button variant="outline-success" size="sm" onClick={handleImportClick}>
+                        <i className="bi bi-file-earmark-spreadsheet me-1"></i>
+                        Import from Excel (CSV)
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {rows.slice((currentPage - 1) * 50, currentPage * 50).map((row, relativeIdx) => {
+                  const idx = (currentPage - 1) * 50 + relativeIdx;
+                  return (
+                    <Card key={idx} className="mb-3">
+                      <Card.Body>
+                        <Row className="g-3">
+                          <Col md={4}>
+                            <Form.Group>
+                              <Form.Label><Translate textKey="existingProduct" /></Form.Label>
+                              <Select
+                                isDisabled={stockLoading || !stockItems.length}
+                                isClearable
+                                placeholder={stockLoading ? getTranslatedAttr("loading") : getTranslatedAttr("searchInventoryPlaceholder")}
+                                options={stockItems.map(item => ({
+                                  value: item.id,
+                                  label: `${item.name}${item.barcode ? ` • ${item.barcode}` : ''}`,
+                                  barcode: item.barcode || '',
+                                  name: item.name || ''
+                                }))}
+                                value={(row.sourceItemId && stockItems.length) ? (() => {
+                                  const it = stockItems.find(i => i.id === row.sourceItemId);
+                                  return it ? { value: it.id, label: `${it.name}${it.barcode ? ` • ${it.barcode}` : ''}`, barcode: it.barcode || '', name: it.name || '' } : null;
+                                })() : null}
+                                onChange={(selected) => handleSelectExistingProduct(idx, selected ? selected.value : '')}
+                                filterOption={(candidate, input) => {
+                                  const text = (input || '').toLowerCase();
+                                  return candidate.label.toLowerCase().includes(text) ||
+                                    ((candidate.data && candidate.data.barcode) ? candidate.data.barcode.toLowerCase().includes(text) : false);
+                                }}
+                              />
+                              <Form.Text className="text-muted">
+                                {stockItems.length
+                                  ? 'Select to auto-fill item details'
+                                  : 'No products in inventory yet'}
+                              </Form.Text>
+                            </Form.Group>
+                          </Col>
+                          <Col md={4}>
+                            <Form.Group>
+                              <Form.Label><Translate textKey="itemNameLabel" /></Form.Label>
+                              <Form.Control value={row.name} onChange={(e) => setRowValue(idx, 'name', e.target.value)} required />
+                            </Form.Group>
+                          </Col>
+                          <Col md={4}>
+                            <Form.Group>
+                              <div className="d-flex justify-content-between align-items-center mb-1">
+                                <Form.Label className="mb-0">Category</Form.Label>
+                                <Button
+                                  variant="link"
+                                  size="sm"
+                                  className="p-0 text-decoration-none"
+                                  onClick={() => setShowCategoryModal(true)}
+                                  style={{ fontSize: '0.75rem' }}
+                                >
+                                  <i className="bi bi-pencil-square me-1"></i><Translate textKey="manageCategories" />
+                                </Button>
+                              </div>
+                              <Form.Select
+                                value={row.category}
+                                onChange={(e) => setRowValue(idx, 'category', e.target.value)}
+                                disabled={categoriesLoading}
+                              >
+                                <option value="">Select a category</option>
+                                {categories.map(cat => (
+                                  <option key={cat.id} value={cat.name}>
+                                    {cat.name}
+                                  </option>
+                                ))}
+                              </Form.Select>
+                              <Form.Text className="text-muted">
+                                {categoriesLoading ? 'Loading categories...' : categories.length === 0 ? 'No categories yet. Click "Manage Categories" to add.' : ''}
+                              </Form.Text>
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                        <Row className="g-3 mt-1">
+                          <Col md={4}>
+                            <Form.Group>
+                              <div className="d-flex justify-content-between align-items-center mb-1">
+                                <Form.Label className="mb-0">Barcode</Form.Label>
+                                <Button
+                                  variant="link"
+                                  size="sm"
+                                  className="p-0 text-decoration-none"
+                                  onClick={() => generateBarcodeForRow(idx)}
+                                  style={{ fontSize: '0.75rem' }}
+                                >
+                                  <i className="bi bi-upc-scan me-1"></i><Translate textKey="generate" />
+                                </Button>
+                              </div>
+                              <Form.Control value={row.barcode || ''} onChange={(e) => setRowValue(idx, 'barcode', e.target.value)} placeholder={getTranslatedAttr("optional")} />
+                              <Form.Text className="text-muted"><Translate textKey="barcodeScanningHelp" /></Form.Text>
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                        <Row className="g-3 mt-1">
+                          <Col md={12}>
+                            <Form.Group>
+                              <Form.Label><Translate textKey="description" /></Form.Label>
+                              <Form.Control value={row.description} onChange={(e) => setRowValue(idx, 'description', e.target.value)} placeholder={getTranslatedAttr("optional")} />
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                        <Row className="g-3 mt-1">
+                          <Col md={3}>
+                            <Form.Group>
+                              <Form.Label><Translate textKey="quantityLabel" /></Form.Label>
+                              <Form.Control type="number" min="0" step="0.01" value={row.quantity} onChange={(e) => setRowValue(idx, 'quantity', e.target.value)} />
+                            </Form.Group>
+                          </Col>
+                          <Col md={3}>
+                            <Form.Group>
+                              <div className="d-flex justify-content-between align-items-center mb-1">
+                                <Form.Label className="mb-0">Unit</Form.Label>
+                                <Button
+                                  variant="link"
+                                  size="sm"
+                                  className="p-0 text-decoration-none"
+                                  onClick={() => setShowUnitModal(true)}
+                                  style={{ fontSize: '0.75rem' }}
+                                >
+                                  <i className="bi bi-pencil-square me-1"></i><Translate textKey="manageUnits" fallback="Manage Units" />
+                                </Button>
+                              </div>
+                              <Form.Select value={row.unit} onChange={(e) => setRowValue(idx, 'unit', e.target.value)} disabled={unitsLoading}>
+                                {units.map(u => (
+                                  <option key={u} value={u}><Translate textKey={u} fallback={u} /></option>
+                                ))}
+                              </Form.Select>
+                              <Form.Text className="text-muted">{unitsLoading ? 'Loading units...' : ''}</Form.Text>
+                            </Form.Group>
+                          </Col>
+                          <Col md={3}>
+                            <Form.Group>
+                              <Form.Label><Translate textKey="costPriceLabel" /></Form.Label>
+                              <Form.Control type="number" min="0" step="0.01" value={row.costPrice} onChange={(e) => setRowValue(idx, 'costPrice', e.target.value)} />
+                            </Form.Group>
+                          </Col>
+                          <Col md={3}>
+                            <Form.Group>
+                              <Form.Label><Translate textKey="sellingPriceLabel" /> ({getTranslatedAttr("optional")})</Form.Label>
+                              <Form.Control type="number" min="0" step="0.01" value={row.sellingPrice} onChange={(e) => setRowValue(idx, 'sellingPrice', e.target.value)} />
+                            </Form.Group>
+                          </Col>
+                          <Col md={3}>
+                            <Form.Group>
+                              <Form.Label><Translate textKey="expiryDateLabel" /></Form.Label>
+                              <Form.Control type="date" value={row.expiryDate || ''} onChange={(e) => setRowValue(idx, 'expiryDate', e.target.value)} />
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                        <Row className="g-3 mt-1">
+                          <Col md={3}>
+                            <Form.Group>
+                              <Form.Label>Low Stock Alert (Optional)</Form.Label>
+                              <Form.Control
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={row.lowStockAlert || ''}
+                                onChange={(e) => setRowValue(idx, 'lowStockAlert', e.target.value)}
+                                placeholder={getTranslatedAttr("lowStockAlert")}
+                              />
+                              <Form.Text className="text-muted">
+                                <Translate textKey="lowStockAlertHelp" />
+                              </Form.Text>
+                            </Form.Group>
+                          </Col>
+                        </Row>
+                        <div className="d-flex justify-content-between align-items-center mt-3">
+                          <div className="text-muted"><Translate textKey="lineTotal" />: RS {formatCurrency(calculateRowTotal(row))}</div>
+                          <Button variant="outline-danger" size="sm" onClick={() => removeRow(idx)} disabled={rows.length === 1}>
+                            <Translate textKey="remove" />
+                          </Button>
+                        </div>
+                      </Card.Body>
+                    </Card>
+                  );
+                })}
+
+                {rows.length > 50 && (
+                  <div className="d-flex justify-content-center my-3">
+                    <Button
+                      variant="outline-secondary"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="me-2"
+                    >
+                      <i className="bi bi-arrow-left me-1"></i> Prev
+                    </Button>
+                    <span className="align-self-center mx-2 text-muted">
+                      Page {currentPage} of {Math.ceil(rows.length / 50)}
+                    </span>
+                    <Button
+                      variant="outline-secondary"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.min(Math.ceil(rows.length / 50), p + 1))}
+                      disabled={currentPage >= Math.ceil(rows.length / 50)}
+                      className="ms-2"
+                    >
+                      Next <i className="bi bi-arrow-right ms-1"></i>
+                    </Button>
+                  </div>
+                )}
+
                 <Button variant="outline-primary" onClick={addRow}>
                   <Translate textKey="addAnotherItem" fallback="+ Add Another Item" />
                 </Button>
@@ -1239,7 +1299,7 @@ const PurchaseManagement = () => {
             <Button variant="secondary" onClick={() => setShowUnitModal(false)}><Translate textKey="close" /></Button>
           </Modal.Footer>
         </Modal>
-      </Container>
+      </Container >
     </>
   );
 };
