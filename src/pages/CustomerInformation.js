@@ -5,7 +5,7 @@ import { generateTransactionId } from '../utils/receiptUtils';
 import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
 import { db } from '../firebase/config';
-import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { Translate, useTranslatedAttribute } from '../utils';
 
 const CustomerInformation = () => {
@@ -41,6 +41,8 @@ const CustomerInformation = () => {
   const [paymentAmount, setPaymentAmount] = useState('0');
   const [paymentTransactionId, setPaymentTransactionId] = useState('');
   const printIframeRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const [importing, setImporting] = useState(false);
 
   const fetchCustomers = useCallback(async () => {
     if (!activeShopId) return;
@@ -339,6 +341,131 @@ const CustomerInformation = () => {
       setTimeout(() => { if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 1000);
     }, 250);
   };
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportCSV = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      processCSV(event.target.result);
+      // Reset input so the same file can be uploaded again if needed
+      e.target.value = '';
+    };
+    reader.onerror = () => {
+      setError('Failed to read file');
+    };
+    reader.readAsText(file);
+  };
+
+  const processCSV = async (content) => {
+    if (!activeShopId) {
+      setError('Active Shop ID is missing');
+      return;
+    }
+
+    try {
+      setImporting(true);
+      setError('');
+      setSuccess('');
+
+      const lines = content.split(/\r\n|\n/).filter(line => line.trim());
+      if (lines.length < 2) {
+        setError('File is empty or missing headers');
+        setImporting(false);
+        return;
+      }
+
+      // Handle quoted values correctly (Excel style)
+      const parseCSVLine = (line) => {
+        const result = [];
+        let curValue = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            result.push(curValue.trim().replace(/^"|"$/g, ''));
+            curValue = '';
+          } else {
+            curValue += char;
+          }
+        }
+        result.push(curValue.trim().replace(/^"|"$/g, ''));
+        return result;
+      };
+
+      const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase());
+      const batch = writeBatch(db);
+      let count = 0;
+      const customersRef = collection(db, 'customers');
+
+      const now = new Date();
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i]);
+        if (values.length === 0) continue;
+
+        const customerInfo = {
+          shopId: activeShopId,
+          createdAt: now,
+          updatedAt: now,
+          name: '',
+          phone: '',
+          email: '',
+          address: '',
+          city: '',
+          notes: ''
+        };
+
+        headers.forEach((header, index) => {
+          const value = values[index];
+          if (value === undefined || value === null) return;
+
+          if (header.includes('name')) {
+            customerInfo.name = value;
+          } else if (header.includes('phone') || header.includes('mobile') || header.includes('contact')) {
+            customerInfo.phone = value;
+          } else if (header.includes('email')) {
+            customerInfo.email = value;
+          } else if (header.includes('address')) {
+            customerInfo.address = value;
+          } else if (header.includes('city')) {
+            customerInfo.city = value;
+          } else if (header.includes('note') || header.includes('description')) {
+            customerInfo.notes = value;
+          }
+        });
+
+        if (customerInfo.name) {
+          const newDocRef = doc(customersRef);
+          batch.set(newDocRef, customerInfo);
+          count++;
+        }
+
+        // Firestore batch limit is 500
+        if (count >= 450) break;
+      }
+
+      if (count > 0) {
+        await batch.commit();
+        setSuccess(getTranslatedAttr('importSuccess').replace('{count}', count));
+        fetchCustomers();
+      } else {
+        setError('No valid customer names found in CSV');
+      }
+
+    } catch (err) {
+      console.error('Import error:', err);
+      setError(`Failed to import customers: ${err.message}`);
+    } finally {
+      setImporting(false);
+    }
+  };
 
   return (
     <>
@@ -359,6 +486,20 @@ const CustomerInformation = () => {
           <Button variant="primary" onClick={() => { resetForm(); setShowModal(true); }}>
             <i className="bi bi-plus-circle me-2"></i><Translate textKey="addNewCustomer" />
           </Button>
+          <Button variant="outline-success" className="ms-2" onClick={handleImportClick} disabled={importing}>
+            {importing ? (
+              <><Spinner size="sm" className="me-2" /><Translate textKey="importing" />...</>
+            ) : (
+              <><i className="bi bi-file-earmark-excel me-2"></i><Translate textKey="importExcel" fallback="Import from Excel (CSV)" /></>
+            )}
+          </Button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            accept=".csv"
+            onChange={handleImportCSV}
+          />
         </div>
 
         {error && <Alert variant="danger" dismissible onClose={() => setError('')}>{error}</Alert>}
