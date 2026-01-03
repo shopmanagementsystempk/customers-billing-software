@@ -428,7 +428,9 @@ const PurchaseManagement = () => {
           const value = values[index];
           if (!value) return;
 
-          if (header.includes('name') || header.includes('item')) { row.name = value; hasData = true; }
+          if (header.includes('store')) { row.storeName = value; }
+          else if (header.includes('company')) { row.companyName = value; }
+          else if (header.includes('name') || header.includes('item')) { row.name = value; hasData = true; }
           else if (header.includes('category')) {
             row.category = value;
             catValue = value;
@@ -444,8 +446,6 @@ const PurchaseManagement = () => {
           else if (header.includes('description')) { row.description = value; }
           else if (header.includes('expiry') || header.includes('date')) { row.expiryDate = parseDate(value); }
           else if (header.includes('alert') || header.includes('stock')) { row.lowStockAlert = value; }
-          else if (header.includes('store')) { row.storeName = value; }
-          else if (header.includes('company')) { row.companyName = value; }
         });
 
         if (hasData && row.name) {
