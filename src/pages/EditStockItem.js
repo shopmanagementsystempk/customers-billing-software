@@ -18,6 +18,8 @@ const EditStockItem = () => {
   const [quantityUnit, setQuantityUnit] = useState('units'); // Default to units
   const [costPrice, setCostPrice] = useState('');
   const [supplier, setSupplier] = useState('');
+  const [storeName, setStoreName] = useState('');
+  const [companyName, setCompanyName] = useState('');
   const [sku, setSku] = useState('');
   const [barcode, setBarcode] = useState('');
   const [lowStockAlert, setLowStockAlert] = useState('');
@@ -64,6 +66,8 @@ const EditStockItem = () => {
         setQuantityUnit(item.quantityUnit || 'units'); // Set quantityUnit from item data or default to units
         setCostPrice(item.costPrice?.toString() || '');
         setSupplier(item.supplier || '');
+        setStoreName(item.storeName || '');
+        setCompanyName(item.companyName || '');
         setSku(item.sku || '');
         setBarcode(item.barcode || item.sku || ''); // Load existing barcode or SKU
         setLowStockAlert(item.lowStockAlert?.toString() || ''); // Load existing low stock alert
@@ -219,6 +223,8 @@ const EditStockItem = () => {
       quantityUnit: quantityUnit, // Store the unit (kg or units)
       costPrice: costPrice ? parseFloat(costPrice) : null,
       supplier: supplier.trim(),
+      storeName: storeName.trim(),
+      companyName: companyName.trim(),
       sku: sku.trim(),
       barcode: barcode.trim(), // Include barcode in the update
       expiryDate: expiryDate || null,
@@ -405,6 +411,28 @@ const EditStockItem = () => {
                       type="text"
                       value={supplier}
                       onChange={(e) => setSupplier(e.target.value)}
+                      placeholder="Optional"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Store Name</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={storeName}
+                      onChange={(e) => setStoreName(e.target.value)}
+                      placeholder="Optional"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Company Name</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
                       placeholder="Optional"
                     />
                   </Form.Group>
