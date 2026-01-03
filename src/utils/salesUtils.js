@@ -1,403 +1,314 @@
-import { collection, query, where, getDocs, doc, getDoc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, query, where, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { startOfDay, endOfDay, startOfMonth, endOfMonth, startOfYear, endOfYear, format } from 'date-fns';
 
-// Cache for stock items to avoid repeated queries
-const stockItemsCache = new Map();
+// Mock data for testing/fallback
+const MOCK_STOCK = [
+  {
+    id: 'mock-item-1',
+    name: 'Sample Product 1',
+    description: 'This is a sample product',
+    category: 'General',
+    price: 19.99,
+    quantity: 25,
+    costPrice: 15.00,
+    shopId: 'test-shop-id',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'mock-item-2',
+    name: 'Sample Product 2',
+    description: 'Another sample product',
+    category: 'Electronics',
+    price: 29.99,
+    quantity: 10,
+    costPrice: 25.00,
+    shopId: 'test-shop-id',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }
+];
 
-// Helper function to query receipts for a specific date range
-export const getReceiptsForDateRange = async (shopId, startDate, endDate) => {
+// Add a new stock item
+export const addStockItem = async (shopId, itemData) => {
   try {
-    const receiptRef = collection(db, 'receipts');
-    
-    // First, query only by shopId which doesn't require a composite index
-    const shopQuery = query(
-      receiptRef,
-      where('shopId', '==', shopId)
-    );
-    
-    // Get all receipts for this shop
-    const receiptsSnapshot = await getDocs(shopQuery);
-    
-    // Then filter by date range in memory
-    const startTimestamp = startDate.toISOString();
-    const endTimestamp = endDate.toISOString();
-    
-    // Filter receipts by timestamp
-    return receiptsSnapshot.docs
-      .map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }))
-      .filter(receipt => 
-        receipt.timestamp >= startTimestamp && 
-        receipt.timestamp <= endTimestamp
-      );
+    console.log('Adding stock item for shop ID:', shopId);
+
+    if (!shopId) {
+      console.error('No shop ID provided for addStockItem');
+      throw new Error('Shop ID is required to add stock item');
+    }
+
+    const stockRef = collection(db, 'stock');
+    const docRef = await addDoc(stockRef, {
+      shopId,
+      ...itemData,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    console.log('Stock item added with ID:', docRef.id);
+    return docRef.id;
   } catch (error) {
-    console.error('Error fetching receipts:', error);
+    console.error('Error adding stock item:', error);
+    console.error('Error details:', error.code, error.message);
     throw error;
   }
 };
 
-// Helper function to get all stock items for a shop (with caching)
-const getShopStockItems = async (shopId) => {
-  // Check if we already have the stock items in cache
-  if (stockItemsCache.has(shopId)) {
-    return stockItemsCache.get(shopId);
+// Get all stock items for a shop
+export const getShopStock = async (shopId) => {
+  try {
+    console.log(`Fetching stock items for shop ID: ${shopId}`);
+
+    if (!shopId) {
+      console.error('No shop ID provided for getShopStock');
+      return [];
+    }
+
+    const stockRef = collection(db, 'stock');
+    const q = query(stockRef, where('shopId', '==', shopId));
+
+    console.log('Executing Firestore query...');
+    const querySnapshot = await getDocs(q);
+    console.log(`Query returned ${querySnapshot.docs.length} results`);
+
+    const items = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    return items;
+  } catch (error) {
+    console.error('Error fetching stock items:', error);
+    console.error('Error details:', error.code, error.message);
+    // Return empty array instead of throwing to avoid loading state getting stuck
+    return [];
   }
-  
+};
+
+// Get a single stock item by ID
+export const getStockItemById = async (itemId) => {
+  try {
+    const stockRef = doc(db, 'stock', itemId);
+    const stockSnap = await getDoc(stockRef);
+
+    if (stockSnap.exists()) {
+      return {
+        id: stockSnap.id,
+        ...stockSnap.data()
+      };
+    } else {
+      throw new Error('Stock item not found');
+    }
+  } catch (error) {
+    console.error('Error fetching stock item:', error);
+    throw error;
+  }
+};
+
+// Update a stock item
+export const updateStockItem = async (itemId, updateData) => {
+  try {
+    const stockRef = doc(db, 'stock', itemId);
+    await updateDoc(stockRef, {
+      ...updateData,
+      updatedAt: new Date().toISOString()
+    });
+    return itemId;
+  } catch (error) {
+    console.error('Error updating stock item:', error);
+    throw error;
+  }
+};
+
+// Delete a stock item
+export const deleteStockItem = async (itemId) => {
+  try {
+    const stockRef = doc(db, 'stock', itemId);
+    await deleteDoc(stockRef);
+    return true;
+  } catch (error) {
+    console.error('Error deleting stock item:', error);
+    throw error;
+  }
+};
+
+// Update stock quantity when a sale is made (optimized)
+export const updateStockQuantity = async (shopId, items) => {
+  try {
+    if (!items || items.length === 0) {
+      return true; // Nothing to update
+    }
+
+    const stockRef = collection(db, 'stock');
+    const q = query(stockRef, where('shopId', '==', shopId));
+    const querySnapshot = await getDocs(q);
+
+    const stockItems = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    // Create a map for faster lookup (O(1) instead of O(n))
+    const stockMap = {};
+    stockItems.forEach(item => {
+      stockMap[item.name] = item;
+    });
+
+    // Process each sold item and prepare updates
+    const updates = [];
+    items.forEach(soldItem => {
+      const stockItem = stockMap[soldItem.name];
+
+      if (stockItem) {
+        // Make sure units match before deducting (both should be in the same unit)
+        // If units don't match, we can't properly deduct
+        if (!soldItem.quantityUnit || soldItem.quantityUnit === stockItem.quantityUnit) {
+          const newQuantity = Math.max(0, (stockItem.quantity || 0) - (soldItem.quantity || 0));
+          updates.push(updateStockItem(stockItem.id, { quantity: newQuantity }));
+        }
+      }
+    });
+
+    // Execute all updates in parallel
+    if (updates.length > 0) {
+      await Promise.all(updates);
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error updating stock quantities:', error);
+    throw error;
+  }
+};
+
+// Restore stock quantity when a receipt is deleted
+export const restoreStockQuantity = async (shopId, items) => {
   try {
     const stockRef = collection(db, 'stock');
-    const stockQuery = query(
-      stockRef,
-      where('shopId', '==', shopId)
-    );
-    
-    const stockSnapshot = await getDocs(stockQuery);
-    
-    // Create a map of item name to stock details for quick lookup
-    const stockItems = {};
-    stockSnapshot.docs.forEach(doc => {
-      const item = doc.data();
-      stockItems[item.name.toLowerCase()] = {
-        costPrice: item.costPrice || 0,
-        category: item.category || 'Uncategorized'
-      };
+    const q = query(stockRef, where('shopId', '==', shopId));
+    const querySnapshot = await getDocs(q);
+
+    const stockItems = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    // Process each item to restore
+    const updates = items.map(receiptItem => {
+      const stockItem = stockItems.find(item => item.name === receiptItem.name);
+
+      if (stockItem) {
+        // Make sure units match before adding (both should be in the same unit)
+        if (!receiptItem.quantityUnit || receiptItem.quantityUnit === stockItem.quantityUnit) {
+          const newQuantity = stockItem.quantity + parseFloat(receiptItem.quantity);
+          return updateStockItem(stockItem.id, { quantity: newQuantity });
+        }
+      }
+
+      return Promise.resolve();
     });
-    
-    // Store in cache
-    stockItemsCache.set(shopId, stockItems);
-    
-    return stockItems;
+
+    await Promise.all(updates);
+    return true;
   } catch (error) {
-    console.log('Error fetching stock items:', error.message);
-    return {};
+    console.error('Error restoring stock quantities:', error);
+    throw error;
   }
 };
 
-// Function to calculate daily sales and profit
-export const getDailySalesAndProfit = async (shopId, date = new Date()) => {
-  const start = startOfDay(date);
-  const end = endOfDay(date);
-  
-  const receipts = await getReceiptsForDateRange(shopId, start, end);
-  
-  return calculateSalesAndProfit(receipts, shopId);
-};
-
-// Function to calculate monthly sales and profit
-export const getMonthlySalesAndProfit = async (shopId, date = new Date()) => {
-  const start = startOfMonth(date);
-  const end = endOfMonth(date);
-  
-  const receipts = await getReceiptsForDateRange(shopId, start, end);
-  
-  // Group by day for the chart data
-  const dailyData = [];
-  const daysInMonth = {};
-  
-  receipts.forEach(receipt => {
-    const day = format(new Date(receipt.timestamp), 'yyyy-MM-dd');
-    
-    if (!daysInMonth[day]) {
-      daysInMonth[day] = {
-        day: format(new Date(receipt.timestamp), 'dd'),
-        sales: 0,
-        profit: 0,
-        receipts: []
-      };
-    }
-    
-    daysInMonth[day].receipts.push(receipt);
-  });
-  
-  // Get all stock items once for the entire calculation
-  const stockItems = await getShopStockItems(shopId);
-  
-  // Calculate sales and profit for each day
-  const dailyCalcPromises = Object.keys(daysInMonth).sort().map(async (day) => {
-    const { sales, profit } = await calculateSalesAndProfit(daysInMonth[day].receipts, shopId, stockItems);
-    return {
-      day: daysInMonth[day].day,
-      sales,
-      profit
-    };
-  });
-  
-  // Wait for all profit calculations to complete
-  dailyData.push(...await Promise.all(dailyCalcPromises));
-  
-  const totals = await calculateSalesAndProfit(receipts, shopId, stockItems);
-  
-  return {
-    ...totals,
-    dailyData
+// Record a stock movement (IN/OUT) for history
+export const recordStockMovement = async (movement) => {
+  // movement: { shopId, itemId, itemName, type: 'IN'|'OUT', quantity, unit, costPrice?, note?, supplier?, reference?, createdAt? }
+  const movementsRef = collection(db, 'stockMovements');
+  const payload = {
+    ...movement,
+    createdAt: movement.createdAt || new Date().toISOString()
   };
+  const docRef = await addDoc(movementsRef, payload);
+  return docRef.id;
 };
 
-// Function to calculate yearly sales and profit
-export const getYearlySalesAndProfit = async (shopId, date = new Date()) => {
-  const start = startOfYear(date);
-  const end = endOfYear(date);
-  
-  const receipts = await getReceiptsForDateRange(shopId, start, end);
-  
-  // Group by month for the chart data
-  const monthlyData = [];
-  const monthsInYear = {};
-  
-  receipts.forEach(receipt => {
-    const month = format(new Date(receipt.timestamp), 'yyyy-MM');
-    
-    if (!monthsInYear[month]) {
-      monthsInYear[month] = {
-        month: format(new Date(receipt.timestamp), 'MMM'),
-        sales: 0,
-        profit: 0,
-        receipts: []
-      };
-    }
-    
-    monthsInYear[month].receipts.push(receipt);
-  });
-  
-  // Get all stock items once for the entire calculation
-  const stockItems = await getShopStockItems(shopId);
-  
-  // Calculate sales and profit for each month
-  const monthlyCalcPromises = Object.keys(monthsInYear).sort().map(async (month) => {
-    const { sales, profit } = await calculateSalesAndProfit(monthsInYear[month].receipts, shopId, stockItems);
-    return {
-      month: monthsInYear[month].month,
-      sales,
-      profit
-    };
-  });
-  
-  // Wait for all profit calculations to complete
-  monthlyData.push(...await Promise.all(monthlyCalcPromises));
-  
-  const totals = await calculateSalesAndProfit(receipts, shopId, stockItems);
-  
-  return {
-    ...totals,
-    monthlyData
-  };
-};
-
-// Helper function to calculate sales and profit from receipt items
-export const calculateSalesAndProfit = async (receipts, shopId = null, stockItemsData = null) => {
-  let sales = 0;
-  let profit = 0;
-  let totalItems = 0;
-  
-  // Track sales and profit by category
-  const categorySales = {};
-  
-  // Get stock items if not provided
-  const stockItems = stockItemsData || (shopId ? await getShopStockItems(shopId) : {});
-  
-  // Process all receipts
-  for (const receipt of receipts) {
-    // Add the total amount to sales (we'll subtract returns later if any)
-    sales += parseFloat(receipt.totalAmount || 0);
-    
-    // Process all items in this receipt
-    for (const item of receipt.items) {
-      const quantity = parseFloat(item.quantity || 1);
-      const price = parseFloat(item.price || 0);
-      let costPrice = parseFloat(item.costPrice || 0);
-      let category = 'Uncategorized';
-      
-      // If cost price is not available in the receipt, try to get it from cached stock items
-      if (item.name) {
-        const stockItem = stockItems[item.name.toLowerCase()];
-        if (stockItem) {
-          costPrice = stockItem.costPrice || 0;
-          category = stockItem.category || (item.category || 'Uncategorized');
-        } else if (item.category) {
-          // Use the category from the receipt item if available
-          category = item.category;
-        }
-      }
-      
-      // Calculate item profit
-      let itemProfit = 0;
-      if (costPrice > 0) {
-        itemProfit = (price - costPrice) * quantity;
-      } else {
-        // Fallback: Use an estimated profit margin of 30% when no cost price is available
-        itemProfit = (price * 0.3) * quantity;
-      }
-      
-      // Update total profit
-      profit += itemProfit;
-      
-      // Track sales and profit by category
-      if (!categorySales[category]) {
-        categorySales[category] = {
-          sales: 0,
-          profit: 0,
-          items: 0
-        };
-      }
-      
-      // Update category data
-      categorySales[category].sales += price * quantity;
-      categorySales[category].profit += itemProfit;
-      categorySales[category].items += quantity;
-      
-      totalItems += quantity;
-    }
-    
-    // Handle returned products - subtract them from sales and profit analytics
-    if (receipt.returnInfo && receipt.returnInfo.affectsSalesAnalytics && receipt.returnInfo.returnedItems) {
-      // Subtract the return total from sales
-      const returnTotal = parseFloat(receipt.returnInfo.returnTotal || 0);
-      sales -= returnTotal;
-      
-      // Process each returned item to adjust profit and category data
-      for (const returnedItem of receipt.returnInfo.returnedItems) {
-        const returnQuantity = parseFloat(returnedItem.quantity || 0);
-        const returnPrice = parseFloat(returnedItem.price || 0);
-        let returnCostPrice = parseFloat(returnedItem.costPrice || 0);
-        // Use category from returned item if available, otherwise default to 'Uncategorized'
-        let returnCategory = returnedItem.category || 'Uncategorized';
-        
-        // If cost price is not available in the returned item, try to get it from cached stock items
-        if (returnedItem.name) {
-          const stockItem = stockItems[returnedItem.name.toLowerCase()];
-          if (stockItem) {
-            returnCostPrice = stockItem.costPrice || 0;
-            // Keep returned item category if stock item category is not available
-            returnCategory = stockItem.category || returnCategory;
-          }
-        }
-        
-        // Calculate returned item profit
-        let returnItemProfit = 0;
-        if (returnCostPrice > 0) {
-          returnItemProfit = (returnPrice - returnCostPrice) * returnQuantity;
-        } else {
-          // Fallback: Use an estimated profit margin of 30% when no cost price is available
-          returnItemProfit = (returnPrice * 0.3) * returnQuantity;
-        }
-        
-        // Subtract from total profit
-        profit -= returnItemProfit;
-        
-        // Ensure category exists in tracking
-        if (!categorySales[returnCategory]) {
-          categorySales[returnCategory] = {
-            sales: 0,
-            profit: 0,
-            items: 0
-          };
-        }
-        
-        // Update category data by subtracting returned items
-        categorySales[returnCategory].sales -= returnPrice * returnQuantity;
-        categorySales[returnCategory].profit -= returnItemProfit;
-        categorySales[returnCategory].items -= returnQuantity;
-        
-        // Subtract from total items
-        totalItems -= returnQuantity;
-      }
-    }
+// Add stock to an existing item and record movement
+export const addStockToItem = async (shopId, itemId, quantityToAdd, options = {}) => {
+  // options: { costPrice, note, supplier, itemSnapshot }
+  const stockDocRef = doc(db, 'stock', itemId);
+  const snap = options.itemSnapshot || await getDoc(stockDocRef);
+  if (!snap.exists()) throw new Error('Stock item not found');
+  const item = { id: snap.id, ...snap.data() };
+  const newQuantity = (parseFloat(item.quantity) || 0) + parseFloat(quantityToAdd || 0);
+  const updatePayload = { quantity: newQuantity, updatedAt: new Date().toISOString() };
+  if (options.expiryDate) {
+    updatePayload.expiryDate = options.expiryDate;
   }
-  
-  // Convert category data to array for easier processing
-  const categoryData = Object.keys(categorySales).map(category => ({
-    category,
-    sales: categorySales[category].sales,
-    profit: categorySales[category].profit,
-    items: categorySales[category].items,
-    profitMargin: categorySales[category].sales > 0 
-      ? (categorySales[category].profit / categorySales[category].sales * 100).toFixed(2) 
-      : 0
-  }));
-  
-  // Sort categories by sales (highest first)
-  categoryData.sort((a, b) => b.sales - a.sales);
-  
-  // Track product sales with employee information (only for receipts with employee)
-  const productSales = [];
-  
-  // Process receipts to get product-level data with employee info
-  for (const receipt of receipts) {
-    // Only include receipts that have an employee assigned
-    if (receipt.employeeName) {
-      // Handle timestamp - could be a string or Firestore Timestamp
-      let receiptDate;
-      if (receipt.timestamp) {
-        if (receipt.timestamp.toDate) {
-          // Firestore Timestamp
-          receiptDate = receipt.timestamp.toDate();
-        } else if (typeof receipt.timestamp === 'string') {
-          // ISO string
-          receiptDate = new Date(receipt.timestamp);
-        } else {
-          // Fallback
-          receiptDate = new Date();
-        }
-      } else {
-        receiptDate = new Date();
-      }
-      
-      // Process all items in this receipt
-      for (const item of receipt.items) {
-        const quantity = parseFloat(item.quantity || 1);
-        const price = parseFloat(item.price || 0);
-        let costPrice = parseFloat(item.costPrice || 0);
-        let category = 'Uncategorized';
-        
-        // Get cost price and category from stock items if available
-        if (item.name) {
-          const stockItem = stockItems[item.name.toLowerCase()];
-          if (stockItem) {
-            costPrice = stockItem.costPrice || 0;
-            category = stockItem.category || (item.category || 'Uncategorized');
-          } else if (item.category) {
-            category = item.category;
-          }
-        }
-        
-        // Calculate item profit
-        let itemProfit = 0;
-        if (costPrice > 0) {
-          itemProfit = (price - costPrice) * quantity;
-        } else {
-          itemProfit = (price * 0.3) * quantity;
-        }
-        
-        // Add to product sales array
-        productSales.push({
-          productName: item.name,
-          employeeName: receipt.employeeName,
-          employeeId: receipt.employeeId || null,
-          date: receiptDate.toISOString().split('T')[0],
-          time: receiptDate.toLocaleTimeString(),
-          datetime: receiptDate.toISOString(),
-          quantity: quantity,
-          price: price,
-          totalSales: price * quantity,
-          profit: itemProfit,
-          category: category,
-          transactionId: receipt.transactionId || receipt.id
-        });
-      }
-    }
+  if (options.purchaseDate) {
+    updatePayload.purchaseDate = options.purchaseDate;
   }
-  
-  // Sort product sales by date/time (newest first)
-  productSales.sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
-  
-  return {
-    sales,
-    profit,
-    totalItems,
-    transactionCount: receipts.length,
-    categoryData,
-    productSalesByEmployee: productSales
-  };
+  if (options.lowStockAlert !== undefined && options.lowStockAlert !== null) {
+    updatePayload.lowStockAlert = parseFloat(options.lowStockAlert);
+  }
+  if (options.storeName) updatePayload.storeName = options.storeName;
+  if (options.companyName) updatePayload.companyName = options.companyName;
+
+  await updateDoc(stockDocRef, updatePayload);
+  await recordStockMovement({
+    shopId,
+    itemId,
+    itemName: item.name,
+    type: 'IN',
+    quantity: parseFloat(quantityToAdd || 0),
+    unit: item.quantityUnit || 'units',
+    costPrice: options.costPrice != null ? parseFloat(options.costPrice) : undefined,
+    note: options.note || '',
+    supplier: options.supplier || '',
+    reference: options.reference || '',
+    expiryDate: options.expiryDate || null,
+    purchaseDate: options.purchaseDate || null
+  });
+  return { itemId, newQuantity };
+};
+
+// Fetch stock movements for a shop (optionally filtered by itemId)
+export const getStockMovements = async (shopId, itemId) => {
+  const movementsRef = collection(db, 'stockMovements');
+  let q = query(movementsRef, where('shopId', '==', shopId));
+  const all = await getDocs(q);
+  const list = all.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(m => (itemId ? m.itemId === itemId : true))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  return list;
+};
+
+// Delete ALL stock items for a shop
+export const deleteAllShopStock = async (shopId) => {
+  try {
+    const stockRef = collection(db, 'stock');
+    const q = query(stockRef, where('shopId', '==', shopId));
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) return 0;
+
+    const BATCH_SIZE = 450;
+    const chunks = [];
+    for (let i = 0; i < snapshot.docs.length; i += BATCH_SIZE) {
+      chunks.push(snapshot.docs.slice(i, i + BATCH_SIZE));
+    }
+
+    let count = 0;
+    for (const chunk of chunks) {
+      const chunkBatch = writeBatch(db);
+      for (const doc of chunk) {
+        chunkBatch.delete(doc.ref);
+        count++;
+      }
+      await chunkBatch.commit();
+    }
+
+    return count;
+  } catch (error) {
+    console.error('Error deleting all stock items:', error);
+    throw error;
+  }
 };
