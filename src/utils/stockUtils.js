@@ -33,12 +33,12 @@ const MOCK_STOCK = [
 export const addStockItem = async (shopId, itemData) => {
   try {
     console.log('Adding stock item for shop ID:', shopId);
-    
+
     if (!shopId) {
       console.error('No shop ID provided for addStockItem');
       throw new Error('Shop ID is required to add stock item');
     }
-    
+
     const stockRef = collection(db, 'stock');
     const docRef = await addDoc(stockRef, {
       shopId,
@@ -46,7 +46,7 @@ export const addStockItem = async (shopId, itemData) => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
-    
+
     console.log('Stock item added with ID:', docRef.id);
     return docRef.id;
   } catch (error) {
@@ -60,24 +60,24 @@ export const addStockItem = async (shopId, itemData) => {
 export const getShopStock = async (shopId) => {
   try {
     console.log(`Fetching stock items for shop ID: ${shopId}`);
-    
+
     if (!shopId) {
       console.error('No shop ID provided for getShopStock');
       return [];
     }
-    
+
     const stockRef = collection(db, 'stock');
     const q = query(stockRef, where('shopId', '==', shopId));
-    
+
     console.log('Executing Firestore query...');
     const querySnapshot = await getDocs(q);
     console.log(`Query returned ${querySnapshot.docs.length} results`);
-    
+
     const items = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
-    
+
     return items;
   } catch (error) {
     console.error('Error fetching stock items:', error);
@@ -92,7 +92,7 @@ export const getStockItemById = async (itemId) => {
   try {
     const stockRef = doc(db, 'stock', itemId);
     const stockSnap = await getDoc(stockRef);
-    
+
     if (stockSnap.exists()) {
       return {
         id: stockSnap.id,
@@ -140,27 +140,27 @@ export const updateStockQuantity = async (shopId, items) => {
     if (!items || items.length === 0) {
       return true; // Nothing to update
     }
-    
+
     const stockRef = collection(db, 'stock');
     const q = query(stockRef, where('shopId', '==', shopId));
     const querySnapshot = await getDocs(q);
-    
+
     const stockItems = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
-    
+
     // Create a map for faster lookup (O(1) instead of O(n))
     const stockMap = {};
     stockItems.forEach(item => {
       stockMap[item.name] = item;
     });
-    
+
     // Process each sold item and prepare updates
     const updates = [];
     items.forEach(soldItem => {
       const stockItem = stockMap[soldItem.name];
-      
+
       if (stockItem) {
         // Make sure units match before deducting (both should be in the same unit)
         // If units don't match, we can't properly deduct
@@ -170,12 +170,12 @@ export const updateStockQuantity = async (shopId, items) => {
         }
       }
     });
-    
+
     // Execute all updates in parallel
     if (updates.length > 0) {
       await Promise.all(updates);
     }
-    
+
     return true;
   } catch (error) {
     console.error('Error updating stock quantities:', error);
@@ -189,16 +189,16 @@ export const restoreStockQuantity = async (shopId, items) => {
     const stockRef = collection(db, 'stock');
     const q = query(stockRef, where('shopId', '==', shopId));
     const querySnapshot = await getDocs(q);
-    
+
     const stockItems = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
-    
+
     // Process each item to restore
     const updates = items.map(receiptItem => {
       const stockItem = stockItems.find(item => item.name === receiptItem.name);
-      
+
       if (stockItem) {
         // Make sure units match before adding (both should be in the same unit)
         if (!receiptItem.quantityUnit || receiptItem.quantityUnit === stockItem.quantityUnit) {
@@ -206,10 +206,10 @@ export const restoreStockQuantity = async (shopId, items) => {
           return updateStockItem(stockItem.id, { quantity: newQuantity });
         }
       }
-      
+
       return Promise.resolve();
     });
-    
+
     await Promise.all(updates);
     return true;
   } catch (error) {
@@ -248,6 +248,9 @@ export const addStockToItem = async (shopId, itemId, quantityToAdd, options = {}
   if (options.lowStockAlert !== undefined && options.lowStockAlert !== null) {
     updatePayload.lowStockAlert = parseFloat(options.lowStockAlert);
   }
+  if (options.storeName) updatePayload.storeName = options.storeName;
+  if (options.companyName) updatePayload.companyName = options.companyName;
+
   await updateDoc(stockDocRef, updatePayload);
   await recordStockMovement({
     shopId,
