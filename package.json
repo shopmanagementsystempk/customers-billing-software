@@ -13,8 +13,8 @@
     "cloudinary": "^2.6.0",
     "cloudinary-react": "^1.8.1",
     "date-fns": "^4.1.0",
-    "echarts": "^5.5.1",
-    "echarts-for-react": "^3.0.2",
+    "echarts": "^6.0.0",
+    "echarts-for-react": "^3.0.5",
     "echarts-gl": "^2.0.9",
     "firebase": "^11.6.1",
     "html2canvas": "^1.4.1",
@@ -60,8 +60,6 @@
     ]
   },
   "devDependencies": {
-    "customize-cra": "^1.0.0",
-    "gh-pages": "^6.3.0",
-    "react-app-rewired": "^2.2.1"
+    "gh-pages": "^6.3.0"
   }
 }
