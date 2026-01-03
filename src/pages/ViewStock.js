@@ -657,9 +657,36 @@ const ViewStock = () => {
                           <td data-label="Store">{item.storeName || '-'}</td>
                           <td data-label={getTranslatedAttr("price")}>RS{parseFloat(item.price).toFixed(2)}</td>
                           <td data-label={getTranslatedAttr("quantity")}>
-                            <Badge bg={getQuantityBadgeVariant(item.quantity)}>
-                              {item.quantity} {item.quantityUnit === 'kg' ? 'KG' : 'Units'}
-                            </Badge>
+                            {(() => {
+                              const qty = parseFloat(item.quantity) || 0;
+                              const variant = getQuantityBadgeVariant(qty);
+                              const bgColors = {
+                                danger: '#ef4444',
+                                warning: '#f59e0b',
+                                success: '#10b981'
+                              };
+                              const textColors = {
+                                danger: '#ffffff',
+                                warning: '#000000',
+                                success: '#ffffff'
+                              };
+                              return (
+                                <Badge
+                                  style={{
+                                    backgroundColor: bgColors[variant],
+                                    color: textColors[variant],
+                                    padding: '0.5em 0.8em',
+                                    fontSize: '0.85rem',
+                                    fontWeight: '700',
+                                    minWidth: '70px',
+                                    display: 'inline-block',
+                                    textAlign: 'center'
+                                  }}
+                                >
+                                  {(item.quantity === '' || item.quantity === undefined || item.quantity === null) ? 0 : item.quantity} {item.quantityUnit === 'kg' ? 'KG' : 'Units'}
+                                </Badge>
+                              );
+                            })()}
                           </td>
                           <td data-label={getTranslatedAttr("lastUpdated")}>{formatDisplayDate(item.updatedAt)}</td>
                           <td data-label={getTranslatedAttr("actions")}>
