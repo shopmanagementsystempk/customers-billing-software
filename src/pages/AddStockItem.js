@@ -18,6 +18,8 @@ const AddStockItem = () => {
   const [quantityUnit, setQuantityUnit] = useState('units'); // Default to units
   const [costPrice, setCostPrice] = useState('');
   const [supplier, setSupplier] = useState('');
+  const [storeName, setStoreName] = useState('');
+  const [companyName, setCompanyName] = useState('');
   const [sku, setSku] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -182,6 +184,8 @@ const AddStockItem = () => {
       quantityUnit: quantityUnit, // Store the unit (kg or units)
       costPrice: costPrice ? parseFloat(costPrice) : null,
       supplier: supplier.trim(),
+      storeName: storeName.trim(),
+      companyName: companyName.trim(),
       sku: sku.trim(),
       expiryDate: expiryDate || null,
       purchaseDate: purchaseDate || new Date().toISOString(),
@@ -361,6 +365,28 @@ const AddStockItem = () => {
                       type="text"
                       value={supplier}
                       onChange={(e) => setSupplier(e.target.value)}
+                      placeholder="Optional"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Store Name</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={storeName}
+                      onChange={(e) => setStoreName(e.target.value)}
+                      placeholder="Optional"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={4}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Company Name</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
                       placeholder="Optional"
                     />
                   </Form.Group>
