@@ -15,7 +15,7 @@ import { formatDisplayDate } from '../utils/dateUtils';
 import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
 import { db } from '../firebase/config';
-import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
 import '../styles/select.css';
 
 const NewReceipt = () => {
@@ -43,6 +43,8 @@ const NewReceipt = () => {
   const [employeesLoaded, setEmployeesLoaded] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [customersLoaded, setCustomersLoaded] = useState(false);
+  const [loans, setLoans] = useState([]);
+  const [customerBalance, setCustomerBalance] = useState(0);
   const navigate = useNavigate();
   const pdfRef = useRef();
   const barcodeInputRef = useRef(null);
@@ -138,6 +140,36 @@ const NewReceipt = () => {
       fetchCustomers();
     }
   }, [currentUser, activeShopId]);
+
+  const fetchLoans = useCallback(async () => {
+    if (currentUser && activeShopId) {
+      try {
+        const loansRef = collection(db, 'customerLoans');
+        const q = query(loansRef, where('shopId', '==', activeShopId));
+        const snapshot = await getDocs(q);
+        const loanData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setLoans(loanData);
+      } catch (err) {
+        console.error('Error fetching customer loans:', err);
+      }
+    }
+  }, [currentUser, activeShopId]);
+
+  useEffect(() => {
+    fetchLoans();
+  }, [fetchLoans]);
+
+  useEffect(() => {
+    if (customer && customer !== 'Walk-in Customer') {
+      const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === customer.toLowerCase() && (l.status || 'outstanding') !== 'paid');
+      const total = custLoans.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+      setCustomerBalance(total);
+    } else {
+      setCustomerBalance(0);
+    }
+  }, [customer, loans]);
+
+
 
   // Cleanup: Remove any print iframes when component unmounts
   useEffect(() => {
@@ -331,6 +363,15 @@ const NewReceipt = () => {
     };
   }, [items, discount, tax, enterAmount, loanAmount]);
 
+  // Default Cash Received to Total Payable when bill changes
+  useEffect(() => {
+    if (totals.payable && parseFloat(totals.payable) > 0) {
+      setEnterAmount(totals.payable);
+    } else if (items.length === 0) {
+      setEnterAmount(''); // Clear when bill is empty
+    }
+  }, [totals.payable, items.length]);
+
   // Handle item changes
   const handleItemChange = (index, field, value) => {
     const newItems = [...items];
@@ -453,10 +494,12 @@ const NewReceipt = () => {
     setDiscount('');
     setTax('');
     setEnterAmount('');
+    setLoanAmount('');
     setPaymentMethod('Cash');
     setSelectedEmployee(null);
     setError('');
     setSuccess('');
+    setCustomerBalance(0);
     setSavedReceiptId(null);
     // Regenerate a new transaction ID for the next receipt
     if (activeShopId) {
@@ -502,6 +545,10 @@ const NewReceipt = () => {
 
     // Translation helpers
     const t = (key, fallback) => translations[language]?.[key] || fallback;
+
+    const cashKept = (parseFloat(enterAmount || 0)) - Math.max(0, parseFloat(totals.balance || 0));
+    const currentTransactionDebt = parseFloat(totals.payable) - cashKept;
+    const finalNewBalance = customerBalance + currentTransactionDebt;
 
     const receiptHTML = `
       <!DOCTYPE html>
@@ -558,12 +605,15 @@ const NewReceipt = () => {
             .p-total-label { font-size: 16px; position: absolute; left: 10px; top: 15px; }
             .p-total-value { font-size: 24px; font-weight: bold; }
             
+            .p-total-value { font-size: 24px; font-weight: bold; }
+            
             /* Thermal Specific */
-            .t-meta { display: grid; grid-template-columns: 1fr 1fr; font-size: 12px; margin: 6px 0; }
+            .t-meta { display: grid; grid-template-columns: 1fr 1fr; font-size: 11px; margin: 4px 0; }
             .t-meta-right { text-align: right; }
-            .t-totals { margin-top: 8px; border-top: 1px dotted #000; border-bottom: 1px dotted #000; padding: 6px 0; font-size: 12px; }
-            .t-line { display: flex; justify-content: space-between; margin: 3px 0; }
-            .t-net { text-align: right; font-weight: 700; font-size: 18px; margin-top: 6px; }
+            .t-totals { margin-top: 6px; border-top: 1px dotted #000; border-bottom: 1px dotted #000; padding: 4px 0; font-size: 11px; }
+            .t-line { display: flex; justify-content: space-between; margin: 2px 0; }
+            .t-net { text-align: right; font-weight: 700; font-size: 16px; margin-top: 4px; }
+            .t-stats { margin-top: 6px; border-top: 1px dotted #000; padding-top: 4px; font-size: 11px; }
             
             .thanks { text-align: center; margin-top: 12px; font-size: 12px; }
             .dev {
@@ -654,17 +704,20 @@ const NewReceipt = () => {
 
             <div class="p-footer">
               <div class="p-stats">
-                <p><span>${t('prevBalance', 'Prev Balance')}:</span> <span>0.00</span></p>
+                <p><span>${t('prevBalance', 'Prev Balance')}:</span> <span>${customerBalance.toFixed(2)}</span></p>
                 <p><span>${t('thisBill', 'This Bill')}:</span> <span>${Math.round(parseFloat(totals.payable))}</span></p>
-                <p><span>${t('cashRecieved', 'Cash Received')}:</span> <span>${Math.round(parseFloat(enterAmount || 0))}</span></p>
-                <p style="font-weight: bold"><span>${t('newBalance', 'New Balance')}:</span> <span>${Math.round(parseFloat(totals.payable) - (parseFloat(enterAmount || 0)))}</span></p>
+                <p><span>${t('cashRecieved', 'Cash Received')}:</span> <span>${Math.round(cashKept)}</span></p>
+                ${currentTransactionDebt > 0 ? `
+                  <p><span>${t('currentLoan', 'Current Loan')}:</span> <span>${Math.round(currentTransactionDebt)}</span></p>
+                ` : ''}
+                <p style="font-weight: bold"><span>${t('newBalance', 'New Balance')}:</span> <span>${Math.round(finalNewBalance)}</span></p>
               </div>
               <div class="p-signature">
                 <p class="p-signature">${t('signature', 'Signature')}</p>
               </div>
               <div class="p-total-box">
                 <span class="p-total-label">${t('totalBill', 'Total Bill')} :</span>
-                <span class="p-total-value">${Math.round(parseFloat(totals.payable))}</span>
+                <span class="p-total-value">${Math.round(parseFloat(totals.payable) - Math.max(0, currentTransactionDebt))}</span>
               </div>
             </div>
           ` : `
@@ -729,8 +782,23 @@ const NewReceipt = () => {
               <div class="t-line"><span>${t('netTotal', 'Net Total')}</span><span>${Math.round(parseFloat(totals.payable))}</span></div>
               ${parseFloat(totals.loanAmount) > 0 ? `<div class="t-line"><span>${t('loan', 'Loan')}</span><span>${Math.round(parseFloat(totals.loanAmount))}</span></div>` : ''}
             </div>
+
+            ${customer && customer !== 'Walk-in Customer' ? `
+              <div class="t-stats">
+                <div class="t-line"><span>${t('prevBalance', 'Prev Balance')}:</span> <span>${customerBalance.toFixed(2)}</span></div>
+                <div class="t-line"><span>${t('thisBill', 'This Bill')}:</span> <span>${Math.round(parseFloat(totals.payable))}</span></div>
+                <div class="t-line"><span>${t('cashRecieved', 'Cash Received')}:</span> <span>${Math.round(cashKept)}</span></div>
+                ${currentTransactionDebt > 0 ? `
+                  <div class="t-line"><span>${t('currentLoan', 'Current Loan')}:</span> <span>${Math.round(currentTransactionDebt)}</span></div>
+                ` : ''}
+                <div class="t-line" style="font-weight: bold; border-top: 1px solid #000; margin-top: 2px; padding-top: 2px;">
+                  <span>${t('newBalance', 'New Balance')}:</span> 
+                  <span>${Math.round(finalNewBalance)}</span>
+                </div>
+              </div>
+            ` : ''}
    
-            <div class="t-net" style="text-align: right; font-weight: 700; font-size: 18px; margin-top: 6px;">${Math.round(parseFloat(totals.payable))}</div>
+            <div class="t-net" style="text-align: right; font-weight: 700; font-size: 18px; margin-top: 6px;">${Math.round(parseFloat(totals.payable) - Math.max(0, currentTransactionDebt))}</div>
             <div class="thanks">${t('thankYouShopping', 'Thank you For Shoping !')}</div>
           `}
           
@@ -757,7 +825,7 @@ const NewReceipt = () => {
         }
       }, 1000);
     }, 250);
-  }, [discount, items, shopData, tax, totals, transactionId, language, paymentMethod]);
+  }, [discount, items, shopData, tax, totals, transactionId, language, paymentMethod, customerBalance, enterAmount, customer]);
 
 
   // Handle form submission
@@ -812,7 +880,8 @@ const NewReceipt = () => {
         employeeId: selectedEmployee ? selectedEmployee.id : null,
         customerName: customer,
         isLoan: (parseFloat(loanAmount || 0) || 0) > 0,
-        loanAmount: Math.max(parseFloat(loanAmount || 0) || 0, 0)
+        loanAmount: Math.max(parseFloat(loanAmount || 0) || 0, 0),
+        previousBalance: customerBalance
       };
 
       // Save receipt (this is the only blocking operation)
@@ -865,10 +934,70 @@ const NewReceipt = () => {
         );
       }
 
+      // 4. Handle overpayment (apply to previous loans if any)
+      const payableAmount = parseFloat(totals.payable);
+      const cashGivenAmount = parseFloat(enterAmount) || 0;
+      const overpayment = cashGivenAmount - payableAmount;
+
+      if (overpayment > 0 && customer && customer !== 'Walk-in Customer' && customerBalance > 0) {
+        backgroundOperations.push(
+          (async () => {
+            // Fetch current outstanding loans to apply overpayment
+            const q = query(
+              collection(db, 'customerLoans'),
+              where('shopId', '==', activeShopId),
+              where('customerName', '==', customer),
+              where('status', '==', 'outstanding')
+            );
+            const snap = await getDocs(q);
+            let remainingOverpayment = overpayment;
+            const loansToUpdate = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+              .sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
+
+            for (const loan of loansToUpdate) {
+              if (remainingOverpayment <= 0) break;
+              const loanAmt = parseFloat(loan.amount) || 0;
+              if (remainingOverpayment >= loanAmt) {
+                await updateDoc(doc(db, 'customerLoans', loan.id), {
+                  status: 'paid',
+                  paidAt: new Date().toISOString(),
+                  paidAmount: (parseFloat(loan.paidAmount) || 0) + loanAmt,
+                  amount: 0
+                });
+                remainingOverpayment -= loanAmt;
+              } else {
+                await updateDoc(doc(db, 'customerLoans', loan.id), {
+                  amount: loanAmt - remainingOverpayment,
+                  paidAmount: (parseFloat(loan.paidAmount) || 0) + remainingOverpayment,
+                  paidAt: new Date().toISOString()
+                });
+                remainingOverpayment = 0;
+              }
+            }
+
+            // Record the payment portion that was applied
+            const appliedAmount = overpayment - remainingOverpayment;
+            if (appliedAmount > 0) {
+              await addDoc(collection(db, 'customerLoanPayments'), {
+                shopId: activeShopId,
+                customerName: customer,
+                receiptId,
+                transactionId: transactionId + "-OVER",
+                amountPaid: appliedAmount,
+                timestamp: new Date().toISOString(),
+                type: 'overpayment'
+              });
+            }
+          })().catch(err => console.error('Overpayment processing failed:', err))
+        );
+      }
+
       // Run all background operations in parallel (fire and forget)
-      Promise.all(backgroundOperations).catch(err => {
-        console.error('Error in background operations:', err);
-      });
+      Promise.all(backgroundOperations)
+        .then(() => fetchLoans())
+        .catch(err => {
+          console.error('Error in background operations:', err);
+        });
 
       // Auto print if enabled
       if (autoPrint) {
@@ -902,7 +1031,8 @@ const NewReceipt = () => {
     totals,
     transactionId,
     language,
-    currentUser?.uid
+    currentUser?.uid,
+    fetchLoans
   ]);
 
   // Handle Enter key to save and print receipt
@@ -1044,7 +1174,14 @@ const NewReceipt = () => {
                   </Col>
                   <Col md={6}>
                     <Form.Group className="mb-2">
-                      <Form.Label className="mb-1" style={{ fontSize: '0.875rem' }}><Translate textKey="customerName" fallback="Customer Name" /></Form.Label>
+                      <div className="d-flex justify-content-between align-items-center">
+                        <Form.Label className="mb-1" style={{ fontSize: '0.875rem' }}><Translate textKey="customerName" fallback="Customer Name" /></Form.Label>
+                        {customer && customer !== 'Walk-in Customer' && (
+                          <span className="badge bg-info-subtle text-info-emphasis border border-info-subtle mb-1" style={{ fontSize: '0.75rem' }}>
+                            <Translate textKey="prevBalance" fallback="Prev Balance" />: {formatCurrency(customerBalance)}
+                          </span>
+                        )}
+                      </div>
                       <Select
                         value={customerOptions.find(opt => opt.value === customer) || null}
                         onChange={(option) => setCustomer(option ? option.value : 'Walk-in Customer')}
