@@ -498,47 +498,73 @@ const NewReceipt = () => {
     const methodObj = paymentMethodsList.find(m => m.id === paymentMethod);
     const translatedPaymentMethod = methodObj ? (translations[language]?.[methodObj.labelKey] || paymentMethod) : paymentMethod;
 
+    const isProfessional = shopData?.invoiceFormat === 'professional';
+
+    // Translation helpers
+    const t = (key, fallback) => translations[language]?.[key] || fallback;
+
     const receiptHTML = `
       <!DOCTYPE html>
       <html>
         <head>
-          <title>${translations[language]?.receiptTitle || 'Receipt'} - ${shopData?.shopName || 'Shop'}</title>
+          <title>${t('receiptTitle', 'Receipt')} - ${shopData?.shopName || 'Shop'}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             @media print { body { margin: 0; padding: 0; } }
             body {
-              width: 80mm;
-              font-family: 'Courier New', monospace;
+              width: ${isProfessional ? '210mm' : '80mm'};
+              font-family: ${isProfessional ? 'Arial, sans-serif' : "'Courier New', monospace"};
               color: #000;
               margin: 0 auto;
               background: #fff;
-              padding: 6mm 4mm;
-              font-weight: 700;
+              padding: ${isProfessional ? '10mm' : '6mm 4mm'};
+              font-weight: ${isProfessional ? 'normal' : '700'};
             }
             .center { text-align: center; }
-            .header-logo { max-height: 36px; margin: 6px auto 8px; display: block; }
-            .shop-name { font-size: 20px; font-weight: 700; margin: 4px 0; }
-            .shop-address, .shop-phone { font-size: 12px; margin: 2px 0; }
-            .sep { border-top: 1px dotted #000; margin: 6px 0; }
-            .meta {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              font-size: 12px;
-              margin: 6px 0;
-            }
-            .meta div { padding: 2px 0; }
-            .meta-right { text-align: right; }
+            .header-logo { max-height: ${isProfessional ? '60px' : '36px'}; margin: 6px auto 8px; display: block; }
+            .shop-name { font-size: ${isProfessional ? '28px' : '20px'}; font-weight: 700; margin: 4px 0; }
+            .shop-address, .shop-phone { font-size: ${isProfessional ? '16px' : '12px'}; margin: 2px 0; }
+            .sep { border-top: ${isProfessional ? '2px solid #000' : '1px dotted #000'}; margin: 10px 0; }
+            
+            /* Professional Styles */
+            .p-header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+            .p-invoice-type { font-size: 18px; font-weight: bold; text-decoration: underline; margin-top: 10px; }
+            .p-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; font-size: 14px; }
+            .p-info-label { width: 120px; display: inline-block; font-weight: 500; }
+            .p-info-value { font-weight: bold; }
+            
             table.receipt { width: 100%; border-collapse: collapse; margin: 4px 0; }
-            table.receipt thead th { font-size: 12px; font-weight: 700; padding: 8px 4px; border-top: 1px dotted #000; border-bottom: 1px dotted #000; border-right: 1px dotted #000; }
-            table.receipt thead th:first-child { border-left: 1px dotted #000; }
-            table.receipt tbody td { font-size: 12px; padding: 8px 4px; border-bottom: 1px dotted #000; border-right: 1px dotted #000; vertical-align: top; }
-            table.receipt tbody tr td:first-child { border-left: 1px dotted #000; }
-            .c { text-align: center; }
-            .r { text-align: right; }
-            .wrap { white-space: pre-wrap; word-break: break-word; }
-            .totals { margin-top: 8px; border-top: 1px dotted #000; border-bottom: 1px dotted #000; padding: 6px 0; font-size: 12px; }
-            .line { display: flex; justify-content: space-between; margin: 3px 0; }
-            .net { text-align: right; font-weight: 700; font-size: 18px; margin-top: 6px; }
+            table.receipt thead th { 
+                font-size: ${isProfessional ? '13px' : '12px'}; 
+                font-weight: 700; 
+                padding: 8px 4px; 
+                border: 1px ${isProfessional ? 'solid' : 'dotted'} #000;
+                background-color: ${isProfessional ? '#f2f2f2' : 'transparent'};
+            }
+            table.receipt tbody td { 
+                font-size: ${isProfessional ? '13px' : '12px'}; 
+                padding: 8px 4px; 
+                border: 1px ${isProfessional ? 'solid' : 'dotted'} #000; 
+                vertical-align: top;
+                text-align: center;
+            }
+            .text-left { text-align: left !important; }
+            .text-right { text-align: right !important; }
+            
+            .p-footer { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 20px; font-size: 14px; }
+            .p-stats p { display: flex; justify-content: space-between; margin: 4px 0; }
+            .p-signature { border-top: 1px solid #000; margin-top: 30px; padding-top: 5px; text-align: center; }
+            .p-total-box { border: 2px solid #000; padding: 15px; text-align: center; position: relative; }
+            .p-total-label { font-size: 16px; position: absolute; left: 10px; top: 15px; }
+            .p-total-value { font-size: 24px; font-weight: bold; }
+            
+            /* Thermal Specific */
+            .t-meta { display: grid; grid-template-columns: 1fr 1fr; font-size: 12px; margin: 6px 0; }
+            .t-meta-right { text-align: right; }
+            .t-totals { margin-top: 8px; border-top: 1px dotted #000; border-bottom: 1px dotted #000; padding: 6px 0; font-size: 12px; }
+            .t-line { display: flex; justify-content: space-between; margin: 3px 0; }
+            .t-net { text-align: right; font-weight: 700; font-size: 18px; margin-top: 6px; }
+            
             .thanks { text-align: center; margin-top: 12px; font-size: 12px; }
             .dev {
               text-align: center;
@@ -548,49 +574,135 @@ const NewReceipt = () => {
               border-top: 1px dashed #000;
               border-bottom: 1px dashed #000;
             }
-            col.sr { width: 12%; }
-            col.item { width: 46%; }
-            col.qty { width: 10%; }
-            col.rate { width: 16%; }
-            col.amnt { width: 16%; }
           </style>
         </head>
         <body>
-          <div class="center">
-            ${shopData?.logoUrl ? `<img class="header-logo" src="${shopData.logoUrl}" alt="logo" onerror='this.style.display="none"' />` : ''}
-            <div class="shop-name">${shopData?.shopName || 'Shop Name'}</div>
-            ${shopData?.address ? `<div class="shop-address">${shopData.address}</div>` : ''}
-            <div class="shop-phone">${translations[language]?.phone || 'Phone'} # ${shopData?.phoneNumbers?.[0] || shopData?.phoneNumber || ''}</div>
-          </div>
- 
-          <div class="sep"></div>
-          <div class="meta">
-            <div>${translations[language]?.invoice || 'Invoice'}: ${transactionId}</div>
-            <div class="meta-right">${currentDate} ${currentTime}</div>
-            <div>${translations[language]?.paymentMethod || 'Payment'}:</div>
-            <div class="meta-right">${translatedPaymentMethod}</div>
-          </div>
-          <div class="sep"></div>
- 
-          <table class="receipt">
-            <colgroup>
-              <col class="sr" />
-              <col class="item" />
-              <col class="qty" />
-              <col class="rate" />
-              <col class="amnt" />
-            </colgroup>
-            <thead>
-              <tr>
-                <th class="c">${translations[language]?.sr || 'Sr'}</th>
-                <th class="c">${translations[language]?.itemProduct || 'Item / Product'}</th>
-                <th class="c">${translations[language]?.qty || 'Qty'}</th>
-                <th class="r">${translations[language]?.rate || 'Rate'}</th>
-                <th class="r">${translations[language]?.amnt || 'Amnt'}</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${items.map((item, idx) => {
+          ${isProfessional ? `
+            <div class="p-header">
+              ${shopData?.logoUrl ? `<img class="header-logo" src="${shopData.logoUrl}" alt="logo" onerror='this.style.display="none"' />` : ''}
+              <h2 class="shop-name">${shopData?.shopName || 'Shop Name'}</h2>
+              <p class="shop-address">${shopData?.address || ''}</p>
+              <p>${t('employee', 'Sales-man')}: <strong>${selectedEmployee ? selectedEmployee.name : 'Admin'}</strong></p>
+              <p class="p-invoice-type">${t('saleInvoice', 'SALE INVOICE')}</p>
+            </div>
+
+            <div class="p-info-grid">
+              <div>
+                <p><span class="p-info-label">${t('customerName', 'Customer Name')}:</span> <span class="p-info-value">${customer}</span></p>
+                <p><span class="p-info-label">${t('address', 'Address')}:</span> <span class="p-info-value"></span></p>
+              </div>
+              <div class="text-right">
+                <p><span class="p-info-label">${t('date', 'Date')}:</span> <span class="p-info-value">${currentDate}</span></p>
+                <p><span class="p-info-label">${t('invoiceNo', 'Invoice No')}:</span> <span class="p-info-value">${transactionId}</span></p>
+              </div>
+            </div>
+
+            <table class="receipt">
+              <thead>
+                <tr>
+                  <th style="width: 40px">S#</th>
+                  <th class="text-left">${t('productName', 'ProductName')}</th>
+                  <th style="width: 50px">${t('crtn', 'Crtn')}</th>
+                  <th style="width: 50px">${t('pcs', 'Pcs')}</th>
+                  <th style="width: 50px">${t('bns', 'Bns')}</th>
+                  <th style="width: 60px">T.P.</th>
+                  <th style="width: 70px">${t('amount', 'Amount')}</th>
+                  <th style="width: 50px">${t('disc', 'Disc')}</th>
+                  <th style="width: 50px">${t('schm', 'Schm')}</th>
+                  <th style="width: 60px">Diso %</th>
+                  <th style="width: 80px">${t('netAmount', 'Net Amount')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${items.map((item, idx) => {
+      const qty = parseFloat(item.quantity || 1);
+      const bonus = parseFloat(item.bonus || 0);
+      const rate = Math.round(parseFloat(item.salePrice || 0));
+      const discount = Math.round(parseFloat(item.discountAmount || 0));
+      const total = Math.round(parseFloat(item.total || 0));
+      const isPcs = item.quantityUnit?.toLowerCase() === 'pcs' || item.quantityUnit?.toLowerCase() === 'units';
+      return `
+                    <tr>
+                      <td>${idx + 1}</td>
+                      <td class="text-left">${item.name}</td>
+                      <td>${!isPcs ? qty : ''}</td>
+                      <td>${isPcs ? qty : ''}</td>
+                      <td>${bonus || ''}</td>
+                      <td>${rate}</td>
+                      <td>${Math.round(qty * rate)}</td>
+                      <td>${discount}</td>
+                      <td>0</td>
+                      <td>${item.discountPercent || ''}</td>
+                      <td>${total}</td>
+                    </tr>
+                  `;
+    }).join('')}
+                <tr style="font-weight: bold">
+                  <td colspan="2" class="text-left">${t('totalItem', 'Total Item')}: ${items.length}</td>
+                  <td>${items.reduce((s, i) => s + (i.quantityUnit?.toLowerCase() !== 'pcs' ? parseFloat(i.quantity || 0) : 0), 0)}</td>
+                  <td>${items.reduce((s, i) => s + (i.quantityUnit?.toLowerCase() === 'pcs' || i.quantityUnit?.toLowerCase() === 'units' ? parseFloat(i.quantity || 0) : 0), 0)}</td>
+                  <td>${items.reduce((s, i) => s + parseFloat(i.bonus || 0), 0)}</td>
+                  <td></td>
+                  <td>${items.reduce((s, i) => s + Math.round(parseFloat(i.quantity || 0) * parseFloat(i.price || 0)), 0)}</td>
+                  <td>${Math.round(parseFloat(discount || 0))}</td>
+                  <td>0</td>
+                  <td></td>
+                  <td>${Math.round(parseFloat(totals.payable))}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="p-footer">
+              <div class="p-stats">
+                <p><span>${t('prevBalance', 'Prev Balance')}:</span> <span>0.00</span></p>
+                <p><span>${t('thisBill', 'This Bill')}:</span> <span>${Math.round(parseFloat(totals.payable))}</span></p>
+                <p><span>${t('cashRecieved', 'Cash Received')}:</span> <span>${Math.round(parseFloat(enterAmount || 0))}</span></p>
+                <p style="font-weight: bold"><span>${t('newBalance', 'New Balance')}:</span> <span>${Math.round(parseFloat(totals.payable) - (parseFloat(enterAmount || 0)))}</span></p>
+              </div>
+              <div class="p-signature">
+                <p class="p-signature">${t('signature', 'Signature')}</p>
+              </div>
+              <div class="p-total-box">
+                <span class="p-total-label">${t('totalBill', 'Total Bill')} :</span>
+                <span class="p-total-value">${Math.round(parseFloat(totals.payable))}</span>
+              </div>
+            </div>
+          ` : `
+            <div class="center">
+              ${shopData?.logoUrl ? `<img class="header-logo" src="${shopData.logoUrl}" alt="logo" onerror='this.style.display="none"' />` : ''}
+              <div class="shop-name">${shopData?.shopName || 'Shop Name'}</div>
+              ${shopData?.address ? `<div class="shop-address">${shopData.address}</div>` : ''}
+              <div class="shop-phone">${t('phone', 'Phone')} # ${shopData?.phoneNumbers?.[0] || shopData?.phoneNumber || ''}</div>
+            </div>
+   
+            <div class="sep"></div>
+            <div class="t-meta">
+              <div>${t('invoice', 'Invoice')}: ${transactionId}</div>
+              <div class="t-meta-right">${currentDate} ${currentTime}</div>
+              <div>${t('paymentMethod', 'Payment')}:</div>
+              <div class="t-meta-right">${translatedPaymentMethod}</div>
+            </div>
+            <div class="sep"></div>
+   
+            <table class="receipt">
+              <colgroup>
+                <col style="width: 12%" />
+                <col style="width: 46%" />
+                <col style="width: 10%" />
+                <col style="width: 16%" />
+                <col style="width: 16%" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th class="c">${t('sr', 'Sr')}</th>
+                  <th class="c">${t('itemProduct', 'Item / Product')}</th>
+                  <th class="c">${t('qty', 'Qty')}</th>
+                  <th class="r">${t('rate', 'Rate')}</th>
+                  <th className="r">${t('amnt', 'Amnt')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${items.map((item, idx) => {
       const qty = parseFloat(item.quantity || 1);
       const bonus = parseFloat(item.bonus || 0);
       const rate = Math.round(parseFloat(item.salePrice || 0));
@@ -598,29 +710,34 @@ const NewReceipt = () => {
       const name = (item.name || '').replace(/\n/g, '\n');
       const unit = item.quantityUnit && item.quantityUnit.toLowerCase() !== 'units' ? item.quantityUnit.toUpperCase() : '';
       return `
-                  <tr>
-                    <td class="c">${idx + 1}</td>
-                    <td class="wrap">${name}</td>
-                    <td class="c">${qty}${bonus > 0 ? ` + ${bonus}` : ''} ${unit}</td>
-                    <td class="r">${rate}</td>
-                    <td class="r">${amount}</td>
-                  </tr>
-                `;
+                    <tr>
+                      <td class="c">${idx + 1}</td>
+                      <td class="text-left">${name}</td>
+                      <td class="c">${qty}${bonus > 0 ? ` + ${bonus}` : ''} ${unit}</td>
+                      <td class="r">${rate}</td>
+                      <td class="r">${amount}</td>
+                    </tr>
+                  `;
     }).join('')}
-            </tbody>
-          </table>
- 
-            <div class="totals">
-            <div class="line"><span>${translations[language]?.total || 'Total'}</span><span>${parseFloat(totals.totalQuantities).toFixed(2)}</span></div>
-            ${parseFloat(discount) > 0 ? `<div class="line"><span>${translations[language]?.discount || 'Discount'}</span><span>${Math.round(parseFloat(discount))}</span></div>` : ''}
-            ${parseFloat(totals.taxAmount) > 0 ? `<div class="line"><span>${translations[language]?.tax || 'Tax'} (${tax || 0}%)</span><span>${Math.round(parseFloat(totals.taxAmount))}</span></div>` : ''}
-            <div class="line"><span>${translations[language]?.netTotal || 'Net Total'}</span><span>${Math.round(parseFloat(totals.payable))}</span></div>
-            ${parseFloat(totals.loanAmount) > 0 ? `<div class="line"><span>${translations[language]?.loan || 'Loan'}</span><span>${Math.round(parseFloat(totals.loanAmount))}</span></div>` : ''}
+              </tbody>
+            </table>
+   
+            <div class="t-totals">
+              <div class="t-line"><span>${t('total', 'Total')}</span><span>${parseFloat(totals.totalQuantities).toFixed(2)}</span></div>
+              ${parseFloat(discount) > 0 ? `<div class="t-line"><span>${t('discount', 'Discount')}</span><span>${Math.round(parseFloat(discount))}</span></div>` : ''}
+              ${parseFloat(totals.taxAmount) > 0 ? `<div class="t-line"><span>${t('tax', 'Tax')} (${tax || 0}%)</span><span>${Math.round(parseFloat(totals.taxAmount))}</span></div>` : ''}
+              <div class="t-line"><span>${t('netTotal', 'Net Total')}</span><span>${Math.round(parseFloat(totals.payable))}</span></div>
+              ${parseFloat(totals.loanAmount) > 0 ? `<div class="t-line"><span>${t('loan', 'Loan')}</span><span>${Math.round(parseFloat(totals.loanAmount))}</span></div>` : ''}
+            </div>
+   
+            <div class="t-net" style="text-align: right; font-weight: 700; font-size: 18px; margin-top: 6px;">${Math.round(parseFloat(totals.payable))}</div>
+            <div class="thanks">${t('thankYouShopping', 'Thank you For Shoping !')}</div>
+          `}
+          
+          <div class="thanks" style="margin-top: 10px; font-style: italic;">
+            ${shopData?.receiptDescription || ''}
           </div>
- 
-          <div class="net">${Math.round(parseFloat(totals.payable))}</div>
-          <div class="thanks">${translations[language]?.thankYouShopping || 'Thank you For Shoping !'}</div>
-          <div class="dev">${translations[language]?.softwareDevelopedBy || 'software developed by'} Soft Verse 03311041968</div>
+          <div class="dev">${t('softwareDevelopedBy', 'software developed by')} Soft Verse 03311041968</div>
         </body>
       </html>
     `;
