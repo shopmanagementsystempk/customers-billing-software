@@ -808,7 +808,7 @@ const CustomerInformation = () => {
                           <Translate textKey="viewLoans" />
                         </Button>
                         {(() => {
-                          const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase() && (l.status || 'outstanding') !== 'paid' && l.type !== 'credit');
+                          const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase() && (l.status || 'outstanding') !== 'paid');
                           const total = custLoans.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
                           return total > 0 ? (
                             <Button
@@ -817,7 +817,7 @@ const CustomerInformation = () => {
                               className="me-2"
                               onClick={() => openPayLoanModal(customer)}
                             >
-                              <Translate textKey="payLoan" />
+                              <Translate textKey="payLoan" fallback="Pay/Settle" />
                             </Button>
                           ) : null;
                         })()}
