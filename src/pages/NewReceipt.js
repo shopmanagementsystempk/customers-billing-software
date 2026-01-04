@@ -369,7 +369,7 @@ const NewReceipt = () => {
       }
     }
     // Recalculate total for this item when quantity or salePrice or tax or discounts change
-    else if (field === 'quantity' || field === 'salePrice' || field === 'tax' || field === 'discountPercent' || field === 'discountAmount') {
+    else if (field === 'quantity' || field === 'salePrice' || field === 'tax' || field === 'discountPercent' || field === 'discountAmount' || field === 'bonus') {
       newItems[index].total = calculateItemTotal(newItems[index]);
 
       // If quantity or salePrice changed, update itemPrice to match (if it was used for entry)
@@ -422,6 +422,7 @@ const NewReceipt = () => {
         inStock: matchingItem.quantity || 0,
         salePrice: matchingItem.price.toString(),
         tax: '0',
+        bonus: '0',
         discountPercent: '0',
         discountAmount: '0',
         quantity: '1',
@@ -591,6 +592,7 @@ const NewReceipt = () => {
             <tbody>
               ${items.map((item, idx) => {
       const qty = parseFloat(item.quantity || 1);
+      const bonus = parseFloat(item.bonus || 0);
       const rate = Math.round(parseFloat(item.salePrice || 0));
       const amount = Math.round(parseFloat(item.total || 0));
       const name = (item.name || '').replace(/\n/g, '\n');
@@ -599,7 +601,7 @@ const NewReceipt = () => {
                   <tr>
                     <td class="c">${idx + 1}</td>
                     <td class="wrap">${name}</td>
-                    <td class="c">${qty} ${unit}</td>
+                    <td class="c">${qty}${bonus > 0 ? ` + ${bonus}` : ''} ${unit}</td>
                     <td class="r">${rate}</td>
                     <td class="r">${amount}</td>
                   </tr>
@@ -658,6 +660,7 @@ const NewReceipt = () => {
         name: item.name,
         price: parseFloat(item.salePrice),
         quantity: parseFloat(item.quantity),
+        bonus: parseFloat(item.bonus || 0),
         costPrice: parseFloat(item.costPrice || 0),
         tax: parseFloat(item.tax || 0),
         discountPercent: parseFloat(item.discountPercent || 0),
@@ -721,7 +724,7 @@ const NewReceipt = () => {
       backgroundOperations.push(
         updateStockQuantity(activeShopId, receiptItems.map(item => ({
           name: item.name,
-          quantity: item.quantity,
+          quantity: item.quantity + (item.bonus || 0),
           quantityUnit: item.quantityUnit
         }))).catch(stockError => {
           console.error('Error updating stock:', stockError);
@@ -998,6 +1001,7 @@ const NewReceipt = () => {
                           <th style={{ fontSize: '0.75rem', padding: '0.25rem', color: 'white' }}><Translate textKey="unitPrice" fallback="Unit Price" /></th>
                           <th style={{ fontSize: '0.75rem', padding: '0.25rem', color: 'white' }}><Translate textKey="priceRs" fallback="Price (RS)" /></th>
                           <th style={{ fontSize: '0.75rem', padding: '0.25rem', color: 'white' }}><Translate textKey="qty" fallback="Qty" /></th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem', color: 'white' }}><Translate textKey="bonus" fallback="Bonus" /></th>
                           <th style={{ fontSize: '0.75rem', padding: '0.25rem', color: 'white' }}><Translate textKey="taxPercent" fallback="Tax (%)" /></th>
                           <th style={{ fontSize: '0.75rem', padding: '0.25rem', color: 'white' }}><Translate textKey="discountPercent" fallback="Disc (%)" /></th>
                           <th style={{ fontSize: '0.75rem', padding: '0.25rem', color: 'white' }}><Translate textKey="discountAmount" fallback="Disc (RS)" /></th>
@@ -1054,6 +1058,18 @@ const NewReceipt = () => {
                                 min="0"
                                 step={item.quantityUnit === 'kg' ? '0.001' : '1'}
                                 title={`Quantity in ${item.quantityUnit || 'units'}`}
+                              />
+                            </td>
+                            <td style={{ padding: '0.25rem' }}>
+                              <Form.Control
+                                type="number"
+                                size="sm"
+                                style={{ width: '60px', fontSize: '0.8rem', padding: '0.2rem' }}
+                                value={item.bonus}
+                                onChange={(e) => handleItemChange(index, 'bonus', e.target.value)}
+                                min="0"
+                                step={item.quantityUnit === 'kg' ? '0.001' : '1'}
+                                placeholder="0"
                               />
                             </td>
                             <td style={{ padding: '0.25rem' }}>
