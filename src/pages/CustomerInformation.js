@@ -53,6 +53,13 @@ const CustomerInformation = () => {
   const [payLoading, setPayLoading] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('0');
   const [paymentTransactionId, setPaymentTransactionId] = useState('');
+  const [showPaymentHistoryModal, setShowPaymentHistoryModal] = useState(false);
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(false);
+  const [selectedCustomerForHistory, setSelectedCustomerForHistory] = useState('');
+  const [showAllPaymentHistoryModal, setShowAllPaymentHistoryModal] = useState(false);
+  const [allPaymentHistory, setAllPaymentHistory] = useState([]);
+  const [allPaymentHistoryLoading, setAllPaymentHistoryLoading] = useState(false);
   const printIframeRef = useRef(null);
   const fileInputRef = useRef(null);
   const [importing, setImporting] = useState(false);
@@ -368,6 +375,52 @@ const CustomerInformation = () => {
     customer.accountType?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const viewPaymentHistory = async (customer) => {
+    setSelectedCustomerForHistory(customer.name || '');
+    setPaymentHistoryLoading(true);
+    setShowPaymentHistoryModal(true);
+    try {
+      const paymentsRef = collection(db, 'customerLoanPayments');
+      const q = query(
+        paymentsRef,
+        where('shopId', '==', activeShopId),
+        where('customerName', '==', customer.name)
+      );
+      const snapshot = await getDocs(q);
+      const history = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Sort by timestamp descending (newest first)
+      history.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+      setPaymentHistory(history);
+    } catch (err) {
+      console.error('Error fetching payment history:', err);
+      setError('Failed to load payment history');
+    } finally {
+      setPaymentHistoryLoading(false);
+    }
+  };
+
+  const viewAllPaymentHistory = async () => {
+    setAllPaymentHistoryLoading(true);
+    setShowAllPaymentHistoryModal(true);
+    try {
+      const paymentsRef = collection(db, 'customerLoanPayments');
+      const q = query(
+        paymentsRef,
+        where('shopId', '==', activeShopId)
+      );
+      const snapshot = await getDocs(q);
+      const history = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Sort by timestamp descending (newest first)
+      history.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+      setAllPaymentHistory(history);
+    } catch (err) {
+      console.error('Error fetching all payment history:', err);
+      setError('Failed to load payment history');
+    } finally {
+      setAllPaymentHistoryLoading(false);
+    }
+  };
+
   const openPayLoanModal = (customer) => {
     const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase() && (l.status || 'outstanding') !== 'paid');
     const total = custLoans.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
@@ -390,6 +443,8 @@ const CustomerInformation = () => {
       const now = new Date().toISOString();
       const sorted = [...customerOutstandingLoans].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
       const updatedLoansLocal = [...loans];
+      const paymentDetails = []; // Track individual loan payments
+      
       for (const loan of sorted) {
         if (remaining <= 0) break;
         const amt = Math.max(0, parseFloat(loan.amount) || 0);
@@ -399,6 +454,16 @@ const CustomerInformation = () => {
             paidAt: now,
             paidAmount: amt,
             amount: 0
+          });
+          // Record this individual loan payment
+          paymentDetails.push({
+            loanId: loan.id,
+            loanTransactionId: loan.transactionId || 'N/A',
+            originalAmount: amt,
+            amountPaid: amt,
+            remainingAmount: 0,
+            status: 'fully_paid',
+            loanType: loan.type || 'loan'
           });
           const idx = updatedLoansLocal.findIndex(l => l.id === loan.id);
           if (idx >= 0) updatedLoansLocal[idx] = { ...updatedLoansLocal[idx], status: 'paid', amount: 0, paidAt: now, paidAmount: amt };
@@ -410,19 +475,36 @@ const CustomerInformation = () => {
             paidAmount: (parseFloat(loan.paidAmount) || 0) + remaining,
             amount: (amt - remaining)
           });
+          // Record this partial loan payment
+          paymentDetails.push({
+            loanId: loan.id,
+            loanTransactionId: loan.transactionId || 'N/A',
+            originalAmount: amt,
+            amountPaid: remaining,
+            remainingAmount: amt - remaining,
+            status: 'partially_paid',
+            loanType: loan.type || 'loan'
+          });
           const idx = updatedLoansLocal.findIndex(l => l.id === loan.id);
           if (idx >= 0) updatedLoansLocal[idx] = { ...updatedLoansLocal[idx], status: 'outstanding', amount: (amt - remaining), paidAt: now, paidAmount: (parseFloat(loan.paidAmount) || 0) + remaining };
           remaining = 0;
         }
       }
       setLoans(updatedLoansLocal);
+      
+      // Save payment with detailed history
       await addDoc(collection(db, 'customerLoanPayments'), {
         shopId: activeShopId,
         customerName: payingCustomerName,
         transactionId: paymentTransactionId,
         amountPaid: Math.max(0, Math.min(parseFloat(paymentAmount) || 0, outstandingTotal)),
-        timestamp: now
+        timestamp: now,
+        paymentDetails: paymentDetails, // Detailed breakdown of each loan paid
+        totalLoansAffected: paymentDetails.length,
+        balanceBeforePayment: outstandingTotal,
+        balanceAfterPayment: outstandingTotal - Math.max(0, Math.min(parseFloat(paymentAmount) || 0, outstandingTotal))
       });
+      
       setShowPayLoanModal(false);
       setSuccess(getTranslatedAttr('loanPaymentRecorded'));
       setTimeout(() => setSuccess(''), 3000);
@@ -709,6 +791,9 @@ const CustomerInformation = () => {
               <><i className="bi bi-file-earmark-excel me-2"></i><Translate textKey="importExcel" fallback="Import from Excel (CSV)" /></>
             )}
           </Button>
+          <Button variant="outline-info" className="ms-2" onClick={viewAllPaymentHistory}>
+            <i className="bi bi-clock-history me-2"></i>All Payment History
+          </Button>
           {customers.length > 0 && (
             <Button variant="outline-danger" className="ms-2" onClick={() => setShowDeleteAllModal(true)}>
               <i className="bi bi-trash me-2"></i><Translate textKey="deleteAll" fallback="Delete All" />
@@ -812,6 +897,14 @@ const CustomerInformation = () => {
                           }}
                         >
                           <Translate textKey="viewLoans" />
+                        </Button>
+                        <Button
+                          variant="outline-info"
+                          size="sm"
+                          className="me-2"
+                          onClick={() => viewPaymentHistory(customer)}
+                        >
+                          <i className="bi bi-clock-history"></i> History
                         </Button>
                         {(() => {
                           const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase() && (l.status || 'outstanding') !== 'paid');
@@ -1182,6 +1275,156 @@ const CustomerInformation = () => {
             </tbody>
           </Table>
         </Modal.Body>
+      </Modal>
+
+      {/* Payment History Modal */}
+      <Modal show={showPaymentHistoryModal} onHide={() => setShowPaymentHistoryModal(false)} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title><i className="bi bi-clock-history me-2"></i>Payment History - {selectedCustomerForHistory}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {paymentHistoryLoading ? (
+            <div className="text-center py-4"><Spinner animation="border" /></div>
+          ) : paymentHistory.length === 0 ? (
+            <div className="text-center py-4">
+              <i className="bi bi-inbox" style={{ fontSize: '3rem', color: '#ccc' }}></i>
+              <p className="text-muted mt-3">No payment history found for this customer.</p>
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <Table striped bordered hover size="sm">
+                <thead className="table-dark">
+                  <tr>
+                    <th>Date & Time</th>
+                    <th>Transaction ID</th>
+                    <th>Amount Paid</th>
+                    <th>Balance Before</th>
+                    <th>Balance After</th>
+                    <th>Loans Affected</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paymentHistory.map(payment => (
+                    <tr key={payment.id}>
+                      <td>{payment.timestamp ? new Date(payment.timestamp).toLocaleString() : '-'}</td>
+                      <td><Badge bg="secondary">{payment.transactionId || '-'}</Badge></td>
+                      <td className="text-success fw-bold">RS {(parseFloat(payment.amountPaid) || 0).toFixed(2)}</td>
+                      <td>RS {(parseFloat(payment.balanceBeforePayment) || 0).toFixed(2)}</td>
+                      <td>RS {(parseFloat(payment.balanceAfterPayment) || 0).toFixed(2)}</td>
+                      <td>
+                        {payment.paymentDetails && payment.paymentDetails.length > 0 ? (
+                          <details>
+                            <summary className="text-primary" style={{ cursor: 'pointer' }}>
+                              {payment.totalLoansAffected || payment.paymentDetails.length} loan(s)
+                            </summary>
+                            <ul className="mt-2 mb-0 ps-3" style={{ fontSize: '0.85rem' }}>
+                              {payment.paymentDetails.map((detail, idx) => (
+                                <li key={idx}>
+                                  <strong>{detail.loanTransactionId}</strong>: RS {detail.amountPaid.toFixed(2)} paid
+                                  {detail.status === 'partially_paid' && (
+                                    <span className="text-warning"> (Remaining: RS {detail.remainingAmount.toFixed(2)})</span>
+                                  )}
+                                  {detail.status === 'fully_paid' && (
+                                    <span className="text-success"> (Fully Paid)</span>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          </details>
+                        ) : (
+                          <span className="text-muted">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <div className="me-auto text-muted">
+            Total Payments: {paymentHistory.length} | 
+            Total Amount: RS {paymentHistory.reduce((sum, p) => sum + (parseFloat(p.amountPaid) || 0), 0).toFixed(2)}
+          </div>
+          <Button variant="secondary" onClick={() => setShowPaymentHistoryModal(false)}>Close</Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* All Customers Payment History Modal */}
+      <Modal show={showAllPaymentHistoryModal} onHide={() => setShowAllPaymentHistoryModal(false)} size="xl">
+        <Modal.Header closeButton>
+          <Modal.Title><i className="bi bi-clock-history me-2"></i>All Customers Payment History</Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+          {allPaymentHistoryLoading ? (
+            <div className="text-center py-4"><Spinner animation="border" /></div>
+          ) : allPaymentHistory.length === 0 ? (
+            <div className="text-center py-4">
+              <i className="bi bi-inbox" style={{ fontSize: '3rem', color: '#ccc' }}></i>
+              <p className="text-muted mt-3">No payment history found.</p>
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <Table striped bordered hover size="sm">
+                <thead className="table-dark sticky-top">
+                  <tr>
+                    <th>Date & Time</th>
+                    <th>Customer Name</th>
+                    <th>Transaction ID</th>
+                    <th>Amount Paid</th>
+                    <th>Balance Before</th>
+                    <th>Balance After</th>
+                    <th>Loans Affected</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allPaymentHistory.map(payment => (
+                    <tr key={payment.id}>
+                      <td>{payment.timestamp ? new Date(payment.timestamp).toLocaleString() : '-'}</td>
+                      <td><strong>{payment.customerName || '-'}</strong></td>
+                      <td><Badge bg="secondary">{payment.transactionId || '-'}</Badge></td>
+                      <td className="text-success fw-bold">RS {(parseFloat(payment.amountPaid) || 0).toFixed(2)}</td>
+                      <td>RS {(parseFloat(payment.balanceBeforePayment) || 0).toFixed(2)}</td>
+                      <td>RS {(parseFloat(payment.balanceAfterPayment) || 0).toFixed(2)}</td>
+                      <td>
+                        {payment.paymentDetails && payment.paymentDetails.length > 0 ? (
+                          <details>
+                            <summary className="text-primary" style={{ cursor: 'pointer' }}>
+                              {payment.totalLoansAffected || payment.paymentDetails.length} loan(s)
+                            </summary>
+                            <ul className="mt-2 mb-0 ps-3" style={{ fontSize: '0.85rem' }}>
+                              {payment.paymentDetails.map((detail, idx) => (
+                                <li key={idx}>
+                                  <strong>{detail.loanTransactionId}</strong>: RS {detail.amountPaid.toFixed(2)} paid
+                                  {detail.status === 'partially_paid' && (
+                                    <span className="text-warning"> (Remaining: RS {detail.remainingAmount.toFixed(2)})</span>
+                                  )}
+                                  {detail.status === 'fully_paid' && (
+                                    <span className="text-success"> (Fully Paid)</span>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          </details>
+                        ) : (
+                          <span className="text-muted">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <div className="me-auto text-muted">
+            Total Payments: {allPaymentHistory.length} | 
+            Total Amount: RS {allPaymentHistory.reduce((sum, p) => sum + (parseFloat(p.amountPaid) || 0), 0).toFixed(2)}
+          </div>
+          <Button variant="secondary" onClick={() => setShowAllPaymentHistoryModal(false)}>Close</Button>
+        </Modal.Footer>
       </Modal>
     </>
   );
