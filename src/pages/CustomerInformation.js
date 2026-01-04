@@ -204,9 +204,49 @@ const CustomerInformation = () => {
       if (editingCustomer) {
         const customerRef = doc(db, 'customers', editingCustomer.id);
         await updateDoc(customerRef, customerData);
+
+        // Update or create Opening Balance loan
+        const loansRef = collection(db, 'customerLoans');
+        const q = query(loansRef,
+          where('shopId', '==', activeShopId),
+          where('customerName', '==', editingCustomer.name),
+          where('transactionId', '==', 'Opening Balance')
+        );
+        const snapshot = await getDocs(q);
+
+        const newLoanAmount = parseFloat(formData.loan) || 0;
+
+        if (!snapshot.empty) {
+          const loanDoc = snapshot.docs[0];
+          await updateDoc(doc(db, 'customerLoans', loanDoc.id), {
+            amount: newLoanAmount,
+            customerName: formData.name // sync name if changed
+          });
+        } else if (newLoanAmount > 0) {
+          await addDoc(collection(db, 'customerLoans'), {
+            shopId: activeShopId,
+            customerName: formData.name,
+            amount: newLoanAmount,
+            type: 'loan',
+            transactionId: 'Opening Balance',
+            status: 'outstanding',
+            timestamp: new Date().toISOString()
+          });
+        }
         setSuccess(getTranslatedAttr('customerUpdatedSuccess'));
       } else {
         await addDoc(collection(db, 'customers'), customerData);
+        if (parseFloat(formData.loan) > 0) {
+          await addDoc(collection(db, 'customerLoans'), {
+            shopId: activeShopId,
+            customerName: formData.name,
+            amount: parseFloat(formData.loan),
+            type: 'loan',
+            transactionId: 'Opening Balance',
+            status: 'outstanding',
+            timestamp: new Date().toISOString()
+          });
+        }
         setSuccess(getTranslatedAttr('customerAddedSuccess'));
       }
 
@@ -544,10 +584,23 @@ const CustomerInformation = () => {
         if (customerInfo.name) {
           const newDocRef = doc(customersRef);
           batch.set(newDocRef, customerInfo);
+
+          if (parseFloat(customerInfo.loan) > 0) {
+            const loanRef = doc(collection(db, 'customerLoans'));
+            batch.set(loanRef, {
+              shopId: activeShopId,
+              customerName: customerInfo.name,
+              amount: parseFloat(customerInfo.loan),
+              type: 'loan',
+              transactionId: 'Opening Balance',
+              status: 'outstanding',
+              timestamp: now.toISOString()
+            });
+          }
           count++;
         }
 
-        if (count >= 450) break;
+        if (count >= 400) break; // Reduced slightly to account for dual entries in batch
       }
 
       // Add missing types and routes
@@ -675,9 +728,6 @@ const CustomerInformation = () => {
                           const total = custLoans.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
                           return <span>RS {total.toFixed(2)}</span>;
                         })()}
-                        {parseFloat(customer.loan || 0) > 0 && (
-                          <div className="small text-muted">Opening: RS {parseFloat(customer.loan).toFixed(2)}</div>
-                        )}
                       </td>
                       <td>
                         <Badge bg={customer.status === 'inactive' ? 'danger' : 'success'}>
