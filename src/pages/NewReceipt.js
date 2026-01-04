@@ -45,6 +45,8 @@ const NewReceipt = () => {
   const [customersLoaded, setCustomersLoaded] = useState(false);
   const [loans, setLoans] = useState([]);
   const [customerBalance, setCustomerBalance] = useState(0);
+  const [routes, setRoutes] = useState([]);
+  const [selectedRoute, setSelectedRoute] = useState('');
   const navigate = useNavigate();
   const pdfRef = useRef();
   const barcodeInputRef = useRef(null);
@@ -118,7 +120,6 @@ const NewReceipt = () => {
       fetchEmployees();
     }
   }, [currentUser, activeShopId]);
-
   useEffect(() => {
     if (currentUser && activeShopId) {
       const fetchCustomers = async () => {
@@ -138,6 +139,25 @@ const NewReceipt = () => {
         }
       };
       fetchCustomers();
+    }
+  }, [currentUser, activeShopId]);
+
+  // Fetch routes
+  useEffect(() => {
+    if (currentUser && activeShopId) {
+      const fetchRoutes = async () => {
+        try {
+          const routesRef = collection(db, 'routes');
+          const q = query(routesRef, where('shopId', '==', activeShopId));
+          const snapshot = await getDocs(q);
+          const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+          setRoutes(list);
+        } catch (error) {
+          console.error('Error fetching routes:', error);
+        }
+      };
+      fetchRoutes();
     }
   }, [currentUser, activeShopId]);
 
@@ -495,6 +515,7 @@ const NewReceipt = () => {
     setTax('');
     setEnterAmount('');
     setLoanAmount('');
+    setSelectedRoute('');
     setPaymentMethod('Cash');
     setSelectedEmployee(null);
     setError('');
@@ -1084,8 +1105,21 @@ const NewReceipt = () => {
   const employeeOptions = employeesLoaded ?
     employees.map(emp => ({ value: emp.id, label: emp.name })) : [];
 
+  const routeOptions = [
+    { value: '', label: 'All Routes' },
+    ...routes.map(r => ({ value: r.name, label: r.name }))
+  ];
+
   const customerOptions = customersLoaded
-    ? [{ value: 'Walk-in Customer', label: 'Walk-in Customer' }, ...customers.map(c => ({ value: c.name, label: c.name }))]
+    ? [
+      { value: 'Walk-in Customer', label: 'Walk-in Customer' },
+      ...customers
+        .filter(c => !selectedRoute || c.route === selectedRoute)
+        .map(c => ({
+          value: c.name,
+          label: `${c.name}${c.route ? ` [${c.route}]` : ''}`
+        }))
+    ]
     : [{ value: 'Walk-in Customer', label: 'Walk-in Customer' }];
 
 
@@ -1168,6 +1202,26 @@ const NewReceipt = () => {
                             e.preventDefault();
                             addItemToList();
                           }
+                        }}
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="mb-1" style={{ fontSize: '0.875rem' }}>Route</Form.Label>
+                      <Select
+                        value={routeOptions.find(opt => opt.value === selectedRoute) || routeOptions[0]}
+                        onChange={(option) => {
+                          setSelectedRoute(option ? option.value : '');
+                          setCustomer('Walk-in Customer');
+                        }}
+                        options={routeOptions}
+                        placeholder="Select Route"
+                        className="basic-single"
+                        classNamePrefix="select"
+                        menuPortalTarget={document.body}
+                        styles={{
+                          menuPortal: (base) => ({ ...base, zIndex: 9999 })
                         }}
                       />
                     </Form.Group>
