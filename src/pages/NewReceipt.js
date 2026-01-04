@@ -1056,7 +1056,7 @@ const NewReceipt = () => {
 
           {/* Right Column - Payment Summary */}
           <Col lg={4}>
-            <Card className="pos-card sticky-top" style={{ top: '80px' }}>
+            <Card className="pos-card sticky-top" style={{ top: '80px', maxHeight: 'calc(100vh - 100px)', overflowY: 'auto' }}>
               <Card.Body className="p-3">
                 <h6 className="mb-2 d-flex align-items-center gap-2">
                   <i className="bi bi-cash-stack text-success"></i>
@@ -1190,10 +1190,10 @@ const NewReceipt = () => {
                 <div className="d-grid gap-2">
                   <Button
                     variant="success"
-                    size="sm"
                     onClick={handleSubmit}
                     disabled={loading || items.length === 0}
-                    className="mb-1"
+                    className="mb-2 py-2 fw-bold btn-success text-white"
+                    style={{ fontSize: '1.1rem', transition: 'all 0.3s' }}
                   >
                     {loading ? (
                       <>
@@ -1209,17 +1209,17 @@ const NewReceipt = () => {
                   </Button>
                   <Button
                     variant="outline-secondary"
-                    size="sm"
                     onClick={resetForm}
                     disabled={loading}
+                    className="py-1"
                   >
                     <i className="bi bi-arrow-clockwise me-2"></i>
                     <Translate textKey="reset" fallback="Reset" />
                   </Button>
                   <Button
                     variant="outline-primary"
-                    size="sm"
                     onClick={() => navigate('/receipts')}
+                    className="py-1"
                   >
                     <i className="bi bi-list-ul me-2"></i>
                     <Translate textKey="viewReceipts" fallback="View Receipts" />
