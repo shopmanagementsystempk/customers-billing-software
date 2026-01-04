@@ -18,11 +18,20 @@ const CustomerInformation = () => {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    email: '',
+    phone2: '',
     address: '',
     city: '',
-    notes: ''
+    accountType: '',
+    route: '',
+    loan: '0',
+    status: 'active'
   });
+  const [accountTypes, setAccountTypes] = useState([]);
+  const [routes, setRoutes] = useState([]);
+  const [showManageAccountTypes, setShowManageAccountTypes] = useState(false);
+  const [showManageRoutes, setShowManageRoutes] = useState(false);
+  const [newTypeName, setNewTypeName] = useState('');
+  const [newRouteName, setNewRouteName] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -78,24 +87,88 @@ const CustomerInformation = () => {
     fetchCustomers();
   }, [fetchCustomers]);
 
-  useEffect(() => {
-    const fetchLoans = async () => {
-      if (!activeShopId) return;
-      setLoansLoading(true);
-      try {
-        const loansRef = collection(db, 'customerLoans');
-        const q = query(loansRef, where('shopId', '==', activeShopId));
-        const snapshot = await getDocs(q);
-        const loanData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setLoans(loanData);
-      } catch (err) {
-        console.error('Error fetching customer loans:', err);
-      } finally {
-        setLoansLoading(false);
-      }
-    };
-    fetchLoans();
+  const fetchLoans = useCallback(async () => {
+    if (!activeShopId) return;
+    setLoansLoading(true);
+    try {
+      const loansRef = collection(db, 'customerLoans');
+      const q = query(loansRef, where('shopId', '==', activeShopId));
+      const snapshot = await getDocs(q);
+      const loanData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setLoans(loanData);
+    } catch (err) {
+      console.error('Error fetching customer loans:', err);
+    } finally {
+      setLoansLoading(false);
+    }
   }, [activeShopId]);
+
+  useEffect(() => {
+    fetchLoans();
+  }, [fetchLoans]);
+
+  const fetchOptions = useCallback(async () => {
+    if (!activeShopId) return;
+    try {
+      const atSnap = await getDocs(query(collection(db, 'accountTypes'), where('shopId', '==', activeShopId)));
+      setAccountTypes(atSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+      const rSnap = await getDocs(query(collection(db, 'routes'), where('shopId', '==', activeShopId)));
+      setRoutes(rSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    } catch (err) {
+      console.error('Error fetching options:', err);
+    }
+  }, [activeShopId]);
+
+  useEffect(() => {
+    fetchOptions();
+  }, [fetchOptions]);
+
+  const addAccountType = async () => {
+    if (!newTypeName.trim() || !activeShopId) return;
+    try {
+      await addDoc(collection(db, 'accountTypes'), {
+        name: newTypeName.trim(),
+        shopId: activeShopId
+      });
+      setNewTypeName('');
+      fetchOptions();
+    } catch (err) {
+      console.error("Error adding account type:", err);
+    }
+  };
+
+  const deleteAccountType = async (id) => {
+    try {
+      await deleteDoc(doc(db, 'accountTypes', id));
+      fetchOptions();
+    } catch (err) {
+      console.error("Error deleting account type:", err);
+    }
+  };
+
+  const addRoute = async () => {
+    if (!newRouteName.trim() || !activeShopId) return;
+    try {
+      await addDoc(collection(db, 'routes'), {
+        name: newRouteName.trim(),
+        shopId: activeShopId
+      });
+      setNewRouteName('');
+      fetchOptions();
+    } catch (err) {
+      console.error("Error adding route:", err);
+    }
+  };
+
+  const deleteRoute = async (id) => {
+    try {
+      await deleteDoc(doc(db, 'routes', id));
+      fetchOptions();
+    } catch (err) {
+      console.error("Error deleting route:", err);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -152,10 +225,13 @@ const CustomerInformation = () => {
     setFormData({
       name: customer.name || '',
       phone: customer.phone || '',
-      email: customer.email || '',
+      phone2: customer.phone2 || '',
       address: customer.address || '',
       city: customer.city || '',
-      notes: customer.notes || ''
+      accountType: customer.accountType || '',
+      route: customer.route || '',
+      loan: customer.loan || '0',
+      status: customer.status || 'active'
     });
     setShowModal(true);
   };
@@ -185,10 +261,13 @@ const CustomerInformation = () => {
     setFormData({
       name: '',
       phone: '',
-      email: '',
+      phone2: '',
       address: '',
       city: '',
-      notes: ''
+      accountType: '',
+      route: '',
+      loan: '0',
+      status: 'active'
     });
     setEditingCustomer(null);
   };
@@ -201,7 +280,9 @@ const CustomerInformation = () => {
   const filteredCustomers = customers.filter(customer =>
     customer.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     customer.phone?.includes(searchTerm) ||
-    customer.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    customer.phone2?.includes(searchTerm) ||
+    customer.route?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    customer.accountType?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const openPayLoanModal = (customer) => {
@@ -379,7 +460,6 @@ const CustomerInformation = () => {
         return;
       }
 
-      // Handle quoted values correctly (Excel style)
       const parseCSVLine = (line) => {
         const result = [];
         let curValue = '';
@@ -399,12 +479,17 @@ const CustomerInformation = () => {
         return result;
       };
 
-      const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase());
+      const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().trim());
       const batch = writeBatch(db);
       let count = 0;
       const customersRef = collection(db, 'customers');
-
       const now = new Date();
+
+      // Track types and routes to add
+      const existingTypes = new Set(accountTypes.map(t => t.name.toLowerCase()));
+      const existingRoutes = new Set(routes.map(r => r.name.toLowerCase()));
+      const typesToAdd = new Set();
+      const routesToAdd = new Set();
 
       for (let i = 1; i < lines.length; i++) {
         const values = parseCSVLine(lines[i]);
@@ -416,10 +501,13 @@ const CustomerInformation = () => {
           updatedAt: now,
           name: '',
           phone: '',
-          email: '',
+          phone2: '',
           address: '',
           city: '',
-          notes: ''
+          accountType: '',
+          route: '',
+          loan: '0',
+          status: 'active'
         };
 
         headers.forEach((header, index) => {
@@ -428,16 +516,28 @@ const CustomerInformation = () => {
 
           if (header.includes('name')) {
             customerInfo.name = value;
-          } else if (header.includes('phone') || header.includes('mobile') || header.includes('contact')) {
+          } else if (header.includes('phone 1') || header === 'phone') {
             customerInfo.phone = value;
-          } else if (header.includes('email')) {
-            customerInfo.email = value;
+          } else if (header.includes('phone 2') || header === 'phone2') {
+            customerInfo.phone2 = value;
           } else if (header.includes('address')) {
             customerInfo.address = value;
           } else if (header.includes('city')) {
             customerInfo.city = value;
-          } else if (header.includes('note') || header.includes('description')) {
-            customerInfo.notes = value;
+          } else if (header.includes('account type') || header === 'accounttype') {
+            customerInfo.accountType = value;
+            if (value && !existingTypes.has(value.toLowerCase())) {
+              typesToAdd.add(value);
+            }
+          } else if (header.includes('route')) {
+            customerInfo.route = value;
+            if (value && !existingRoutes.has(value.toLowerCase())) {
+              routesToAdd.add(value);
+            }
+          } else if (header.includes('loan')) {
+            customerInfo.loan = value;
+          } else if (header.includes('status')) {
+            customerInfo.status = value.toLowerCase() === 'inactive' ? 'inactive' : 'active';
           }
         });
 
@@ -447,14 +547,24 @@ const CustomerInformation = () => {
           count++;
         }
 
-        // Firestore batch limit is 500
         if (count >= 450) break;
+      }
+
+      // Add missing types and routes
+      for (const typeName of typesToAdd) {
+        const typeRef = doc(collection(db, 'accountTypes'));
+        batch.set(typeRef, { name: typeName, shopId: activeShopId });
+      }
+      for (const routeName of routesToAdd) {
+        const routeRef = doc(collection(db, 'routes'));
+        batch.set(routeRef, { name: routeName, shopId: activeShopId });
       }
 
       if (count > 0) {
         await batch.commit();
-        setSuccess(getTranslatedAttr('importSuccess').replace('{count}', count));
+        setSuccess(`Successfully imported ${count} customers and updated options.`);
         fetchCustomers();
+        fetchOptions();
       } else {
         setError('No valid customer names found in CSV');
       }
@@ -538,36 +648,43 @@ const CustomerInformation = () => {
               <Table responsive hover>
                 <thead>
                   <tr>
+                    <th>Account Type</th>
                     <th><Translate textKey="name" /></th>
-                    <th><Translate textKey="phone" /></th>
-                    <th><Translate textKey="email" /></th>
                     <th><Translate textKey="address" /></th>
                     <th><Translate textKey="city" /></th>
-                    <th><Translate textKey="loans" /></th>
+                    <th>Phone 1</th>
+                    <th>Phone 2</th>
+                    <th>Loan</th>
+                    <th>Status</th>
+                    <th>Route</th>
                     <th><Translate textKey="action" /></th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredCustomers.map(customer => (
                     <tr key={customer.id}>
+                      <td>{customer.accountType || '-'}</td>
                       <td>{customer.name}</td>
-                      <td>{customer.phone || '-'}</td>
-                      <td>{customer.email || '-'}</td>
                       <td>{customer.address || '-'}</td>
                       <td>{customer.city || '-'}</td>
+                      <td>{customer.phone || '-'}</td>
+                      <td>{customer.phone2 || '-'}</td>
                       <td>
                         {(() => {
                           const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase());
-                          const count = custLoans.length;
                           const total = custLoans.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
-                          return (
-                            <div>
-                              <Badge bg={count > 0 ? 'danger' : 'secondary'}>{count}</Badge>
-                              <span className="ms-2">RS {total.toFixed(2)}</span>
-                            </div>
-                          );
+                          return <span>RS {total.toFixed(2)}</span>;
                         })()}
+                        {parseFloat(customer.loan || 0) > 0 && (
+                          <div className="small text-muted">Opening: RS {parseFloat(customer.loan).toFixed(2)}</div>
+                        )}
                       </td>
+                      <td>
+                        <Badge bg={customer.status === 'inactive' ? 'danger' : 'success'}>
+                          {customer.status || 'active'}
+                        </Badge>
+                      </td>
+                      <td>{customer.route || '-'}</td>
                       <td>
                         <Button
                           variant="outline-primary"
@@ -630,6 +747,22 @@ const CustomerInformation = () => {
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
+                    <Form.Label>Account Type</Form.Label>
+                    <div className="d-flex gap-2">
+                      <Form.Select
+                        name="accountType"
+                        value={formData.accountType}
+                        onChange={handleInputChange}
+                      >
+                        <option value="">Select Account Type</option>
+                        {accountTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                      </Form.Select>
+                      <Button variant="outline-secondary" size="sm" onClick={() => setShowManageAccountTypes(true)}>Manage</Button>
+                    </div>
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
                     <Form.Label><Translate textKey="name" /> *</Form.Label>
                     <Form.Control
                       type="text"
@@ -641,29 +774,17 @@ const CustomerInformation = () => {
                     />
                   </Form.Group>
                 </Col>
-                <Col md={6}>
-                  <Form.Group className="mb-3">
-                    <Form.Label><Translate textKey="phone" /></Form.Label>
-                    <Form.Control
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      placeholder="Phone number"
-                    />
-                  </Form.Group>
-                </Col>
               </Row>
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label><Translate textKey="email" /></Form.Label>
+                    <Form.Label><Translate textKey="address" /></Form.Label>
                     <Form.Control
-                      type="email"
-                      name="email"
-                      value={formData.email}
+                      type="text"
+                      name="address"
+                      value={formData.address}
                       onChange={handleInputChange}
-                      placeholder="Email address"
+                      placeholder="Address"
                     />
                   </Form.Group>
                 </Col>
@@ -680,28 +801,77 @@ const CustomerInformation = () => {
                   </Form.Group>
                 </Col>
               </Row>
-              <Form.Group className="mb-3">
-                <Form.Label><Translate textKey="address" /></Form.Label>
-                <Form.Control
-                  as="textarea"
-                  rows={2}
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  placeholder="Full address"
-                />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label><Translate textKey="notes" /></Form.Label>
-                <Form.Control
-                  as="textarea"
-                  rows={3}
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleInputChange}
-                  placeholder="Additional notes about the customer"
-                />
-              </Form.Group>
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Phone No 1</Form.Label>
+                    <Form.Control
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      placeholder="Primary phone"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Phone No 2</Form.Label>
+                    <Form.Control
+                      type="tel"
+                      name="phone2"
+                      value={formData.phone2}
+                      onChange={handleInputChange}
+                      placeholder="Secondary phone"
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Loan / Opening Balance</Form.Label>
+                    <Form.Control
+                      type="number"
+                      name="loan"
+                      value={formData.loan}
+                      onChange={handleInputChange}
+                      placeholder="0.00"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Status</Form.Label>
+                    <Form.Select
+                      name="status"
+                      value={formData.status}
+                      onChange={handleInputChange}
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+              </Row>
+              <Row>
+                <Col md={12}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Route</Form.Label>
+                    <div className="d-flex gap-2">
+                      <Form.Select
+                        name="route"
+                        value={formData.route}
+                        onChange={handleInputChange}
+                      >
+                        <option value="">Select Route</option>
+                        {routes.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+                      </Form.Select>
+                      <Button variant="outline-secondary" size="sm" onClick={() => setShowManageRoutes(true)}>Manage</Button>
+                    </div>
+                  </Form.Group>
+                </Col>
+              </Row>
             </Modal.Body>
             <Modal.Footer>
               <Button variant="secondary" onClick={handleCloseModal}>
@@ -795,6 +965,54 @@ const CustomerInformation = () => {
             {payLoading ? <Translate textKey="processing" /> : <Translate textKey="payNow" />}
           </Button>
         </Modal.Footer>
+      </Modal>
+
+      <Modal show={showManageAccountTypes} onHide={() => setShowManageAccountTypes(false)}>
+        <Modal.Header closeButton><Modal.Title>Manage Account Types</Modal.Title></Modal.Header>
+        <Modal.Body>
+          <Form.Group className="mb-3">
+            <Form.Label>Add New Type</Form.Label>
+            <div className="d-flex gap-2">
+              <Form.Control value={newTypeName} onChange={e => setNewTypeName(e.target.value)} placeholder="Type name" />
+              <Button onClick={addAccountType}>Add</Button>
+            </div>
+          </Form.Group>
+          <Table size="sm">
+            <thead><tr><th>Name</th><th>Action</th></tr></thead>
+            <tbody>
+              {accountTypes.map(t => (
+                <tr key={t.id}>
+                  <td>{t.name}</td>
+                  <td><Button variant="danger" size="sm" onClick={() => deleteAccountType(t.id)}>Delete</Button></td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </Modal.Body>
+      </Modal>
+
+      <Modal show={showManageRoutes} onHide={() => setShowManageRoutes(false)}>
+        <Modal.Header closeButton><Modal.Title>Manage Routes</Modal.Title></Modal.Header>
+        <Modal.Body>
+          <Form.Group className="mb-3">
+            <Form.Label>Add New Route</Form.Label>
+            <div className="d-flex gap-2">
+              <Form.Control value={newRouteName} onChange={e => setNewRouteName(e.target.value)} placeholder="Route name" />
+              <Button onClick={addRoute}>Add</Button>
+            </div>
+          </Form.Group>
+          <Table size="sm">
+            <thead><tr><th>Name</th><th>Action</th></tr></thead>
+            <tbody>
+              {routes.map(r => (
+                <tr key={r.id}>
+                  <td>{r.name}</td>
+                  <td><Button variant="danger" size="sm" onClick={() => deleteRoute(r.id)}>Delete</Button></td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </Modal.Body>
       </Modal>
     </>
   );
