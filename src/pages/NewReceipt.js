@@ -992,17 +992,17 @@ const NewReceipt = () => {
                     <Table hover className="mb-0" size="sm">
                       <thead>
                         <tr>
-                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}>#</th>
-                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="product" fallback="Product" /></th>
-                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="stock" fallback="Stock" /></th>
-                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="unitPrice" fallback="Unit Price" /></th>
-                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="priceRs" fallback="Price (RS)" /></th>
-                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="qty" fallback="Qty" /></th>
-                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="taxPercent" fallback="Tax (%)" /></th>
-                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="discountPercent" fallback="Disc (%)" /></th>
-                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="discountAmount" fallback="Disc (RS)" /></th>
-                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="total" fallback="Total" /></th>
-                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="action" fallback="Action" /></th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem', color: 'white' }}>#</th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem', color: 'white' }}><Translate textKey="product" fallback="Product" /></th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem', color: 'white' }}><Translate textKey="stock" fallback="Stock" /></th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem', color: 'white' }}><Translate textKey="unitPrice" fallback="Unit Price" /></th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem', color: 'white' }}><Translate textKey="priceRs" fallback="Price (RS)" /></th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem', color: 'white' }}><Translate textKey="qty" fallback="Qty" /></th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem', color: 'white' }}><Translate textKey="taxPercent" fallback="Tax (%)" /></th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem', color: 'white' }}><Translate textKey="discountPercent" fallback="Disc (%)" /></th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem', color: 'white' }}><Translate textKey="discountAmount" fallback="Disc (RS)" /></th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem', color: 'white' }}><Translate textKey="total" fallback="Total" /></th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem', color: 'white' }}><Translate textKey="action" fallback="Action" /></th>
                         </tr>
                       </thead>
                       <tbody>
