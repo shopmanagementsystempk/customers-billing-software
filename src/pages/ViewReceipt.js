@@ -13,7 +13,7 @@ import './ViewReceipt.css';
 
 const ViewReceipt = () => {
   const { id } = useParams();
-  const { currentUser, activeShopId } = useAuth();
+  const { currentUser, activeShopId, shopData } = useAuth();
   const { language } = useLanguage();
   const [receipt, setReceipt] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -355,99 +355,219 @@ const ViewReceipt = () => {
                 .line{display:flex;justify-content:space-between;margin:3px 0}
                 .net{ text-align:right;font-weight:700;font-size:18px;margin-top:6px }
                 .dev{ text-align:center;margin-top:10px;padding:6px 0;font-size:10px;border-top:1px dashed #000;border-bottom:1px dashed #000 }
-                /* Percentage widths to increase the Item/Product column */
-                .col-sr { width: 12%; }
-                .col-item { width: 46%; }
-                .col-qty { width: 10%; }
-                .col-rate { width: 16%; }
-                .col-amnt { width: 16%; }
-                .totals-box { border: 1px dashed #000; padding: 5px; margin-top: 5mm; }
-                .total-row { display: flex; justify-content: space-between; padding: 2px 0; }
-                .net-total { font-size: 16px; font-weight: 700; text-align: right; margin-top: 3mm; }
-                .thank-you { margin-top: 5mm; font-size: 10px; }
-                .dev { text-align: center; margin-top: 10px; padding: 6px 0; font-size: 10px; border-top: 1px dashed #000; border-bottom: 1px dashed #000; }
+                /* Professional Layout Styles */
+                .professional-wrap { border: 1px solid #ccc; width: 100%; color: #000; font-family: Arial, sans-serif; background: #fff; padding: 20px; }
+                .header-section { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+                .header-title { font-size: 28px; font-weight: bold; margin: 0; }
+                .header-subtitle { font-size: 18px; margin: 5px 0; }
+                .header-salesman { font-size: 16px; margin: 5px 0; }
+                .invoice-type { font-size: 18px; font-weight: bold; text-decoration: underline; }
+                .customer-info-section { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 14px; }
+                .info-left p, .info-right p { margin: 5px 0; }
+                .info-label { display: inline-block; width: 120px; font-weight: 500; }
+                .info-value { font-weight: bold; }
+                .professional-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+                .professional-table th, .professional-table td { border: 1px solid #000; padding: 6px; font-size: 13px; text-align: center; }
+                .professional-table th { background-color: #f2f2f2; font-weight: bold; }
+                .professional-table td.text-left { text-align: left; }
+                .professional-table td.text-right { text-align: right; }
+                .footer-section { display: flex; justify-content: space-between; margin-top: 10px; font-size: 14px; }
+                .footer-left { width: 40%; }
+                .footer-stats p { display: flex; justify-content: space-between; margin: 4px 0; }
+                .footer-middle { width: 25%; text-align: center; display: flex; flex-direction: column; justify-content: flex-end; }
+                .signature-line { border-top: 1px solid #000; margin-top: 10px; padding-top: 5px; }
+                .footer-right { width: 30%; border: 2px solid #000; padding: 15px; text-align: center; position: relative; }
+                .total-bill-label { font-size: 16px; position: absolute; left: 10px; top: 15px; }
+                .total-bill-value { font-size: 24px; font-weight: bold; }
                 @media print {
-                  body { font-weight: 700; }
+                  body { font-weight: 700; color: #000 !important; }
                   .thermal-wrap { width: 80mm; }
+                  .professional-wrap { width: 100%; border: none; }
                 }
               `}</style>
-              <div className="thermal-wrap">
-                <div className="center">
-                  {receipt.shopDetails.logoUrl && (
-                    <img src={receipt.shopDetails.logoUrl} alt={receipt.shopDetails.name} className="logo" onError={(e) => { e.target.style.display = 'none' }} />
-                  )}
-                  <div className="title">{receipt.shopDetails.name}</div>
-                  <div className="sm">{receipt.shopDetails.address}</div>
-                  <div className="sm">Phone # {receipt.shopDetails.phone}</div>
-                </div>
-                <div className="sep"></div>
-                <div className="sm" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <div>Invoice: {receipt.transactionId}</div>
-                  <div>{formatDate(receipt.timestamp)} {formatTime(receipt.timestamp)}</div>
-                </div>
-                <div className="sm" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-                  <div><Translate textKey="paymentMethod" fallback="Payment" />:</div>
-                  <div>
-                    {translations[language]?.[
-                      ({
-                        'Cash': 'cash',
-                        'Cards': 'cards',
-                        'Mobile Wallet': 'mobileWallets',
-                        'QR Code': 'qrPayment',
-                        'Bank Transfer': 'bankLinked'
-                      })[receipt.paymentMethod] || 'cash'
-                    ] || receipt.paymentMethod || 'Cash'}
+
+              {shopData?.invoiceFormat === 'professional' ? (
+                <div className="professional-wrap">
+                  <div className="header-section">
+                    <h2 className="header-title">{receipt.shopDetails.name}</h2>
+                    <p className="header-subtitle">{receipt.shopDetails.address}</p>
+                    <p className="header-salesman"><Translate textKey="employee" fallback="Sales-man" />: <span className="fw-bold">{receipt.employeeName || 'Admin'}</span></p>
+                    <p className="invoice-type"><Translate textKey="saleInvoice" fallback="SALE INVOICE" /></p>
+                  </div>
+
+                  <div className="customer-info-section">
+                    <div className="info-left">
+                      <p><span className="info-label"><Translate textKey="customerName" fallback="Customer Name" />:</span> <span className="info-value">{receipt.customerName || 'Walk-in Customer'}</span></p>
+                      <p><span className="info-label"><Translate textKey="address" fallback="Address" />:</span> <span className="info-value"></span></p>
+                    </div>
+                    <div className="info-right">
+                      <p><span className="info-label"><Translate textKey="date" fallback="Date" />:</span> <span className="info-value">{formatDate(receipt.timestamp)}</span></p>
+                      <p><span className="info-label"><Translate textKey="invoiceNo" fallback="Invoice No" />:</span> <span className="info-value">{receipt.transactionId}</span></p>
+                    </div>
+                  </div>
+
+                  <table className="professional-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '40px' }}>S#</th>
+                        <th><Translate textKey="productName" fallback="ProductName" /></th>
+                        <th style={{ width: '50px' }}><Translate textKey="crtn" fallback="Crtn" /></th>
+                        <th style={{ width: '50px' }}><Translate textKey="pcs" fallback="Pcs" /></th>
+                        <th style={{ width: '50px' }}><Translate textKey="bns" fallback="Bns" /></th>
+                        <th style={{ width: '60px' }}>T.P.</th>
+                        <th style={{ width: '70px' }}><Translate textKey="amount" fallback="Amount" /></th>
+                        <th style={{ width: '50px' }}><Translate textKey="disc" fallback="Disc" /></th>
+                        <th style={{ width: '50px' }}><Translate textKey="schm" fallback="Schm" /></th>
+                        <th style={{ width: '60px' }}>Diso %</th>
+                        <th style={{ width: '80px' }}><Translate textKey="netAmount" fallback="Net Amount" /></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {receipt.items.map((item, idx) => {
+                        const qty = parseFloat(item.quantity || 1);
+                        const bonus = parseFloat(item.bonus || 0);
+                        const rate = Math.round(parseFloat(item.price || 0));
+                        const discount = Math.round(parseFloat(item.discountAmount || 0));
+                        const total = Math.round(parseFloat(item.total || 0));
+                        const isPcs = item.quantityUnit?.toLowerCase() === 'pcs' || item.quantityUnit?.toLowerCase() === 'units';
+
+                        return (
+                          <tr key={idx}>
+                            <td>{idx + 1}</td>
+                            <td className="text-left">{item.name}</td>
+                            <td>{!isPcs ? qty : ''}</td>
+                            <td>{isPcs ? qty : ''}</td>
+                            <td>{bonus || ''}</td>
+                            <td>{rate}</td>
+                            <td>{Math.round(qty * rate)}</td>
+                            <td>{discount}</td>
+                            <td>0</td>
+                            <td>{item.discountPercent || ''}</td>
+                            <td>{total}</td>
+                          </tr>
+                        );
+                      })}
+                      <tr className="fw-bold">
+                        <td colSpan="2" className="text-left"><Translate textKey="totalItem" fallback="Total Item" />: {receipt.items.length}</td>
+                        <td>{receipt.items.reduce((s, i) => s + (i.quantityUnit?.toLowerCase() !== 'pcs' ? parseFloat(i.quantity || 0) : 0), 0)}</td>
+                        <td>{receipt.items.reduce((s, i) => s + (i.quantityUnit?.toLowerCase() === 'pcs' || i.quantityUnit?.toLowerCase() === 'units' ? parseFloat(i.quantity || 0) : 0), 0)}</td>
+                        <td>{receipt.items.reduce((s, i) => s + parseFloat(i.bonus || 0), 0)}</td>
+                        <td></td>
+                        <td>{receipt.items.reduce((s, i) => s + Math.round(parseFloat(i.quantity || 0) * parseFloat(i.price || 0)), 0)}</td>
+                        <td>{Math.round(parseFloat(receipt.discount || 0))}</td>
+                        <td>0</td>
+                        <td></td>
+                        <td>{Math.round(parseFloat(receipt.totalAmount))}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div className="footer-section">
+                    <div className="footer-left">
+                      <div className="footer-stats">
+                        <p><span><Translate textKey="prevBalance" fallback="Prev Balance" />:</span> <span>0.00</span></p>
+                        <p><span><Translate textKey="thisBill" fallback="This Bill" />:</span> <span>{Math.round(parseFloat(receipt.totalAmount))}</span></p>
+                        <p><span><Translate textKey="cashRecieved" fallback="Cash Recieved" />:</span> <span>{Math.round(parseFloat(receipt.cashGiven || 0))}</span></p>
+                        <p className="fw-bold"><span><Translate textKey="newBalance" fallback="New Balance" />:</span> <span>{Math.round(parseFloat(receipt.totalAmount) - (parseFloat(receipt.cashGiven || 0)))}</span></p>
+                      </div>
+                    </div>
+                    <div className="footer-middle">
+                      <div className="signature-line">
+                        <Translate textKey="signature" fallback="Signature" />
+                      </div>
+                    </div>
+                    <div className="footer-right">
+                      <span className="total-bill-label"><Translate textKey="totalBill" fallback="Total Bill" /> :</span>
+                      <span className="total-bill-value">{Math.round(parseFloat(receipt.totalAmount))}</span>
+                    </div>
+                  </div>
+
+                  <div className="notes-section">
+                    <strong><Translate textKey="notes" fallback="Notes" />:</strong> {receipt.shopDetails.receiptDescription || 'Thank you for your visit!'}
+                  </div>
+                  <div className="text-center mt-3 small text-muted border-top pt-2">
+                    software developed by Soft Verse 03311041968
                   </div>
                 </div>
-                <div className="sep"></div>
-                <table className="thermal">
-                  <colgroup>
-                    <col style={{ width: '10mm' }} />
-                    <col />
-                    <col style={{ width: '12mm' }} />
-                    <col style={{ width: '16mm' }} />
-                    <col style={{ width: '16mm' }} />
-                  </colgroup>
-                  <thead>
-                    <tr>
-                      <th className="c">Sr</th>
-                      <th className="c">Item / Product</th>
-                      <th className="c">Qty</th>
-                      <th className="r">Rate</th>
-                      <th className="r">Amnt</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {receipt.items.map((item, idx) => {
-                      const qty = parseFloat(item.quantity || 1);
-                      const bonus = parseFloat(item.bonus || 0);
-                      const rate = Math.round(parseFloat(item.price || 0));
-                      const amt = Math.round(qty * rate);
-                      return (
-                        <tr key={idx}>
-                          <td className="c">{idx + 1}</td>
-                          <td className="wrap">{item.name}</td>
-                          <td className="c">{qty}{bonus > 0 ? ` + ${bonus}` : ''} {item.quantityUnit === 'kg' ? 'KG' : ''}</td>
-                          <td className="r">{rate}</td>
-                          <td className="r">{amt}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-                <div className="totals">
-                  <div className="line"><span>Total</span><span>{receipt.items.reduce((s, i) => s + parseFloat(i.quantity || 0), 0).toFixed(2)}</span></div>
-                  {receipt.discount > 0 && (<div className="line"><span>Discount</span><span>{Math.round(parseFloat(receipt.discount))}</span></div>)}
-                  <div className="line"><span>Net Total</span><span>{Math.round(parseFloat(receipt.totalAmount))}</span></div>
-                  {receipt.isLoan && (<div className="line"><span>Loan</span><span>{Math.round(parseFloat(receipt.loanAmount || 0))}</span></div>)}
+              ) : (
+                <div className="thermal-wrap">
+                  <div className="center">
+                    {receipt.shopDetails.logoUrl && (
+                      <img src={receipt.shopDetails.logoUrl} alt={receipt.shopDetails.name} className="logo" onError={(e) => { e.target.style.display = 'none' }} />
+                    )}
+                    <div className="title">{receipt.shopDetails.name}</div>
+                    <div className="sm">{receipt.shopDetails.address}</div>
+                    <div className="sm">Phone # {receipt.shopDetails.phone}</div>
+                  </div>
+                  <div className="sep"></div>
+                  <div className="sm" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div>Invoice: {receipt.transactionId}</div>
+                    <div>{formatDate(receipt.timestamp)} {formatTime(receipt.timestamp)}</div>
+                  </div>
+                  <div className="sm" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+                    <div><Translate textKey="paymentMethod" fallback="Payment" />:</div>
+                    <div>
+                      {translations[language]?.[
+                        ({
+                          'Cash': 'cash',
+                          'Cards': 'cards',
+                          'Mobile Wallet': 'mobileWallets',
+                          'QR Code': 'qrPayment',
+                          'Bank Transfer': 'bankLinked'
+                        })[receipt.paymentMethod] || 'cash'
+                      ] || receipt.paymentMethod || 'Cash'}
+                    </div>
+                  </div>
+                  <div className="sep"></div>
+                  <table className="thermal">
+                    <colgroup>
+                      <col style={{ width: '10mm' }} />
+                      <col />
+                      <col style={{ width: '12mm' }} />
+                      <col style={{ width: '16mm' }} />
+                      <col style={{ width: '16mm' }} />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th className="c">Sr</th>
+                        <th className="c">Item / Product</th>
+                        <th className="c">Qty</th>
+                        <th className="r">Rate</th>
+                        <th className="r">Amnt</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {receipt.items.map((item, idx) => {
+                        const qty = parseFloat(item.quantity || 1);
+                        const bonus = parseFloat(item.bonus || 0);
+                        const rate = Math.round(parseFloat(item.price || 0));
+                        const amt = Math.round(qty * rate);
+                        return (
+                          <tr key={idx}>
+                            <td className="c">{idx + 1}</td>
+                            <td className="wrap">{item.name}</td>
+                            <td className="c">{qty}{bonus > 0 ? ` + ${bonus}` : ''} {item.quantityUnit === 'kg' ? 'KG' : ''}</td>
+                            <td className="r">{rate}</td>
+                            <td className="r">{amt}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  <div className="totals">
+                    <div className="line"><span>Total</span><span>{receipt.items.reduce((s, i) => s + parseFloat(i.quantity || 0), 0).toFixed(2)}</span></div>
+                    {receipt.discount > 0 && (<div className="line"><span>Discount</span><span>{Math.round(parseFloat(receipt.discount))}</span></div>)}
+                    <div className="line"><span>Net Total</span><span>{Math.round(parseFloat(receipt.totalAmount))}</span></div>
+                    {receipt.isLoan && (<div className="line"><span>Loan</span><span>{Math.round(parseFloat(receipt.loanAmount || 0))}</span></div>)}
+                  </div>
+                  <div className="net">{Math.round(parseFloat(receipt.totalAmount))}</div>
+                  <div className="center sm" style={{ marginTop: '8px' }}>Thank you For Shoping !</div>
+                  {receipt.shopDetails.receiptDescription && (
+                    <div className="center sm" style={{ marginTop: '4px' }}>{receipt.shopDetails.receiptDescription}</div>
+                  )}
+                  <div className="dev">software developed by Soft Verse 03311041968</div>
                 </div>
-                <div className="net">{Math.round(parseFloat(receipt.totalAmount))}</div>
-                <div className="center sm" style={{ marginTop: '8px' }}>Thank you For Shoping !</div>
-                {receipt.shopDetails.receiptDescription && (
-                  <div className="center sm" style={{ marginTop: '4px' }}>{receipt.shopDetails.receiptDescription}</div>
-                )}
-                <div className="dev">software developed by Soft Verse 03311041968</div>
-              </div>
+              )}
             </Card.Body>
           </Card>
         </div>
