@@ -676,6 +676,205 @@ const SalesAnalytics = () => {
     };
   }, [rawReceipts, selectedStaffFilter, staffMembers]);
 
+  // Generate Staff Sale Report CSV
+  const generateStaffSaleCSV = useCallback(() => {
+    if (!staffSaleReport || staffSaleReport.items.length === 0) {
+      alert('No data available for export');
+      return;
+    }
+
+    // CSV Headers
+    const headers = [
+      'Date',
+      'Invoice Number',
+      'Customer Name',
+      'Previous Balance',
+      'Amount',
+      'Discount',
+      'Net Amount',
+      'Amount Received',
+      'New Balance',
+      'Received'
+    ];
+
+    // CSV Rows
+    const rows = staffSaleReport.items.map(row => [
+      row.date,
+      row.invoiceNumber,
+      row.customerName,
+      row.prevBalance.toFixed(2),
+      row.amount.toFixed(2),
+      row.discount.toFixed(2),
+      row.netAmount.toFixed(2),
+      row.amountReceived.toFixed(2),
+      row.newBalance.toFixed(2),
+      ''
+    ]);
+
+    // Summary section
+    const summarySection = [
+      [],
+      ['Summary'],
+      ['Total Sale', staffSaleReport.totals.sale.toFixed(2)],
+      ['Total Returns', staffSaleReport.totals.returns.toFixed(2)],
+      ['Net Amount', staffSaleReport.totals.net.toFixed(2)]
+    ];
+
+    // Combine all data
+    const csvContent = [
+      ['Staff Sale Report'],
+      [`Generated: ${formatDisplayDate(new Date())}`],
+      [`Period: ${viewMode} - ${selectedDate}`],
+      [`Staff: ${selectedStaffFilter}`],
+      [],
+      headers,
+      ...rows,
+      ...summarySection
+    ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `staff_sale_report_${selectedStaffFilter}_${selectedDate.replace(/\//g, '-')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [staffSaleReport, viewMode, selectedDate, selectedStaffFilter]);
+
+  // Generate Staff Sale Report PDF
+  const generateStaffSalePDF = useCallback(() => {
+    if (!staffSaleReport || staffSaleReport.items.length === 0) {
+      alert('No data available for export');
+      return;
+    }
+
+    const pdf = new jsPDF('l', 'mm', 'a4'); // Landscape for more columns
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 10;
+    let yPosition = margin;
+    const lineHeight = 6;
+    const maxY = pageHeight - margin;
+
+    // Helper function to add new page if needed
+    const checkNewPage = (requiredSpace) => {
+      if (yPosition + requiredSpace > maxY) {
+        pdf.addPage();
+        yPosition = margin;
+        return true;
+      }
+      return false;
+    };
+
+    // Title
+    pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Staff Sale Report', pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 8;
+
+    // Subtitle
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`Generated: ${formatDisplayDate(new Date())} | Period: ${viewMode} - ${selectedDate} | Staff: ${selectedStaffFilter}`, pageWidth / 2, yPosition, { align: 'center' });
+    yPosition += 10;
+
+    // Summary boxes
+    pdf.setFontSize(10);
+    const boxWidth = 60;
+    const boxHeight = 15;
+    const startX = (pageWidth - (boxWidth * 3 + 20)) / 2;
+
+    // Sale box
+    pdf.setFillColor(240, 240, 240);
+    pdf.rect(startX, yPosition, boxWidth, boxHeight, 'F');
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Sale', startX + boxWidth / 2, yPosition + 5, { align: 'center' });
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(formatCurrency(staffSaleReport.totals.sale), startX + boxWidth / 2, yPosition + 11, { align: 'center' });
+
+    // Returns box
+    pdf.setFillColor(240, 240, 240);
+    pdf.rect(startX + boxWidth + 10, yPosition, boxWidth, boxHeight, 'F');
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Sale Return', startX + boxWidth + 10 + boxWidth / 2, yPosition + 5, { align: 'center' });
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(formatCurrency(staffSaleReport.totals.returns), startX + boxWidth + 10 + boxWidth / 2, yPosition + 11, { align: 'center' });
+
+    // Net box
+    pdf.setFillColor(240, 240, 240);
+    pdf.rect(startX + (boxWidth + 10) * 2, yPosition, boxWidth, boxHeight, 'F');
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Net Amount', startX + (boxWidth + 10) * 2 + boxWidth / 2, yPosition + 5, { align: 'center' });
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(formatCurrency(staffSaleReport.totals.net), startX + (boxWidth + 10) * 2 + boxWidth / 2, yPosition + 11, { align: 'center' });
+
+    yPosition += boxHeight + 10;
+
+    // Table headers
+    const colWidths = [20, 25, 35, 25, 25, 20, 25, 25, 25, 20];
+    const headers = ['Date', 'Invoice #', 'Customer', 'Prev Bal', 'Amount', 'Discount', 'Net Amt', 'Amt Recv', 'New Bal', 'Received'];
+
+    pdf.setFillColor(66, 139, 202);
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(8);
+
+    let xPos = margin;
+    pdf.rect(margin, yPosition, pageWidth - margin * 2, lineHeight, 'F');
+    headers.forEach((header, i) => {
+      pdf.text(header, xPos + 2, yPosition + 4);
+      xPos += colWidths[i];
+    });
+    yPosition += lineHeight;
+
+    // Table rows
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(7);
+
+    staffSaleReport.items.forEach((row, index) => {
+      checkNewPage(lineHeight);
+
+      // Alternate row colors
+      if (index % 2 === 0) {
+        pdf.setFillColor(248, 248, 248);
+        pdf.rect(margin, yPosition, pageWidth - margin * 2, lineHeight, 'F');
+      }
+
+      xPos = margin;
+      pdf.text(row.date.substring(0, 10), xPos + 2, yPosition + 4);
+      xPos += colWidths[0];
+      pdf.text(String(row.invoiceNumber).substring(0, 10), xPos + 2, yPosition + 4);
+      xPos += colWidths[1];
+      pdf.text(row.customerName.substring(0, 15), xPos + 2, yPosition + 4);
+      xPos += colWidths[2];
+      pdf.text(row.prevBalance.toFixed(0), xPos + 2, yPosition + 4);
+      xPos += colWidths[3];
+      pdf.text(row.amount.toFixed(0), xPos + 2, yPosition + 4);
+      xPos += colWidths[4];
+      pdf.text(row.discount.toFixed(0), xPos + 2, yPosition + 4);
+      xPos += colWidths[5];
+      pdf.text(row.netAmount.toFixed(0), xPos + 2, yPosition + 4);
+      xPos += colWidths[6];
+      pdf.text(row.amountReceived.toFixed(0), xPos + 2, yPosition + 4);
+      xPos += colWidths[7];
+      pdf.text(row.newBalance.toFixed(0), xPos + 2, yPosition + 4);
+      xPos += colWidths[8];
+      pdf.text('', xPos + 2, yPosition + 4);
+
+      yPosition += lineHeight;
+    });
+
+    // Save PDF
+    pdf.save(`staff_sale_report_${selectedStaffFilter}_${selectedDate.replace(/\//g, '-')}.pdf`);
+  }, [staffSaleReport, viewMode, selectedDate, selectedStaffFilter]);
+
   // Render basic summary - memoized to prevent unnecessary recalculations
   const renderSummary = useMemo(() => {
     if (!analytics) return null;
@@ -1007,7 +1206,24 @@ const SalesAnalytics = () => {
         <Card className="shadow-sm mb-4">
           <Card.Header className="d-flex justify-content-between align-items-center">
             <h5 className="mb-0">Staff Sale Report</h5>
-            <div style={{ width: '250px' }}>
+            <div className="d-flex align-items-center gap-2">
+              <Dropdown as={ButtonGroup} size="sm">
+                <Button variant="success" size="sm" onClick={generateStaffSaleCSV}>
+                  <i className="bi bi-file-earmark-spreadsheet me-1"></i>
+                  Export CSV
+                </Button>
+                <Dropdown.Toggle split variant="success" id="staff-report-dropdown" size="sm" />
+                <Dropdown.Menu>
+                  <Dropdown.Item onClick={generateStaffSalePDF}>
+                    <i className="bi bi-file-earmark-pdf me-2"></i>
+                    Export PDF
+                  </Dropdown.Item>
+                  <Dropdown.Item onClick={generateStaffSaleCSV}>
+                    <i className="bi bi-file-earmark-spreadsheet me-2"></i>
+                    Export CSV
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown>
               <Form.Select
                 value={selectedStaffFilter}
                 onChange={(e) => {
@@ -1015,6 +1231,7 @@ const SalesAnalytics = () => {
                   setSelectedStaffFilter(e.target.value);
                 }}
                 size="sm"
+                style={{ width: '200px' }}
               >
                 <option value="All">All Staff ({staffMembers.length} total)</option>
                 {staffMembers.length > 0 ? (
@@ -1096,7 +1313,7 @@ const SalesAnalytics = () => {
         </Card>
       </>
     );
-  }, [analytics, profitMargin, generateEmployeeSummary, generateCSVReport, generatePDFReport, threeDOptions]);
+  }, [analytics, profitMargin, generateEmployeeSummary, generateCSVReport, generatePDFReport, generateStaffSaleCSV, generateStaffSalePDF, threeDOptions, staffSaleReport, selectedStaffFilter, staffMembers]);
 
   // Render detailed data based on view mode - memoized to prevent unnecessary recalculations
   const renderDetailedData = useMemo(() => {
