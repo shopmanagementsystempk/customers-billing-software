@@ -255,6 +255,31 @@ body {
   transform: translateY(-1px);
 }
 
+.btn-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
+  transition: all 0.2s ease;
+}
+
+.btn-success:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-success:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-success:disabled {
+  background: #f1f5f9 !important;
+  color: #94a3b8 !important;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .mobile-top-navbar {
   background: var(--sidebar-gradient) !important;
   backdrop-filter: blur(10px);
