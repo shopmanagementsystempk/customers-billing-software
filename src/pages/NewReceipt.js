@@ -691,13 +691,14 @@ const NewReceipt = () => {
       const rate = Math.round(parseFloat(item.salePrice || 0));
       const discount = Math.round(parseFloat(item.discountAmount || 0));
       const total = Math.round(parseFloat(item.total || 0));
-      const isPcs = item.quantityUnit?.toLowerCase() === 'pcs' || item.quantityUnit?.toLowerCase() === 'units';
+      const unitType = (item.quantityUnit || 'units').toLowerCase();
+      const isCrtn = unitType === 'crtn' || unitType === 'carton' || unitType === 'cartons' || unitType === 'ctn';
       return `
                     <tr>
                       <td>${idx + 1}</td>
                       <td class="text-left">${item.name}</td>
-                      <td>${!isPcs ? qty : ''}</td>
-                      <td>${isPcs ? qty : ''}</td>
+                      <td>${isCrtn ? qty : ''}</td>
+                      <td>${!isCrtn ? qty : ''}</td>
                       <td>${bonus || ''}</td>
                       <td>${rate}</td>
                       <td>${Math.round(qty * rate)}</td>
@@ -710,11 +711,19 @@ const NewReceipt = () => {
     }).join('')}
                 <tr style="font-weight: bold">
                   <td colspan="2" class="text-left">${t('totalItem', 'Total Item')}: ${items.length}</td>
-                  <td>${items.reduce((s, i) => s + (i.quantityUnit?.toLowerCase() !== 'pcs' ? parseFloat(i.quantity || 0) : 0), 0)}</td>
-                  <td>${items.reduce((s, i) => s + (i.quantityUnit?.toLowerCase() === 'pcs' || i.quantityUnit?.toLowerCase() === 'units' ? parseFloat(i.quantity || 0) : 0), 0)}</td>
+                  <td>${items.reduce((s, i) => {
+                    const unit = (i.quantityUnit || 'units').toLowerCase();
+                    const isCrtn = unit === 'crtn' || unit === 'carton' || unit === 'cartons' || unit === 'ctn';
+                    return s + (isCrtn ? parseFloat(i.quantity || 0) : 0);
+                  }, 0)}</td>
+                  <td>${items.reduce((s, i) => {
+                    const unit = (i.quantityUnit || 'units').toLowerCase();
+                    const isCrtn = unit === 'crtn' || unit === 'carton' || unit === 'cartons' || unit === 'ctn';
+                    return s + (!isCrtn ? parseFloat(i.quantity || 0) : 0);
+                  }, 0)}</td>
                   <td>${items.reduce((s, i) => s + parseFloat(i.bonus || 0), 0)}</td>
                   <td></td>
-                  <td>${items.reduce((s, i) => s + Math.round(parseFloat(i.quantity || 0) * parseFloat(i.price || 0)), 0)}</td>
+                  <td>${items.reduce((s, i) => s + Math.round(parseFloat(i.quantity || 0) * parseFloat(i.salePrice || 0)), 0)}</td>
                   <td>${Math.round(parseFloat(discount || 0))}</td>
                   <td>0</td>
                   <td></td>
