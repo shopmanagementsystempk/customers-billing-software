@@ -11,19 +11,19 @@ import '../styles/select.css';
 function GuestNewReceipt() {
   const { currentUser, isGuest, activeShopId } = useAuth();
   const navigate = useNavigate();
-  
+
   // Guest-specific state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
+
   // Receipt data
   const [receiptNumber, setReceiptNumber] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [items, setItems] = useState([
-    { name: '', quantity: 1, price: 0, total: 0 }
+    { name: '', quantity: 1, price: 0, tax: 0, discountPercent: 0, discountAmount: 0, total: 0 }
   ]);
   const [subtotal, setSubtotal] = useState(0);
   const [tax, setTax] = useState(0);
@@ -31,7 +31,7 @@ function GuestNewReceipt() {
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [employeesLoaded, setEmployeesLoaded] = useState(false);
-  
+
   // Shop settings
   const [shopData, setShopData] = useState({
     name: '',
@@ -46,13 +46,13 @@ function GuestNewReceipt() {
       navigate('/dashboard');
       return;
     }
-    
+
     // Load shop data for receipt
     const loadShopData = async () => {
       try {
         const shopQuery = query(collection(db, 'shops'), where('userId', '==', activeShopId || currentUser.uid));
         const shopSnapshot = await getDocs(shopQuery);
-        
+
         if (!shopSnapshot.empty) {
           const shopDoc = shopSnapshot.docs[0];
           const data = shopDoc.data();
@@ -67,7 +67,7 @@ function GuestNewReceipt() {
         console.error('Error loading shop data:', error);
       }
     };
-    
+
     loadShopData();
   }, [isGuest, currentUser, navigate, activeShopId]);
 
@@ -99,25 +99,35 @@ function GuestNewReceipt() {
 
   // Calculate totals
   useEffect(() => {
-    const newSubtotal = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-    setSubtotal(newSubtotal);
-    const newTax = newSubtotal * 0.1; // 10% tax
-    setTax(newTax);
-    setTotal(newSubtotal + newTax);
+    const newItemsTotal = items.reduce((sum, item) => sum + (item.total || 0), 0);
+    setSubtotal(newItemsTotal);
+    // Keep global tax at 0 or update it if needed, but for now we follow NewReceipt logic
+    // where itemsTotal already includes per-item tax/discount.
+    setTotal(newItemsTotal);
   }, [items]);
 
   const handleItemChange = (index, field, value) => {
     const newItems = [...items];
-    if (field === 'quantity' || field === 'price') {
+    if (field === 'quantity' || field === 'price' || field === 'tax' || field === 'discountPercent' || field === 'discountAmount') {
       value = parseFloat(value) || 0;
     }
     newItems[index][field] = value;
-    newItems[index].total = newItems[index].quantity * newItems[index].price;
+
+    // Calculate row total
+    const qty = newItems[index].quantity;
+    const price = newItems[index].price;
+    const subtotal = qty * price;
+    const dPercent = newItems[index].discountPercent;
+    const dAmount = newItems[index].discountAmount;
+    const afterDiscount = subtotal - dAmount - (subtotal * dPercent / 100);
+    const tPercent = newItems[index].tax;
+    newItems[index].total = afterDiscount + (afterDiscount * tPercent / 100);
+
     setItems(newItems);
   };
 
   const addItem = () => {
-    setItems([...items, { name: '', quantity: 1, price: 0, total: 0 }]);
+    setItems([...items, { name: '', quantity: 1, price: 0, tax: 0, discountPercent: 0, discountAmount: 0, total: 0 }]);
   };
 
   const removeItem = (index) => {
@@ -154,7 +164,7 @@ function GuestNewReceipt() {
       }
 
       const receiptNum = receiptNumber || generateReceiptNumber();
-      
+
       const receiptData = {
         receiptNumber: receiptNum,
         customerName: customerName.trim(),
@@ -179,9 +189,9 @@ function GuestNewReceipt() {
 
       // Save to Firestore
       await addDoc(collection(db, 'receipts'), receiptData);
-      
+
       setSuccess(`Receipt ${receiptNum} created successfully!`);
-      
+
       // Reset form after successful submission
       setTimeout(() => {
         setCustomerName('');
@@ -219,15 +229,15 @@ function GuestNewReceipt() {
               <Card.Header className="d-flex justify-content-between align-items-center">
                 <h4 className="mb-0">Create New Receipt</h4>
                 <div>
-                  <Button 
-                    variant="outline-secondary" 
+                  <Button
+                    variant="outline-secondary"
                     onClick={handlePrint}
                     className="me-2"
                   >
                     Print Receipt
                   </Button>
-                  <Button 
-                    variant="outline-primary" 
+                  <Button
+                    variant="outline-primary"
                     onClick={() => navigate('/guest-dashboard')}
                   >
                     Back to Dashboard
@@ -237,7 +247,7 @@ function GuestNewReceipt() {
               <Card.Body>
                 {error && <Alert variant="danger">{error}</Alert>}
                 {success && <Alert variant="success">{success}</Alert>}
-                
+
                 <Form onSubmit={handleSubmit}>
                   {/* Receipt Number */}
                   <Row className="mb-3">
@@ -312,7 +322,7 @@ function GuestNewReceipt() {
                   <h5 className="mb-3">Items</h5>
                   {items.map((item, index) => (
                     <Row key={index} className="mb-2 align-items-end">
-                      <Col md={4}>
+                      <Col md={3}>
                         <Form.Group>
                           <Form.Label>Item Name</Form.Label>
                           <Form.Control
@@ -323,9 +333,9 @@ function GuestNewReceipt() {
                           />
                         </Form.Group>
                       </Col>
-                      <Col md={2}>
+                      <Col md={1}>
                         <Form.Group>
-                          <Form.Label>Quantity</Form.Label>
+                          <Form.Label>Qty</Form.Label>
                           <Form.Control
                             type="number"
                             value={item.quantity}
@@ -335,7 +345,43 @@ function GuestNewReceipt() {
                           />
                         </Form.Group>
                       </Col>
-                      <Col md={2}>
+                      <Col md={1}>
+                        <Form.Group>
+                          <Form.Label>Tax %</Form.Label>
+                          <Form.Control
+                            type="number"
+                            value={item.tax}
+                            onChange={(e) => handleItemChange(index, 'tax', e.target.value)}
+                            min="0"
+                            step="0.01"
+                          />
+                        </Form.Group>
+                      </Col>
+                      <Col md={1}>
+                        <Form.Group>
+                          <Form.Label>Disc %</Form.Label>
+                          <Form.Control
+                            type="number"
+                            value={item.discountPercent}
+                            onChange={(e) => handleItemChange(index, 'discountPercent', e.target.value)}
+                            min="0"
+                            step="0.01"
+                          />
+                        </Form.Group>
+                      </Col>
+                      <Col md={1}>
+                        <Form.Group>
+                          <Form.Label>Disc (Amt)</Form.Label>
+                          <Form.Control
+                            type="number"
+                            value={item.discountAmount}
+                            onChange={(e) => handleItemChange(index, 'discountAmount', e.target.value)}
+                            min="0"
+                            step="0.01"
+                          />
+                        </Form.Group>
+                      </Col>
+                      <Col md={1}>
                         <Form.Group>
                           <Form.Label>Price</Form.Label>
                           <Form.Control
@@ -358,19 +404,20 @@ function GuestNewReceipt() {
                         </Form.Group>
                       </Col>
                       <Col md={2}>
-                        <Button 
-                          variant="outline-danger" 
+                        <Button
+                          variant="outline-danger"
                           onClick={() => removeItem(index)}
                           disabled={items.length <= 1}
+                          className="w-100"
                         >
                           Remove
                         </Button>
                       </Col>
                     </Row>
                   ))}
-                  
-                  <Button 
-                    variant="outline-primary" 
+
+                  <Button
+                    variant="outline-primary"
                     onClick={addItem}
                     className="mb-3"
                   >
@@ -399,9 +446,9 @@ function GuestNewReceipt() {
 
                   {/* Submit Button */}
                   <div className="d-flex justify-content-end mt-4">
-                    <Button 
-                      variant="success" 
-                      type="submit" 
+                    <Button
+                      variant="success"
+                      type="submit"
                       disabled={loading}
                       size="lg"
                     >
