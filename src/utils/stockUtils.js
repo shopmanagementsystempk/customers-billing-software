@@ -202,7 +202,7 @@ export const restoreStockQuantity = async (shopId, items) => {
       if (stockItem) {
         // Make sure units match before adding (both should be in the same unit)
         if (!receiptItem.quantityUnit || receiptItem.quantityUnit === stockItem.quantityUnit) {
-          const newQuantity = stockItem.quantity + parseFloat(receiptItem.quantity);
+          const newQuantity = stockItem.quantity + parseFloat(receiptItem.quantity) + parseFloat(receiptItem.bonus || 0);
           return updateStockItem(stockItem.id, { quantity: newQuantity });
         }
       }
