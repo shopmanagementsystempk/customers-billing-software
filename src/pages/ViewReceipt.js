@@ -420,13 +420,14 @@ const ViewReceipt = () => {
                   <tbody>
                     {receipt.items.map((item, idx) => {
                       const qty = parseFloat(item.quantity || 1);
+                      const bonus = parseFloat(item.bonus || 0);
                       const rate = Math.round(parseFloat(item.price || 0));
                       const amt = Math.round(qty * rate);
                       return (
                         <tr key={idx}>
                           <td className="c">{idx + 1}</td>
                           <td className="wrap">{item.name}</td>
-                          <td className="c">{qty} {item.quantityUnit === 'kg' ? 'KG' : ''}</td>
+                          <td className="c">{qty}{bonus > 0 ? ` + ${bonus}` : ''} {item.quantityUnit === 'kg' ? 'KG' : ''}</td>
                           <td className="r">{rate}</td>
                           <td className="r">{amt}</td>
                         </tr>
