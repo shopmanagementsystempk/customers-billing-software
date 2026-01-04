@@ -1041,11 +1041,12 @@ const NewReceipt = () => {
                                 size="sm"
                                 style={{ width: '80px', fontSize: '0.8rem', padding: '0.2rem' }}
                                 value={item.itemPrice || ''}
-                                onChange={(e) => handleItemChange(index, 'itemPrice', e.target.value)}
-                                placeholder="Enter price"
+                                readOnly
+                                className="bg-light"
+                                placeholder="0.00"
                                 step="0.01"
                                 min="0"
-                                title="Enter price to calculate quantity automatically"
+                                title="Calculated price (Quantity x Unit Price)"
                               />
                             </td>
                             <td style={{ padding: '0.25rem' }}>
