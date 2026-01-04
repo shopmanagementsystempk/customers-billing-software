@@ -726,7 +726,9 @@ const CustomerInformation = () => {
                         {(() => {
                           const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase());
                           const total = custLoans.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
-                          return <span>RS {total.toFixed(2)}</span>;
+                          // Loan = negative (customer owes), Credit = positive (shop owes)
+                          const displayAmount = total > 0 ? -total : total;
+                          return <span style={{ color: displayAmount < 0 ? '#dc3545' : displayAmount > 0 ? '#198754' : 'inherit' }}>RS {displayAmount.toFixed(2)}</span>;
                         })()}
                       </td>
                       <td>
