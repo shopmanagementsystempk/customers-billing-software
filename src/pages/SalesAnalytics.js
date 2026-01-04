@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
 import { formatCurrency } from '../utils/receiptUtils';
-import { getDailySalesAndProfit, getMonthlySalesAndProfit, getYearlySalesAndProfit } from '../utils/salesUtils';
+import { getDailySalesAndProfit, getMonthlySalesAndProfit, getYearlySalesAndProfit, getReceiptsForDateRange } from '../utils/salesUtils';
 import { formatDisplayDate } from '../utils/dateUtils';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -15,6 +15,9 @@ import { useLanguage } from '../contexts/LanguageContext';
 import * as echarts from 'echarts';
 import ReactECharts from 'echarts-for-react';
 import 'echarts-gl';
+import { startOfDay, endOfDay, startOfMonth, endOfMonth, startOfYear, endOfYear, format } from 'date-fns';
+import { collection, query, where, getDocs, doc, getDoc, Timestamp } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 // Memoized category row component to prevent unnecessary re-renders
 const CategoryRow = React.memo(({ category, index }) => (
@@ -116,6 +119,9 @@ const SalesAnalytics = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [staffMembers, setStaffMembers] = useState([]);
+  const [selectedStaffFilter, setSelectedStaffFilter] = useState('All');
+  const [rawReceipts, setRawReceipts] = useState([]);
 
   // Memoized function to fetch analytics data
   const fetchAnalyticsData = useCallback(async () => {
@@ -138,27 +144,30 @@ const SalesAnalytics = () => {
       }
 
       let data;
+      let receipts = [];
 
       switch (viewMode) {
         case 'daily':
+          receipts = await getReceiptsForDateRange(activeShopId, startOfDay(date), endOfDay(date));
           data = await getDailySalesAndProfit(activeShopId, date);
           break;
         case 'monthly':
+          receipts = await getReceiptsForDateRange(activeShopId, startOfMonth(date), endOfMonth(date));
           data = await getMonthlySalesAndProfit(activeShopId, date);
           break;
         case 'yearly':
+          receipts = await getReceiptsForDateRange(activeShopId, startOfYear(date), endOfYear(date));
           data = await getYearlySalesAndProfit(activeShopId, date);
           break;
         default:
+          receipts = await getReceiptsForDateRange(activeShopId, startOfDay(date), endOfDay(date));
           data = await getDailySalesAndProfit(activeShopId, date);
       }
 
+      setRawReceipts(receipts);
       setAnalytics(data);
     } catch (error) {
-      // Only log minimal error details, not the full error object
-      console.log('Analytics data fetch issue:', error.message || 'Error fetching data');
-
-      // Set user-friendly error message without exposing internal details
+      console.error('Analytics data fetch issue:', error);
       setError('Failed to load analytics data. Please try again later.');
     } finally {
       setLoading(false);
@@ -169,6 +178,23 @@ const SalesAnalytics = () => {
   useEffect(() => {
     fetchAnalyticsData();
   }, [fetchAnalyticsData]);
+
+  // Fetch staff members
+  useEffect(() => {
+    const fetchStaff = async () => {
+      if (!activeShopId) return;
+      try {
+        const q = query(collection(db, 'staff'), where('shopId', '==', activeShopId));
+        const snap = await getDocs(q);
+        const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log('Fetched staff:', list);
+        setStaffMembers(list);
+      } catch (err) {
+        console.error('Error fetching staff list:', err);
+      }
+    };
+    fetchStaff();
+  }, [activeShopId]);
 
   // Handle date selector based on view mode - memoized to prevent unnecessary recalculations
   const renderDateSelector = useMemo(() => {
@@ -597,6 +623,59 @@ const SalesAnalytics = () => {
     pdf.save(`employee_sales_report_${viewMode}_${selectedDate.replace(/\//g, '-')}.pdf`);
   }, [analytics, generateEmployeeSummary, viewMode, selectedDate]);
 
+  // Staff Sale Report Logic
+  const staffSaleReport = useMemo(() => {
+    if (!rawReceipts || rawReceipts.length === 0) return { items: [], totals: { sale: 0, returns: 0, net: 0 } };
+
+    const filtered = rawReceipts.filter(r => {
+      if (selectedStaffFilter === 'All') return true;
+
+      // Match by account name (staff account) OR by employee name (selected in dropdown)
+      const receiptsStaffMember = staffMembers.find(s => s.id === r.createdBy);
+      return (receiptsStaffMember && receiptsStaffMember.name === selectedStaffFilter) ||
+        (r.employeeName === selectedStaffFilter);
+    });
+
+    let totalSale = 0;
+    let totalReturns = 0;
+
+    const items = filtered.map(r => {
+      const amount = (parseFloat(r.totalAmount) || 0) + (parseFloat(r.discount) || 0);
+      const discount = parseFloat(r.discount) || 0;
+      const netAmount = parseFloat(r.totalAmount) || 0;
+      const amountReceived = parseFloat(r.cashGiven) || 0;
+      const prevBalance = parseFloat(r.previousBalance) || 0;
+      const newBalance = prevBalance + netAmount - amountReceived;
+
+      const returnTotal = parseFloat(r.returnInfo?.returnTotal || 0);
+
+      totalSale += netAmount;
+      totalReturns += returnTotal;
+
+      return {
+        date: r.timestamp ? formatDisplayDate(new Date(r.timestamp)) : '-',
+        invoiceNumber: r.transactionId || r.id,
+        customerName: r.customerName || 'Walk-in Customer',
+        prevBalance,
+        amount,
+        discount,
+        netAmount,
+        amountReceived,
+        newBalance,
+        returnTotal
+      };
+    });
+
+    return {
+      items,
+      totals: {
+        sale: totalSale,
+        returns: totalReturns,
+        net: totalSale - totalReturns
+      }
+    };
+  }, [rawReceipts, selectedStaffFilter, staffMembers]);
+
   // Render basic summary - memoized to prevent unnecessary recalculations
   const renderSummary = useMemo(() => {
     if (!analytics) return null;
@@ -921,6 +1000,98 @@ const SalesAnalytics = () => {
                 />
               </Alert>
             )}
+          </Card.Body>
+        </Card>
+
+        {/* Staff Sale Report Section */}
+        <Card className="shadow-sm mb-4">
+          <Card.Header className="d-flex justify-content-between align-items-center">
+            <h5 className="mb-0">Staff Sale Report</h5>
+            <div style={{ width: '250px' }}>
+              <Form.Select
+                value={selectedStaffFilter}
+                onChange={(e) => {
+                  console.log('Selected staff:', e.target.value);
+                  setSelectedStaffFilter(e.target.value);
+                }}
+                size="sm"
+              >
+                <option value="All">All Staff ({staffMembers.length} total)</option>
+                {staffMembers.length > 0 ? (
+                  staffMembers.map(staff => (
+                    <option key={staff.id} value={staff.name}>
+                      {staff.name || 'Unnamed Staff'}
+                    </option>
+                  ))
+                ) : (
+                  <option disabled>Loading staff...</option>
+                )}
+              </Form.Select>
+            </div>
+          </Card.Header>
+          <Card.Body>
+            {/* Summary Headings */}
+            <Row className="mb-4 text-center">
+              <Col md={4}>
+                <div className="p-3 border rounded bg-light">
+                  <h6 className="text-muted mb-1">Sale</h6>
+                  <h4 className="text-primary mb-0">{formatCurrency(staffSaleReport.totals.sale)}</h4>
+                </div>
+              </Col>
+              <Col md={4}>
+                <div className="p-3 border rounded bg-light">
+                  <h6 className="text-muted mb-1">Sale Return</h6>
+                  <h4 className="text-danger mb-0">{formatCurrency(staffSaleReport.totals.returns)}</h4>
+                </div>
+              </Col>
+              <Col md={4}>
+                <div className="p-3 border rounded bg-light">
+                  <h6 className="text-muted mb-1">Net Amount</h6>
+                  <h4 className="text-success mb-0">{formatCurrency(staffSaleReport.totals.net)}</h4>
+                </div>
+              </Col>
+            </Row>
+
+            <div className="table-responsive">
+              <Table striped bordered hover size="sm">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Invoice Number</th>
+                    <th>Customer Name</th>
+                    <th>Previous Balance</th>
+                    <th>Amount</th>
+                    <th>Discount</th>
+                    <th>Net Amount</th>
+                    <th>Amount Received</th>
+                    <th>New Balance</th>
+                    <th>Received</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {staffSaleReport.items.length > 0 ? (
+                    staffSaleReport.items.map((row, idx) => (
+                      <tr key={idx}>
+                        <td>{row.date}</td>
+                        <td>{row.invoiceNumber}</td>
+                        <td>{row.customerName}</td>
+                        <td>{formatCurrency(row.prevBalance)}</td>
+                        <td>{formatCurrency(row.amount)}</td>
+                        <td>{formatCurrency(row.discount)}</td>
+                        <td>{formatCurrency(row.netAmount)}</td>
+                        <td>{formatCurrency(row.amountReceived)}</td>
+                        <td>{formatCurrency(row.newBalance)}</td>
+                        <td></td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="10" className="text-center py-4 text-muted">No transactions found for the selected criteria</td>
+                    </tr>
+                  )}
+                </tbody>
+              </Table>
+            </div>
           </Card.Body>
         </Card>
       </>
