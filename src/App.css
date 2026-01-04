@@ -204,13 +204,13 @@ body {
 }
 
 .table {
-  color: var(--text-primary) !important;
+  color: var(--text-primary);
 }
 
 .table thead th {
-  background-color: var(--secondary-color) !important;
-  color: var(--text-secondary) !important;
-  border-color: var(--border-color) !important;
+  background-color: var(--secondary-color);
+  color: var(--text-secondary);
+  border-color: var(--border-color);
 }
 
 .table td {
