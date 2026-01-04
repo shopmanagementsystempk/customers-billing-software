@@ -306,7 +306,7 @@ const NewReceipt = () => {
     const totalQuantities = items.reduce((sum, item) =>
       sum + parseFloat(item.quantity || 0), 0);
     const totalAmount = items.reduce((sum, item) =>
-      sum + (parseFloat(item.salePrice || 0) * parseFloat(item.quantity || 1)), 0);
+      sum + parseFloat(item.total || 0), 0);
     const discountAmount = parseFloat(discount || 0);
     const subtotalAfterDiscount = totalAmount - discountAmount;
     // Calculate tax as percentage of subtotal after discount
@@ -336,6 +336,23 @@ const NewReceipt = () => {
     const newItems = [...items];
     newItems[index][field] = value;
 
+    const calculateItemTotal = (item) => {
+      const qty = parseFloat(item.quantity || 0);
+      const price = parseFloat(item.salePrice || 0);
+      const subtotal = qty * price;
+
+      const dPercent = parseFloat(item.discountPercent || 0);
+      const dAmount = parseFloat(item.discountAmount || 0);
+
+      // Apply individual item discount
+      const afterDiscount = subtotal - dAmount - (subtotal * dPercent / 100);
+
+      const tPercent = parseFloat(item.tax || 0);
+      const total = afterDiscount + (afterDiscount * tPercent / 100);
+
+      return total.toFixed(2);
+    };
+
     // If price field is entered, calculate quantity based on price / unit price
     if (field === 'itemPrice') {
       const itemPrice = value === '' ? 0 : parseFloat(value || 0);
@@ -345,23 +362,22 @@ const NewReceipt = () => {
         // Calculate quantity: quantity = price / unit price
         const calculatedQuantity = (itemPrice / unitPrice).toFixed(4);
         newItems[index].quantity = calculatedQuantity;
-        newItems[index].total = itemPrice.toFixed(2);
+        newItems[index].total = calculateItemTotal(newItems[index]);
       } else {
         // If price is cleared, recalculate total based on quantity
-        const quantity = parseFloat(newItems[index].quantity || 1);
-        const price = parseFloat(newItems[index].salePrice || 0);
-        newItems[index].total = (quantity * price).toFixed(2);
+        newItems[index].total = calculateItemTotal(newItems[index]);
       }
     }
-    // Recalculate total for this item when quantity or salePrice changes
-    else if (field === 'quantity' || field === 'salePrice') {
-      const quantity = parseFloat(newItems[index].quantity || 1);
-      const price = parseFloat(newItems[index].salePrice || 0);
-      const newTotal = (quantity * price).toFixed(2);
-      newItems[index].total = newTotal;
+    // Recalculate total for this item when quantity or salePrice or tax or discounts change
+    else if (field === 'quantity' || field === 'salePrice' || field === 'tax' || field === 'discountPercent' || field === 'discountAmount') {
+      newItems[index].total = calculateItemTotal(newItems[index]);
 
-      // Update itemPrice to match the new total to keep fields in sync
-      newItems[index].itemPrice = newTotal;
+      // If quantity or salePrice changed, update itemPrice to match (if it was used for entry)
+      if (field === 'quantity' || field === 'salePrice') {
+        const qty = parseFloat(newItems[index].quantity || 0);
+        const price = parseFloat(newItems[index].salePrice || 0);
+        newItems[index].itemPrice = (qty * price).toFixed(2);
+      }
     }
 
     setItems(newItems);
@@ -406,6 +422,8 @@ const NewReceipt = () => {
         inStock: matchingItem.quantity || 0,
         salePrice: matchingItem.price.toString(),
         tax: '0',
+        discountPercent: '0',
+        discountAmount: '0',
         quantity: '1',
         itemPrice: '', // Price field for quantity calculation
         total: matchingItem.price.toString(),
@@ -574,7 +592,7 @@ const NewReceipt = () => {
               ${items.map((item, idx) => {
       const qty = parseFloat(item.quantity || 1);
       const rate = Math.round(parseFloat(item.salePrice || 0));
-      const amount = Math.round(qty * rate);
+      const amount = Math.round(parseFloat(item.total || 0));
       const name = (item.name || '').replace(/\n/g, '\n');
       const unit = item.quantityUnit && item.quantityUnit.toLowerCase() !== 'units' ? item.quantityUnit.toUpperCase() : '';
       return `
@@ -641,6 +659,10 @@ const NewReceipt = () => {
         price: parseFloat(item.salePrice),
         quantity: parseFloat(item.quantity),
         costPrice: parseFloat(item.costPrice || 0),
+        tax: parseFloat(item.tax || 0),
+        discountPercent: parseFloat(item.discountPercent || 0),
+        discountAmount: parseFloat(item.discountAmount || 0),
+        total: parseFloat(item.total || 0),
         quantityUnit: item.quantityUnit || 'units',
         category: item.category || 'Uncategorized'
       }));
@@ -661,7 +683,7 @@ const NewReceipt = () => {
         managerName: 'Manager',
         createdBy: currentUser.uid,
         items: receiptItems,
-        totalAmount: calculateTotal(receiptItems, discount),
+        totalAmount: parseFloat(totals.payable),
         discount: parseFloat(discount) || 0,
         paymentMethod: paymentMethod,
         cashGiven: parseFloat(enterAmount) || 0,
@@ -976,6 +998,9 @@ const NewReceipt = () => {
                           <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="unitPrice" fallback="Unit Price" /></th>
                           <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="priceRs" fallback="Price (RS)" /></th>
                           <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="qty" fallback="Qty" /></th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="taxPercent" fallback="Tax (%)" /></th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="discountPercent" fallback="Disc (%)" /></th>
+                          <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="discountAmount" fallback="Disc (RS)" /></th>
                           <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="total" fallback="Total" /></th>
                           <th style={{ fontSize: '0.75rem', padding: '0.25rem' }}><Translate textKey="action" fallback="Action" /></th>
                         </tr>
@@ -1028,7 +1053,45 @@ const NewReceipt = () => {
                                 onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
                                 min="0"
                                 step={item.quantityUnit === 'kg' ? '0.001' : '1'}
-                                title="Quantity in {item.quantityUnit || 'units'}"
+                                title={`Quantity in ${item.quantityUnit || 'units'}`}
+                              />
+                            </td>
+                            <td style={{ padding: '0.25rem' }}>
+                              <Form.Control
+                                type="number"
+                                size="sm"
+                                style={{ width: '60px', fontSize: '0.8rem', padding: '0.2rem' }}
+                                value={item.tax}
+                                onChange={(e) => handleItemChange(index, 'tax', e.target.value)}
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                placeholder="0"
+                              />
+                            </td>
+                            <td style={{ padding: '0.25rem' }}>
+                              <Form.Control
+                                type="number"
+                                size="sm"
+                                style={{ width: '60px', fontSize: '0.8rem', padding: '0.2rem' }}
+                                value={item.discountPercent}
+                                onChange={(e) => handleItemChange(index, 'discountPercent', e.target.value)}
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                placeholder="0"
+                              />
+                            </td>
+                            <td style={{ padding: '0.25rem' }}>
+                              <Form.Control
+                                type="number"
+                                size="sm"
+                                style={{ width: '70px', fontSize: '0.8rem', padding: '0.2rem' }}
+                                value={item.discountAmount}
+                                onChange={(e) => handleItemChange(index, 'discountAmount', e.target.value)}
+                                min="0"
+                                step="0.01"
+                                placeholder="0.00"
                               />
                             </td>
                             <td style={{ padding: '0.25rem', fontSize: '0.8rem' }}>
