@@ -37,6 +37,8 @@ const CustomerInformation = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState(null);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
   const [loans, setLoans] = useState([]);
   const [loansLoading, setLoansLoading] = useState(false);
   const [showLoansModal, setShowLoansModal] = useState(false);
@@ -294,6 +296,41 @@ const CustomerInformation = () => {
     } catch (err) {
       console.error('Error deleting customer:', err);
       setError(getTranslatedAttr('failedToDeleteCustomer') + ': ' + err.message);
+    }
+  };
+
+  const confirmDeleteAll = async () => {
+    if (customers.length === 0) {
+      setShowDeleteAllModal(false);
+      return;
+    }
+
+    setDeletingAll(true);
+    try {
+      const batch = writeBatch(db);
+      
+      // Delete all customers
+      for (const customer of customers) {
+        batch.delete(doc(db, 'customers', customer.id));
+      }
+      
+      // Delete all customer loans
+      for (const loan of loans) {
+        batch.delete(doc(db, 'customerLoans', loan.id));
+      }
+      
+      await batch.commit();
+      
+      setSuccess(getTranslatedAttr('allCustomersDeleted') || `Successfully deleted ${customers.length} customers and their loans`);
+      setShowDeleteAllModal(false);
+      setCustomers([]);
+      setLoans([]);
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      console.error('Error deleting all customers:', err);
+      setError(getTranslatedAttr('failedToDeleteAllCustomers') || 'Failed to delete all customers: ' + err.message);
+    } finally {
+      setDeletingAll(false);
     }
   };
 
@@ -656,6 +693,11 @@ const CustomerInformation = () => {
               <><i className="bi bi-file-earmark-excel me-2"></i><Translate textKey="importExcel" fallback="Import from Excel (CSV)" /></>
             )}
           </Button>
+          {customers.length > 0 && (
+            <Button variant="outline-danger" className="ms-2" onClick={() => setShowDeleteAllModal(true)}>
+              <i className="bi bi-trash me-2"></i><Translate textKey="deleteAll" fallback="Delete All" />
+            </Button>
+          )}
           <input
             type="file"
             ref={fileInputRef}
@@ -951,6 +993,35 @@ const CustomerInformation = () => {
             </Button>
             <Button variant="danger" onClick={confirmDelete}>
               <Translate textKey="delete" />
+            </Button>
+          </Modal.Footer>
+        </Modal>
+
+        {/* Delete All Confirmation Modal */}
+        <Modal show={showDeleteAllModal} onHide={() => !deletingAll && setShowDeleteAllModal(false)}>
+          <Modal.Header closeButton>
+            <Modal.Title><Translate textKey="deleteAll" fallback="Delete All Customers" /></Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Alert variant="danger">
+              <i className="bi bi-exclamation-triangle me-2"></i>
+              <strong><Translate textKey="warning" fallback="Warning" />!</strong>
+            </Alert>
+            <p><Translate textKey="confirmDeleteAllCustomers" fallback="Are you sure you want to delete ALL customers?" /></p>
+            <p className="text-muted small">
+              <Translate textKey="deleteAllCustomersWarning" fallback={`This will permanently delete ${customers.length} customers and all their loan records. This action cannot be undone.`} />
+            </p>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowDeleteAllModal(false)} disabled={deletingAll}>
+              <Translate textKey="cancel" />
+            </Button>
+            <Button variant="danger" onClick={confirmDeleteAll} disabled={deletingAll}>
+              {deletingAll ? (
+                <><Spinner size="sm" className="me-2" /><Translate textKey="deleting" fallback="Deleting..." /></>
+              ) : (
+                <><i className="bi bi-trash me-2"></i><Translate textKey="deleteAll" fallback="Delete All" /></>
+              )}
             </Button>
           </Modal.Footer>
         </Modal>
