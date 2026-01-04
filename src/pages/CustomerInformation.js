@@ -24,6 +24,8 @@ const CustomerInformation = () => {
     accountType: '',
     route: '',
     loan: '0',
+    ntn: '',
+    gstn: '',
     status: 'active'
   });
   const [accountTypes, setAccountTypes] = useState([]);
@@ -273,6 +275,8 @@ const CustomerInformation = () => {
       accountType: customer.accountType || '',
       route: customer.route || '',
       loan: customer.loan || '0',
+      ntn: customer.ntn || '',
+      gstn: customer.gstn || '',
       status: customer.status || 'active'
     });
     setShowModal(true);
@@ -344,6 +348,8 @@ const CustomerInformation = () => {
       accountType: '',
       route: '',
       loan: '0',
+      ntn: '',
+      gstn: '',
       status: 'active'
     });
     setEditingCustomer(null);
@@ -959,6 +965,32 @@ const CustomerInformation = () => {
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
                     </Form.Select>
+                  </Form.Group>
+                </Col>
+              </Row>
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>NTN</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="ntn"
+                      value={formData.ntn}
+                      onChange={handleInputChange}
+                      placeholder="Enter NTN Number"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>GSTN</Form.Label>
+                    <Form.Control
+                      type="text"
+                      name="gstn"
+                      value={formData.gstn}
+                      onChange={handleInputChange}
+                      placeholder="Enter GSTN Number"
+                    />
                   </Form.Group>
                 </Col>
               </Row>
