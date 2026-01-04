@@ -87,9 +87,12 @@ const LoadFormReport = () => {
       }
     }
 
-    // Staff filter
+    // Staff filter - match by staff account (createdBy) OR by employeeName
     if (selectedStaff !== 'All') {
-      if (receipt.employeeName !== selectedStaff) return false;
+      const receiptsStaffMember = staffMembers.find(s => s.id === receipt.createdBy);
+      const matchByAccount = receiptsStaffMember && receiptsStaffMember.name === selectedStaff;
+      const matchByEmployee = receipt.employeeName === selectedStaff;
+      if (!matchByAccount && !matchByEmployee) return false;
     }
 
     // Search filter
