@@ -60,6 +60,7 @@ import EditLedgerEntry from './pages/EditLedgerEntry';
 import DailyClosing from './pages/DailyClosing';
 import AccountingReports from './pages/AccountingReports';
 import InvoiceFormats from './pages/InvoiceFormats';
+import LoadFormReport from './pages/LoadFormReport';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
@@ -409,6 +410,14 @@ function AppContent() {
             <ErrorBoundary>
               <PrivateRoute>
                 <InvoiceFormats />
+              </PrivateRoute>
+            </ErrorBoundary>
+          } />
+
+          <Route path="/load-form-report" element={
+            <ErrorBoundary>
+              <PrivateRoute>
+                <LoadFormReport />
               </PrivateRoute>
             </ErrorBoundary>
           } />
