@@ -60,6 +60,11 @@ const MainNavbar = () => {
   const [ledgerOpen, setLedgerOpen] = useState(isLedgerPage);
   const [ledgerOpenMobile, setLedgerOpenMobile] = useState(isLedgerPage);
 
+  // Check if we're on an invoice formats page
+  const isInvoiceFormatsPage = location.pathname === '/invoice-formats';
+  const [invoiceFormatsOpen, setInvoiceFormatsOpen] = useState(isInvoiceFormatsPage);
+  const [invoiceFormatsOpenMobile, setInvoiceFormatsOpenMobile] = useState(isInvoiceFormatsPage);
+
   // Auto-open expenses menu when on expenses pages
   useEffect(() => {
     if (isExpensesPage) {
@@ -99,6 +104,14 @@ const MainNavbar = () => {
       setLedgerOpenMobile(true);
     }
   }, [isLedgerPage]);
+
+  // Auto-open invoice formats menu
+  useEffect(() => {
+    if (isInvoiceFormatsPage) {
+      setInvoiceFormatsOpen(true);
+      setInvoiceFormatsOpenMobile(true);
+    }
+  }, [isInvoiceFormatsPage]);
 
   const handleLogout = () => {
     logout()
@@ -205,6 +218,10 @@ const MainNavbar = () => {
     },
     account_balance: {
       background: 'linear-gradient(135deg, #9C27B0 0%, #673AB7 100%)',
+      color: '#ffffff'
+    },
+    description: {
+      background: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)',
       color: '#ffffff'
     }
   };
@@ -401,6 +418,37 @@ const MainNavbar = () => {
             {!isStaff && (
               renderSubNavItem('/add-ledger-entry', <Translate textKey="add" fallback="Add Entry" />, closeSidebar)
             )}
+          </div>
+        </Collapse>
+      </>
+    );
+  };
+
+  const renderInvoiceFormatsMenu = (closeSidebar = false, isMobile = false) => {
+    const isOpen = isMobile ? invoiceFormatsOpenMobile : invoiceFormatsOpen;
+    const setIsOpen = isMobile ? setInvoiceFormatsOpenMobile : setInvoiceFormatsOpen;
+    const iconStyle = googleIconPalette['description'] || defaultGoogleIconStyle;
+    const isInvoiceFormatsActive = isActive('/invoice-formats');
+
+    return (
+      <>
+        <div
+          className={`sidebar-link ${isInvoiceFormatsActive ? 'active' : ''}`}
+          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+          onClick={() => setIsOpen(!isOpen)}
+        >
+          <span className="sidebar-icon" style={iconStyle}>
+            <span className="material-icons-outlined google-icon">description</span>
+          </span>
+          <span className="sidebar-text"><Translate textKey="invoiceFormats" fallback="Invoice Formats" /></span>
+          <i className={`bi ${isOpen ? 'bi-chevron-down' : 'bi-chevron-right'} ms-auto`} style={{ fontSize: '0.8rem' }}></i>
+        </div>
+        <Collapse in={isOpen}>
+          <div className="sidebar-submenu">
+            {renderSubNavItem('/invoice-formats?format=thermal', <Translate textKey="thermalFormat" fallback="Thermal Format" />, closeSidebar)}
+            {renderSubNavItem('/invoice-formats?format=a4', <Translate textKey="a4Format" fallback="A4 Format" />, closeSidebar)}
+            {renderSubNavItem('/invoice-formats?format=modern', <Translate textKey="modernFormat" fallback="Modern Format" />, closeSidebar)}
+            {renderSubNavItem('/invoice-formats?format=professional', <Translate textKey="professionalFormat" fallback="Professional Format" />, closeSidebar)}
           </div>
         </Collapse>
       </>
@@ -694,6 +742,7 @@ const MainNavbar = () => {
                 )}
                 {renderContactsMenu(true, true)}
                 {renderLedgerMenu(true, true)}
+                {renderInvoiceFormatsMenu(true, true)}
                 {!isStaff && !isGuest && (
                   renderNavItem('/settings', 'settings', <Translate textKey="settings" />, true)
                 )}
@@ -772,6 +821,7 @@ const MainNavbar = () => {
               )}
               {renderContactsMenu(false, false)}
               {renderLedgerMenu(false, false)}
+              {renderInvoiceFormatsMenu(false, false)}
               {!isStaff && !isGuest && (
                 renderNavItem('/settings', 'settings', <Translate textKey="settings" />)
               )}
