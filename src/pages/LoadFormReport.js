@@ -50,10 +50,11 @@ const LoadFormReport = () => {
   const fetchStaffMembers = useCallback(async () => {
     if (!activeShopId) return;
     try {
-      const employeesRef = collection(db, 'employees');
-      const q = query(employeesRef, where('shopId', '==', activeShopId));
+      const staffRef = collection(db, 'staff');
+      const q = query(staffRef, where('shopId', '==', activeShopId));
       const snapshot = await getDocs(q);
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log('Fetched staff members:', data);
       setStaffMembers(data);
     } catch (err) {
       console.error('Error fetching staff:', err);
@@ -61,9 +62,11 @@ const LoadFormReport = () => {
   }, [activeShopId]);
 
   useEffect(() => {
-    fetchReceipts();
-    fetchStaffMembers();
-  }, [fetchReceipts, fetchStaffMembers]);
+    if (activeShopId) {
+      fetchReceipts();
+      fetchStaffMembers();
+    }
+  }, [activeShopId, fetchReceipts, fetchStaffMembers]);
 
   // Filter receipts based on date range, search term, and staff
   const filteredReceipts = receipts.filter(receipt => {
@@ -418,8 +421,8 @@ const LoadFormReport = () => {
                     onChange={(e) => setSelectedStaff(e.target.value)}
                   >
                     <option value="All">All Staff</option>
-                    {staffMembers.map(staff => (
-                      <option key={staff.id} value={staff.name}>{staff.name}</option>
+                    {staffMembers.map((staff, index) => (
+                      <option key={staff.id || index} value={staff.name}>{staff.name}</option>
                     ))}
                   </Form.Select>
                 </Form.Group>
