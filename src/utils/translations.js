@@ -38,6 +38,7 @@ const translations = {
     notes: "Notes",
     invoiceNo: "Invoice No",
     employee: "Employee",
+    currentLoan: "Current Loan",
 
     // Common buttons
     save: "Save",
@@ -1636,6 +1637,7 @@ const translations = {
     notes: "نوٹس",
     invoiceNo: "انوائس نمبر",
     employee: "ملازم",
+    currentLoan: "موجودہ قرض",
     contacts: "رابطے",
     customerInformation: "کسٹمر کی معلومات",
     supplierInformation: "سپلائر کی معلومات",
