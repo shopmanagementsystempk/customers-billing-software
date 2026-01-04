@@ -214,6 +214,10 @@ const ViewReceipt = () => {
     );
   }
 
+  const cashKept = (parseFloat(receipt.cashGiven || 0)) - Math.max(0, parseFloat(receipt.change || 0));
+  const currentTransactionDebt = parseFloat(receipt.totalAmount) - cashKept;
+  const finalNewBalance = (parseFloat(receipt.previousBalance || 0)) + currentTransactionDebt;
+
   return (
     <>
       <MainNavbar />
@@ -465,10 +469,13 @@ const ViewReceipt = () => {
                   <div className="footer-section">
                     <div className="footer-left">
                       <div className="footer-stats">
-                        <p><span><Translate textKey="prevBalance" fallback="Prev Balance" />:</span> <span>0.00</span></p>
+                        <p><span><Translate textKey="prevBalance" fallback="Prev Balance" />:</span> <span>{(parseFloat(receipt.previousBalance || 0)).toFixed(2)}</span></p>
                         <p><span><Translate textKey="thisBill" fallback="This Bill" />:</span> <span>{Math.round(parseFloat(receipt.totalAmount))}</span></p>
-                        <p><span><Translate textKey="cashRecieved" fallback="Cash Recieved" />:</span> <span>{Math.round(parseFloat(receipt.cashGiven || 0))}</span></p>
-                        <p className="fw-bold"><span><Translate textKey="newBalance" fallback="New Balance" />:</span> <span>{Math.round(parseFloat(receipt.totalAmount) - (parseFloat(receipt.cashGiven || 0)))}</span></p>
+                        <p><span><Translate textKey="cashRecieved" fallback="Cash Received" />:</span> <span>{Math.round(cashKept)}</span></p>
+                        {currentTransactionDebt > 0 && (
+                          <p><span><Translate textKey="currentLoan" fallback="Current Loan" />:</span> <span>{Math.round(currentTransactionDebt)}</span></p>
+                        )}
+                        <p className="fw-bold"><span><Translate textKey="newBalance" fallback="New Balance" />:</span> <span>{Math.round(finalNewBalance)}</span></p>
                       </div>
                     </div>
                     <div className="footer-middle">
@@ -478,7 +485,7 @@ const ViewReceipt = () => {
                     </div>
                     <div className="footer-right">
                       <span className="total-bill-label"><Translate textKey="totalBill" fallback="Total Bill" /> :</span>
-                      <span className="total-bill-value">{Math.round(parseFloat(receipt.totalAmount))}</span>
+                      <span className="total-bill-value">{Math.round(parseFloat(receipt.totalAmount) - Math.max(0, currentTransactionDebt))}</span>
                     </div>
                   </div>
 
@@ -499,38 +506,23 @@ const ViewReceipt = () => {
                     <div className="sm">{receipt.shopDetails.address}</div>
                     <div className="sm">Phone # {receipt.shopDetails.phone}</div>
                   </div>
+
                   <div className="sep"></div>
                   <div className="sm" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <div>Invoice: {receipt.transactionId}</div>
+                    <div><Translate textKey="invoice" fallback="Invoice" />: {receipt.transactionId}</div>
                     <div>{formatDate(receipt.timestamp)} {formatTime(receipt.timestamp)}</div>
                   </div>
                   <div className="sm" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
                     <div><Translate textKey="paymentMethod" fallback="Payment" />:</div>
-                    <div>
-                      {translations[language]?.[
-                        ({
-                          'Cash': 'cash',
-                          'Cards': 'cards',
-                          'Mobile Wallet': 'mobileWallets',
-                          'QR Code': 'qrPayment',
-                          'Bank Transfer': 'bankLinked'
-                        })[receipt.paymentMethod] || 'cash'
-                      ] || receipt.paymentMethod || 'Cash'}
-                    </div>
+                    <div>{receipt.paymentMethod}</div>
                   </div>
                   <div className="sep"></div>
+
                   <table className="thermal">
-                    <colgroup>
-                      <col style={{ width: '10mm' }} />
-                      <col />
-                      <col style={{ width: '12mm' }} />
-                      <col style={{ width: '16mm' }} />
-                      <col style={{ width: '16mm' }} />
-                    </colgroup>
                     <thead>
                       <tr>
                         <th className="c">Sr</th>
-                        <th className="c">Item / Product</th>
+                        <th className="c">Item</th>
                         <th className="c">Qty</th>
                         <th className="r">Rate</th>
                         <th className="r">Amnt</th>
@@ -538,15 +530,15 @@ const ViewReceipt = () => {
                     </thead>
                     <tbody>
                       {receipt.items.map((item, idx) => {
-                        const qty = parseFloat(item.quantity || 1);
-                        const bonus = parseFloat(item.bonus || 0);
                         const rate = Math.round(parseFloat(item.price || 0));
-                        const amt = Math.round(qty * rate);
+                        const qty = parseFloat(item.quantity || 0);
+                        const bonus = parseFloat(item.bonus || 0);
+                        const amt = Math.round(parseFloat(item.total || 0));
                         return (
                           <tr key={idx}>
                             <td className="c">{idx + 1}</td>
                             <td className="wrap">{item.name}</td>
-                            <td className="c">{qty}{bonus > 0 ? ` + ${bonus}` : ''} {item.quantityUnit === 'kg' ? 'KG' : ''}</td>
+                            <td className="c">{qty}{bonus > 0 ? `+${bonus}` : ''}</td>
                             <td className="r">{rate}</td>
                             <td className="r">{amt}</td>
                           </tr>
@@ -554,14 +546,49 @@ const ViewReceipt = () => {
                       })}
                     </tbody>
                   </table>
+
                   <div className="totals">
-                    <div className="line"><span>Total</span><span>{receipt.items.reduce((s, i) => s + parseFloat(i.quantity || 0), 0).toFixed(2)}</span></div>
-                    {receipt.discount > 0 && (<div className="line"><span>Discount</span><span>{Math.round(parseFloat(receipt.discount))}</span></div>)}
-                    <div className="line"><span>Net Total</span><span>{Math.round(parseFloat(receipt.totalAmount))}</span></div>
-                    {receipt.isLoan && (<div className="line"><span>Loan</span><span>{Math.round(parseFloat(receipt.loanAmount || 0))}</span></div>)}
+                    <div className="line"><span><Translate textKey="total" fallback="Total" /></span><span>{(receipt.totalAmount + (receipt.discount || 0)).toFixed(2)}</span></div>
+                    {receipt.discount > 0 && (
+                      <div className="line"><span><Translate textKey="discount" fallback="Discount" /></span><span>{Math.round(receipt.discount)}</span></div>
+                    )}
+                    <div className="line"><span><Translate textKey="netTotal" fallback="Net Total" /></span><span>{Math.round(receipt.totalAmount)}</span></div>
+                    {receipt.isLoan && (
+                      <div className="line"><span><Translate textKey="loan" fallback="Loan" /></span><span>{Math.round(receipt.loanAmount || 0)}</span></div>
+                    )}
                   </div>
-                  <div className="net">{Math.round(parseFloat(receipt.totalAmount))}</div>
-                  <div className="center sm" style={{ marginTop: '8px' }}>Thank you For Shoping !</div>
+
+                  {receipt.customerName && receipt.customerName !== 'Walk-in Customer' && (
+                    <div className="stats-section" style={{ borderTop: '1px dotted #000', marginTop: '5px', paddingTop: '5px', fontSize: '11px' }}>
+                      <div className="line" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span><Translate textKey="prevBalance" fallback="Prev Balance" />:</span>
+                        <span>{(parseFloat(receipt.previousBalance || 0)).toFixed(2)}</span>
+                      </div>
+                      <div className="line" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span><Translate textKey="thisBill" fallback="This Bill" />:</span>
+                        <span>{Math.round(receipt.totalAmount)}</span>
+                      </div>
+                      <div className="line" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span><Translate textKey="cashRecieved" fallback="Cash Received" />:</span>
+                        <span>{Math.round(cashKept)}</span>
+                      </div>
+                      {currentTransactionDebt > 0 && (
+                        <div className="line" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span><Translate textKey="currentLoan" fallback="Current Loan" />:</span>
+                          <span>{Math.round(currentTransactionDebt)}</span>
+                        </div>
+                      )}
+                      <div className="line" style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
+                        <span><Translate textKey="newBalance" fallback="New Balance" />:</span>
+                        <span>{Math.round(finalNewBalance)}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="net">{Math.round(parseFloat(receipt.totalAmount) - Math.max(0, currentTransactionDebt))}</div>
+                  <div className="center sm" style={{ marginTop: '8px' }}>
+                    <Translate textKey="thankYouShopping" fallback="Thank you For Shoping !" />
+                  </div>
                   {receipt.shopDetails.receiptDescription && (
                     <div className="center sm" style={{ marginTop: '4px' }}>{receipt.shopDetails.receiptDescription}</div>
                   )}
@@ -571,7 +598,7 @@ const ViewReceipt = () => {
             </Card.Body>
           </Card>
         </div>
-      </Container>
+      </Container >
     </>
   );
 };
