@@ -59,6 +59,7 @@ import AddLedgerEntry from './pages/AddLedgerEntry';
 import EditLedgerEntry from './pages/EditLedgerEntry';
 import DailyClosing from './pages/DailyClosing';
 import AccountingReports from './pages/AccountingReports';
+import InvoiceFormats from './pages/InvoiceFormats';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
@@ -400,6 +401,14 @@ function AppContent() {
             <ErrorBoundary>
               <PrivateRoute>
                 <AccountingReports />
+              </PrivateRoute>
+            </ErrorBoundary>
+          } />
+
+          <Route path="/invoice-formats" element={
+            <ErrorBoundary>
+              <PrivateRoute>
+                <InvoiceFormats />
               </PrivateRoute>
             </ErrorBoundary>
           } />
