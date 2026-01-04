@@ -611,8 +611,13 @@ const CustomerInformation = () => {
             if (value && !existingRoutes.has(value.toLowerCase())) {
               routesToAdd.add(value);
             }
-          } else if (header.includes('loan')) {
-            customerInfo.loan = value;
+          } else if (header.includes('loan') || header.includes('balance') || header.includes('amount')) {
+            // Clean the loan value - remove commas, spaces, currency symbols but keep decimal point and minus sign
+            const cleanedValue = value
+              .replace(/Rs\.?/gi, '')  // Remove Rs or Rs.
+              .replace(/[,\s₹$]/g, '') // Remove commas, spaces, currency symbols
+              .trim();
+            customerInfo.loan = cleanedValue || '0';
           } else if (header.includes('status')) {
             customerInfo.status = value.toLowerCase() === 'inactive' ? 'inactive' : 'active';
           }
@@ -622,13 +627,17 @@ const CustomerInformation = () => {
           const newDocRef = doc(customersRef);
           batch.set(newDocRef, customerInfo);
 
-          if (parseFloat(customerInfo.loan) > 0) {
+          const loanAmount = parseFloat(customerInfo.loan) || 0;
+          if (loanAmount !== 0) {
             const loanRef = doc(collection(db, 'customerLoans'));
+            // Negative in Excel = loan (customer owes), store as positive amount with type 'loan'
+            // Positive in Excel = credit (shop owes customer), store as positive amount with type 'credit'
+            const isCredit = loanAmount > 0;
             batch.set(loanRef, {
               shopId: activeShopId,
               customerName: customerInfo.name,
-              amount: parseFloat(customerInfo.loan),
-              type: 'loan',
+              amount: Math.abs(loanAmount),
+              type: isCredit ? 'credit' : 'loan',
               transactionId: 'Opening Balance',
               status: 'outstanding',
               timestamp: now.toISOString()
@@ -654,6 +663,7 @@ const CustomerInformation = () => {
         await batch.commit();
         setSuccess(`Successfully imported ${count} customers and updated options.`);
         fetchCustomers();
+        fetchLoans();
         fetchOptions();
       } else {
         setError('No valid customer names found in CSV');
@@ -767,10 +777,14 @@ const CustomerInformation = () => {
                       <td>
                         {(() => {
                           const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase());
-                          const total = custLoans.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
-                          // Loan = negative (customer owes), Credit = positive (shop owes)
-                          const displayAmount = total > 0 ? -total : total;
-                          return <span style={{ color: displayAmount < 0 ? '#dc3545' : displayAmount > 0 ? '#198754' : 'inherit' }}>RS {displayAmount.toFixed(2)}</span>;
+                          // Calculate total: loans are negative (customer owes), credits are positive (shop owes)
+                          const total = custLoans.reduce((s, l) => {
+                            const amount = parseFloat(l.amount) || 0;
+                            // If type is 'credit', it's positive (shop owes customer)
+                            // If type is 'loan' or undefined, it's negative (customer owes shop)
+                            return s + (l.type === 'credit' ? amount : -amount);
+                          }, 0);
+                          return <span style={{ color: total < 0 ? '#dc3545' : total > 0 ? '#198754' : 'inherit' }}>RS {total.toFixed(2)}</span>;
                         })()}
                       </td>
                       <td>
@@ -794,7 +808,7 @@ const CustomerInformation = () => {
                           <Translate textKey="viewLoans" />
                         </Button>
                         {(() => {
-                          const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase() && (l.status || 'outstanding') !== 'paid');
+                          const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase() && (l.status || 'outstanding') !== 'paid' && l.type !== 'credit');
                           const total = custLoans.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
                           return total > 0 ? (
                             <Button
