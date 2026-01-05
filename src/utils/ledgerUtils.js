@@ -840,6 +840,11 @@ export const getDailyClosing = async (shopId, date) => {
     // Calculate totals by payment method
     const paymentMethodTotals = {};
     const transactionTypeTotals = {};
+    
+    // Track unique receipts/transactions to count actual sales (not ledger entries)
+    const uniqueSaleReceipts = new Set();
+    const uniqueRefundReceipts = new Set();
+    const uniqueVoidReceipts = new Set();
 
     dayEntries.forEach(entry => {
       const paymentMethod = entry.paymentMethod || 'Cash';
@@ -870,15 +875,31 @@ export const getDailyClosing = async (shopId, date) => {
         }
       }
 
-      if (transactionType === 'Sale' || transactionType === 'Refund' || transactionType === 'Void') {
-        transactionTypeTotals[transactionType].count++;
-        if (transactionType === 'Sale') {
-          transactionTypeTotals[transactionType].total += parseFloat(entry.amount || 0);
-        } else {
-          transactionTypeTotals[transactionType].total -= parseFloat(entry.amount || 0);
-        }
+      // Track unique receipts and calculate totals
+      const receiptKey = entry.receiptId || entry.reference || entry.id;
+      
+      if (transactionType === 'Sale') {
+        uniqueSaleReceipts.add(receiptKey);
+        transactionTypeTotals[transactionType].total += parseFloat(entry.amount || 0);
+      } else if (transactionType === 'Refund') {
+        uniqueRefundReceipts.add(receiptKey);
+        transactionTypeTotals[transactionType].total -= parseFloat(entry.amount || 0);
+      } else if (transactionType === 'Void') {
+        uniqueVoidReceipts.add(receiptKey);
+        transactionTypeTotals[transactionType].total -= parseFloat(entry.amount || 0);
       }
     });
+
+    // Update counts with unique receipt counts
+    if (transactionTypeTotals['Sale']) {
+      transactionTypeTotals['Sale'].count = uniqueSaleReceipts.size;
+    }
+    if (transactionTypeTotals['Refund']) {
+      transactionTypeTotals['Refund'].count = uniqueRefundReceipts.size;
+    }
+    if (transactionTypeTotals['Void']) {
+      transactionTypeTotals['Void'].count = uniqueVoidReceipts.size;
+    }
 
     // Calculate net by payment method
     const netByPaymentMethod = {};
@@ -894,14 +915,17 @@ export const getDailyClosing = async (shopId, date) => {
       .filter(e => e.transactionType === 'Discount')
       .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
 
+    // Count unique transactions (sales + refunds + voids)
+    const uniqueTransactionCount = uniqueSaleReceipts.size + uniqueRefundReceipts.size + uniqueVoidReceipts.size;
+
     return {
       date: closingDate,
-      totalEntries: dayEntries.length,
-      salesCount: transactionTypeTotals['Sale']?.count || 0,
+      totalEntries: uniqueTransactionCount, // Show unique transactions, not ledger entries
+      salesCount: uniqueSaleReceipts.size,
       salesTotal,
-      refundsCount: transactionTypeTotals['Refund']?.count || 0,
+      refundsCount: uniqueRefundReceipts.size,
       refundsTotal,
-      voidsCount: transactionTypeTotals['Void']?.count || 0,
+      voidsCount: uniqueVoidReceipts.size,
       voidsTotal,
       discountsTotal,
       netSales: salesTotal - refundsTotal - voidsTotal - discountsTotal,
