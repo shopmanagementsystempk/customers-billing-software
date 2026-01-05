@@ -793,14 +793,16 @@ const CustomerInformation = () => {
           const loanAmount = parseFloat(customerInfo.loan) || 0;
           if (loanAmount !== 0) {
             const loanRef = doc(collection(db, 'customerLoans'));
-            const isCredit = loanAmount > 0;
+            // Positive in Excel = loan (customer owes shop)
+            // Negative in Excel = credit (shop owes customer)
+            const isLoan = loanAmount > 0;
             batch.set(loanRef, {
               shopId: activeShopId,
               customerId: newDocRef.id, // Link to customer document
               customerName: customerInfo.name,
               customerPhone: customerInfo.phone || '',
               amount: Math.abs(loanAmount),
-              type: isCredit ? 'credit' : 'loan',
+              type: isLoan ? 'loan' : 'credit',
               transactionId: 'Opening Balance',
               status: 'outstanding',
               timestamp: now.toISOString()
