@@ -458,7 +458,10 @@ const CustomerInformation = () => {
       }
       return nameMatch && notPaid;
     });
-    const total = custLoans.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+    const total = custLoans.reduce((s, l) => {
+      const amount = parseFloat(l.amount) || 0;
+      return s + (l.type === 'credit' ? -amount : amount);
+    }, 0);
     setCustomerOutstandingLoans(custLoans);
     setOutstandingTotal(total);
     setPayingCustomerName(customer.name || '');
@@ -1009,6 +1012,10 @@ const CustomerInformation = () => {
                         {(() => {
                           // Filter loans by customerId for accurate identification
                           const custLoans = loans.filter(l => {
+                            // Only include outstanding items in the balance
+                            const isOutstanding = (l.status || 'outstanding') !== 'paid';
+                            if (!isOutstanding) return false;
+
                             // Prefer customerId matching
                             if (l.customerId && customer.id) {
                               return l.customerId === customer.id;
@@ -1089,7 +1096,10 @@ const CustomerInformation = () => {
                             }
                             return nameMatch && notPaid;
                           });
-                          const total = custLoans.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+                          const total = custLoans.reduce((s, l) => {
+                            const amount = parseFloat(l.amount) || 0;
+                            return s + (l.type === 'credit' ? -amount : amount);
+                          }, 0);
                           return total > 0 ? (
                             <Button
                               variant="outline-success"
