@@ -182,7 +182,11 @@ const NewReceipt = () => {
   useEffect(() => {
     if (customer && customer !== 'Walk-in Customer') {
       const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === customer.toLowerCase() && (l.status || 'outstanding') !== 'paid');
-      const total = custLoans.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+      // Loans are positive (customer owes), credits are negative (shop owes)
+      const total = custLoans.reduce((s, l) => {
+        const amount = parseFloat(l.amount) || 0;
+        return s + (l.type === 'credit' ? -amount : amount);
+      }, 0);
       setCustomerBalance(total);
     } else {
       setCustomerBalance(0);
@@ -734,13 +738,13 @@ const NewReceipt = () => {
 
             <div class="p-footer">
               <div class="p-stats">
-                <p><span>${t('prevBalance', 'Prev Balance')}:</span> <span>${customerBalance > 0 ? '-' : ''}${customerBalance.toFixed(2)}</span></p>
+                <p><span>${t('prevBalance', 'Prev Balance')}:</span> <span>${customerBalance.toFixed(2)}</span></p>
                 <p><span>${t('thisBill', 'This Bill')}:</span> <span>${Math.round(parseFloat(totals.payable))}</span></p>
                 <p><span>${t('cashRecieved', 'Cash Received')}:</span> <span>${Math.round(cashKept)}</span></p>
                 ${currentTransactionDebt > 0 ? `
                   <p><span>${t('currentLoan', 'Current Loan')}:</span> <span>${Math.round(currentTransactionDebt)}</span></p>
                 ` : ''}
-                <p style="font-weight: bold"><span>${t('newBalance', 'New Balance')}:</span> <span>${finalNewBalance > 0 ? '-' : ''}${Math.round(Math.abs(finalNewBalance))}</span></p>
+                <p style="font-weight: bold"><span>${t('newBalance', 'New Balance')}:</span> <span>${Math.round(finalNewBalance)}</span></p>
               </div>
               <div class="p-signature">
                 <p class="p-signature">${t('signature', 'Signature')}</p>
@@ -815,7 +819,7 @@ const NewReceipt = () => {
 
             ${customer && customer !== 'Walk-in Customer' ? `
               <div class="t-stats">
-                <div class="t-line"><span>${t('prevBalance', 'Prev Balance')}:</span> <span>${customerBalance > 0 ? '-' : ''}${customerBalance.toFixed(2)}</span></div>
+                <div class="t-line"><span>${t('prevBalance', 'Prev Balance')}:</span> <span>${customerBalance.toFixed(2)}</span></div>
                 <div class="t-line"><span>${t('thisBill', 'This Bill')}:</span> <span>${Math.round(parseFloat(totals.payable))}</span></div>
                 <div class="t-line"><span>${t('cashRecieved', 'Cash Received')}:</span> <span>${Math.round(cashKept)}</span></div>
                 ${currentTransactionDebt > 0 ? `
@@ -823,7 +827,7 @@ const NewReceipt = () => {
                 ` : ''}
                 <div class="t-line" style="font-weight: bold; border-top: 1px solid #000; margin-top: 2px; padding-top: 2px;">
                   <span>${t('newBalance', 'New Balance')}:</span> 
-                  <span>${finalNewBalance > 0 ? '-' : ''}${Math.round(Math.abs(finalNewBalance))}</span>
+                  <span>${Math.round(finalNewBalance)}</span>
                 </div>
               </div>
             ` : ''}
@@ -1240,8 +1244,8 @@ const NewReceipt = () => {
                       <div className="d-flex justify-content-between align-items-center">
                         <Form.Label className="mb-1" style={{ fontSize: '0.875rem' }}><Translate textKey="customerName" fallback="Customer Name" /></Form.Label>
                         {customer && customer !== 'Walk-in Customer' && (
-                          <span className="badge bg-info-subtle text-info-emphasis border border-info-subtle mb-1" style={{ fontSize: '0.75rem' }}>
-                            <Translate textKey="prevBalance" fallback="Prev Balance" />: {customerBalance > 0 ? '-' : ''}{formatCurrency(customerBalance)}
+                          <span className={`badge mb-1 ${customerBalance > 0 ? 'bg-danger-subtle text-danger-emphasis border border-danger-subtle' : customerBalance < 0 ? 'bg-success-subtle text-success-emphasis border border-success-subtle' : 'bg-info-subtle text-info-emphasis border border-info-subtle'}`} style={{ fontSize: '0.75rem' }}>
+                            <Translate textKey="prevBalance" fallback="Prev Balance" />: {formatCurrency(customerBalance)}
                           </span>
                         )}
                       </div>
