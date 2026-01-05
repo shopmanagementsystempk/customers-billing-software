@@ -60,6 +60,12 @@ const CustomerInformation = () => {
   const [showAllPaymentHistoryModal, setShowAllPaymentHistoryModal] = useState(false);
   const [allPaymentHistory, setAllPaymentHistory] = useState([]);
   const [allPaymentHistoryLoading, setAllPaymentHistoryLoading] = useState(false);
+  const [showAddLoanCreditModal, setShowAddLoanCreditModal] = useState(false);
+  const [addLoanCreditCustomer, setAddLoanCreditCustomer] = useState(null);
+  const [loanCreditType, setLoanCreditType] = useState('loan');
+  const [loanCreditAmount, setLoanCreditAmount] = useState('');
+  const [loanCreditDescription, setLoanCreditDescription] = useState('');
+  const [addingLoanCredit, setAddingLoanCredit] = useState(false);
   const printIframeRef = useRef(null);
   const fileInputRef = useRef(null);
   const [importing, setImporting] = useState(false);
@@ -587,6 +593,47 @@ const CustomerInformation = () => {
       setTimeout(() => { if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 1000);
     }, 250);
   };
+
+  // Open Add Loan/Credit Modal
+  const openAddLoanCreditModal = (customer) => {
+    setAddLoanCreditCustomer(customer);
+    setLoanCreditType('loan');
+    setLoanCreditAmount('');
+    setLoanCreditDescription('');
+    setShowAddLoanCreditModal(true);
+  };
+
+  // Handle Add Loan/Credit
+  const handleAddLoanCredit = async () => {
+    if (!addLoanCreditCustomer || !loanCreditAmount || parseFloat(loanCreditAmount) <= 0) {
+      setError('Please enter a valid amount');
+      return;
+    }
+
+    setAddingLoanCredit(true);
+    try {
+      const now = new Date().toISOString();
+      await addDoc(collection(db, 'customerLoans'), {
+        shopId: activeShopId,
+        customerName: addLoanCreditCustomer.name,
+        amount: parseFloat(loanCreditAmount),
+        type: loanCreditType,
+        transactionId: loanCreditDescription || (loanCreditType === 'loan' ? 'Manual Loan' : 'Manual Credit'),
+        timestamp: now,
+        status: 'outstanding'
+      });
+
+      setShowAddLoanCreditModal(false);
+      setSuccess(`${loanCreditType === 'loan' ? 'Loan' : 'Credit'} added successfully`);
+      setTimeout(() => setSuccess(''), 3000);
+      fetchLoans();
+    } catch (err) {
+      setError('Failed to add: ' + err.message);
+    } finally {
+      setAddingLoanCredit(false);
+    }
+  };
+
   const handleImportClick = () => {
     fileInputRef.current?.click();
   };
@@ -905,6 +952,14 @@ const CustomerInformation = () => {
                           onClick={() => viewPaymentHistory(customer)}
                         >
                           <i className="bi bi-clock-history"></i> History
+                        </Button>
+                        <Button
+                          variant="outline-info"
+                          size="sm"
+                          className="me-2"
+                          onClick={() => openAddLoanCreditModal(customer)}
+                        >
+                          <i className="bi bi-plus-circle"></i> Loan/Credit
                         </Button>
                         {(() => {
                           const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase() && (l.status || 'outstanding') !== 'paid');
@@ -1424,6 +1479,68 @@ const CustomerInformation = () => {
             Total Amount: RS {allPaymentHistory.reduce((sum, p) => sum + (parseFloat(p.amountPaid) || 0), 0).toFixed(2)}
           </div>
           <Button variant="secondary" onClick={() => setShowAllPaymentHistoryModal(false)}>Close</Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Add Loan/Credit Modal */}
+      <Modal show={showAddLoanCreditModal} onHide={() => setShowAddLoanCreditModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <i className="bi bi-plus-circle me-2"></i>
+            Add Loan/Credit - {addLoanCreditCustomer?.name}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group className="mb-3">
+            <Form.Label>Type</Form.Label>
+            <Form.Select
+              value={loanCreditType}
+              onChange={(e) => setLoanCreditType(e.target.value)}
+            >
+              <option value="loan">Loan (Customer Owes)</option>
+              <option value="credit">Credit (Shop Owes)</option>
+            </Form.Select>
+            <Form.Text className="text-muted">
+              {loanCreditType === 'loan' 
+                ? 'Loan: Amount customer owes to the shop (will show as positive)' 
+                : 'Credit: Amount shop owes to the customer (will show as negative)'}
+            </Form.Text>
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Label>Amount</Form.Label>
+            <InputGroup>
+              <InputGroup.Text>RS</InputGroup.Text>
+              <Form.Control
+                type="number"
+                min="0"
+                step="0.01"
+                value={loanCreditAmount}
+                onChange={(e) => setLoanCreditAmount(e.target.value)}
+                placeholder="Enter amount"
+              />
+            </InputGroup>
+          </Form.Group>
+          <Form.Group className="mb-3">
+            <Form.Label>Description (Optional)</Form.Label>
+            <Form.Control
+              type="text"
+              value={loanCreditDescription}
+              onChange={(e) => setLoanCreditDescription(e.target.value)}
+              placeholder="e.g., Invoice #123, Advance Payment, etc."
+            />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowAddLoanCreditModal(false)}>
+            Cancel
+          </Button>
+          <Button 
+            variant={loanCreditType === 'loan' ? 'danger' : 'success'} 
+            onClick={handleAddLoanCredit}
+            disabled={addingLoanCredit || !loanCreditAmount || parseFloat(loanCreditAmount) <= 0}
+          >
+            {addingLoanCredit ? <Spinner size="sm" /> : `Add ${loanCreditType === 'loan' ? 'Loan' : 'Credit'}`}
+          </Button>
         </Modal.Footer>
       </Modal>
     </>
