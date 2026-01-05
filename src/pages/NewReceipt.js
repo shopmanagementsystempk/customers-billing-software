@@ -181,7 +181,18 @@ const NewReceipt = () => {
 
   useEffect(() => {
     if (customer && customer !== 'Walk-in Customer') {
-      const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === customer.toLowerCase() && (l.status || 'outstanding') !== 'paid');
+      // Find customer data for phone matching
+      const customerData = customers.find(c => c.name === customer);
+      // Filter loans by name AND phone to avoid mixing data for customers with same names
+      const custLoans = loans.filter(l => {
+        const nameMatch = (l.customerName || '').toLowerCase() === customer.toLowerCase();
+        // If loan has phone and customer has phone, match by both
+        if (l.customerPhone && customerData?.phone) {
+          return nameMatch && l.customerPhone === customerData.phone && (l.status || 'outstanding') !== 'paid';
+        }
+        // Fallback to name-only matching for old data
+        return nameMatch && (l.status || 'outstanding') !== 'paid';
+      });
       // Loans are positive (customer owes), credits are negative (shop owes)
       const total = custLoans.reduce((s, l) => {
         const amount = parseFloat(l.amount) || 0;
@@ -191,7 +202,7 @@ const NewReceipt = () => {
     } else {
       setCustomerBalance(0);
     }
-  }, [customer, loans]);
+  }, [customer, loans, customers]);
 
 
 
@@ -716,15 +727,15 @@ const NewReceipt = () => {
                 <tr style="font-weight: bold">
                   <td colspan="2" class="text-left">${t('totalItem', 'Total Item')}: ${items.length}</td>
                   <td>${items.reduce((s, i) => {
-                    const unit = (i.quantityUnit || 'units').toLowerCase();
-                    const isCrtn = unit === 'crtn' || unit === 'carton' || unit === 'cartons' || unit === 'ctn';
-                    return s + (isCrtn ? parseFloat(i.quantity || 0) : 0);
-                  }, 0)}</td>
+      const unit = (i.quantityUnit || 'units').toLowerCase();
+      const isCrtn = unit === 'crtn' || unit === 'carton' || unit === 'cartons' || unit === 'ctn';
+      return s + (isCrtn ? parseFloat(i.quantity || 0) : 0);
+    }, 0)}</td>
                   <td>${items.reduce((s, i) => {
-                    const unit = (i.quantityUnit || 'units').toLowerCase();
-                    const isCrtn = unit === 'crtn' || unit === 'carton' || unit === 'cartons' || unit === 'ctn';
-                    return s + (!isCrtn ? parseFloat(i.quantity || 0) : 0);
-                  }, 0)}</td>
+      const unit = (i.quantityUnit || 'units').toLowerCase();
+      const isCrtn = unit === 'crtn' || unit === 'carton' || unit === 'cartons' || unit === 'ctn';
+      return s + (!isCrtn ? parseFloat(i.quantity || 0) : 0);
+    }, 0)}</td>
                   <td>${items.reduce((s, i) => s + parseFloat(i.bonus || 0), 0)}</td>
                   <td></td>
                   <td>${items.reduce((s, i) => s + Math.round(parseFloat(i.quantity || 0) * parseFloat(i.salePrice || 0)), 0)}</td>
@@ -953,15 +964,20 @@ const NewReceipt = () => {
 
       // 3. Create customer loan if needed (non-blocking)
       if ((parseFloat(loanAmount || 0) || 0) > 0 && customer && customer !== 'Walk-in Customer') {
+        // Find customer data for ID and phone
+        const customerData = customers.find(c => c.name === customer);
         backgroundOperations.push(
           addDoc(collection(db, 'customerLoans'), {
             shopId: activeShopId,
+            customerId: customerData?.id || '', // Store customer ID for unique identification
             customerName: customer,
+            customerPhone: customerData?.phone || '',
             receiptId,
             transactionId,
             amount: Math.max(parseFloat(loanAmount || 0) || 0, 0),
             timestamp: new Date().toISOString(),
-            status: 'outstanding'
+            status: 'outstanding',
+            type: 'loan'
           }).catch(loanError => {
             console.error('Failed to record customer loan:', loanError);
           })
