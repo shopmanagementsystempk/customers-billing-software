@@ -7,6 +7,7 @@ import PageHeader from '../components/PageHeader';
 import { db } from '../firebase/config';
 import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { Translate, useTranslatedAttribute } from '../utils';
+import { migrateCustomerLoansAddPhone } from '../utils/migrateLoanPhone';
 
 const CustomerInformation = () => {
   const { currentUser, activeShopId, shopData } = useAuth();
@@ -69,6 +70,7 @@ const CustomerInformation = () => {
   const printIframeRef = useRef(null);
   const fileInputRef = useRef(null);
   const [importing, setImporting] = useState(false);
+  const [migrating, setMigrating] = useState(false);
 
   const fetchCustomers = useCallback(async () => {
     if (!activeShopId) return;
@@ -224,9 +226,10 @@ const CustomerInformation = () => {
 
         // Update or create Opening Balance loan
         const loansRef = collection(db, 'customerLoans');
+        // Query by customerId for accurate identification
         const q = query(loansRef,
           where('shopId', '==', activeShopId),
-          where('customerName', '==', editingCustomer.name),
+          where('customerId', '==', editingCustomer.id),
           where('transactionId', '==', 'Opening Balance')
         );
         const snapshot = await getDocs(q);
@@ -237,12 +240,16 @@ const CustomerInformation = () => {
           const loanDoc = snapshot.docs[0];
           await updateDoc(doc(db, 'customerLoans', loanDoc.id), {
             amount: newLoanAmount,
-            customerName: formData.name // sync name if changed
+            customerName: formData.name, // sync name if changed
+            customerPhone: formData.phone || '', // sync phone if changed
+            customerId: editingCustomer.id // ensure ID is set
           });
         } else if (newLoanAmount > 0) {
           await addDoc(collection(db, 'customerLoans'), {
             shopId: activeShopId,
+            customerId: editingCustomer.id, // Store customer ID
             customerName: formData.name,
+            customerPhone: formData.phone || '',
             amount: newLoanAmount,
             type: 'loan',
             transactionId: 'Opening Balance',
@@ -252,11 +259,15 @@ const CustomerInformation = () => {
         }
         setSuccess(getTranslatedAttr('customerUpdatedSuccess'));
       } else {
-        await addDoc(collection(db, 'customers'), customerData);
+        const newCustomerRef = await addDoc(collection(db, 'customers'), customerData);
+        const newCustomerId = newCustomerRef.id;
+
         if (parseFloat(formData.loan) > 0) {
           await addDoc(collection(db, 'customerLoans'), {
             shopId: activeShopId,
+            customerId: newCustomerId, // Store customer ID
             customerName: formData.name,
+            customerPhone: formData.phone || '',
             amount: parseFloat(formData.loan),
             type: 'loan',
             transactionId: 'Opening Balance',
@@ -325,19 +336,19 @@ const CustomerInformation = () => {
     setDeletingAll(true);
     try {
       const batch = writeBatch(db);
-      
+
       // Delete all customers
       for (const customer of customers) {
         batch.delete(doc(db, 'customers', customer.id));
       }
-      
+
       // Delete all customer loans
       for (const loan of loans) {
         batch.delete(doc(db, 'customerLoans', loan.id));
       }
-      
+
       await batch.commit();
-      
+
       setSuccess(getTranslatedAttr('allCustomersDeleted') || `Successfully deleted ${customers.length} customers and their loans`);
       setShowDeleteAllModal(false);
       setCustomers([]);
@@ -387,6 +398,8 @@ const CustomerInformation = () => {
     setShowPaymentHistoryModal(true);
     try {
       const paymentsRef = collection(db, 'customerLoanPayments');
+      // For payment history, we can only query by name in Firestore
+      // Then filter by phone in memory if needed
       const q = query(
         paymentsRef,
         where('shopId', '==', activeShopId),
@@ -428,7 +441,20 @@ const CustomerInformation = () => {
   };
 
   const openPayLoanModal = (customer) => {
-    const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase() && (l.status || 'outstanding') !== 'paid');
+    // Filter loans by customerId for accurate identification
+    const custLoans = loans.filter(l => {
+      // Prefer customerId matching
+      if (l.customerId && customer.id) {
+        return l.customerId === customer.id && (l.status || 'outstanding') !== 'paid';
+      }
+      // Fallback to name+phone for old data
+      const nameMatch = (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase();
+      const notPaid = (l.status || 'outstanding') !== 'paid';
+      if (l.customerPhone && customer.phone) {
+        return nameMatch && l.customerPhone === customer.phone && notPaid;
+      }
+      return nameMatch && notPaid;
+    });
     const total = custLoans.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
     setCustomerOutstandingLoans(custLoans);
     setOutstandingTotal(total);
@@ -450,7 +476,7 @@ const CustomerInformation = () => {
       const sorted = [...customerOutstandingLoans].sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
       const updatedLoansLocal = [...loans];
       const paymentDetails = []; // Track individual loan payments
-      
+
       for (const loan of sorted) {
         if (remaining <= 0) break;
         const amt = Math.max(0, parseFloat(loan.amount) || 0);
@@ -497,7 +523,7 @@ const CustomerInformation = () => {
         }
       }
       setLoans(updatedLoansLocal);
-      
+
       // Save payment with detailed history
       await addDoc(collection(db, 'customerLoanPayments'), {
         shopId: activeShopId,
@@ -510,7 +536,7 @@ const CustomerInformation = () => {
         balanceBeforePayment: outstandingTotal,
         balanceAfterPayment: outstandingTotal - Math.max(0, Math.min(parseFloat(paymentAmount) || 0, outstandingTotal))
       });
-      
+
       setShowPayLoanModal(false);
       setSuccess(getTranslatedAttr('loanPaymentRecorded'));
       setTimeout(() => setSuccess(''), 3000);
@@ -615,7 +641,9 @@ const CustomerInformation = () => {
       const now = new Date().toISOString();
       await addDoc(collection(db, 'customerLoans'), {
         shopId: activeShopId,
+        customerId: addLoanCreditCustomer.id, // Store customer ID
         customerName: addLoanCreditCustomer.name,
+        customerPhone: addLoanCreditCustomer.phone || '',
         amount: parseFloat(loanCreditAmount),
         type: loanCreditType,
         transactionId: loanCreditDescription || (loanCreditType === 'loan' ? 'Manual Loan' : 'Manual Credit'),
@@ -765,12 +793,12 @@ const CustomerInformation = () => {
           const loanAmount = parseFloat(customerInfo.loan) || 0;
           if (loanAmount !== 0) {
             const loanRef = doc(collection(db, 'customerLoans'));
-            // Negative in Excel = loan (customer owes), store as positive amount with type 'loan'
-            // Positive in Excel = credit (shop owes customer), store as positive amount with type 'credit'
             const isCredit = loanAmount > 0;
             batch.set(loanRef, {
               shopId: activeShopId,
+              customerId: newDocRef.id, // Link to customer document
               customerName: customerInfo.name,
+              customerPhone: customerInfo.phone || '',
               amount: Math.abs(loanAmount),
               type: isCredit ? 'credit' : 'loan',
               transactionId: 'Opening Balance',
@@ -812,6 +840,46 @@ const CustomerInformation = () => {
     }
   };
 
+  // Handle migration of existing loans to add phone numbers
+  const handleMigrateLoanPhone = async () => {
+    if (!activeShopId) {
+      setError('Shop ID is missing');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'This will update all existing loans to include customer phone numbers. ' +
+      'This is a one-time operation. Continue?'
+    );
+
+    if (!confirmed) return;
+
+    setMigrating(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const result = await migrateCustomerLoansAddPhone(activeShopId);
+
+      if (result.success) {
+        setSuccess(
+          `Migration complete! Updated ${result.updated} loans, ` +
+          `skipped ${result.skipped} loans (already had phone). ` +
+          `Please refresh the page.`
+        );
+        // Refresh loans data
+        fetchLoans();
+      } else {
+        setError(`Migration failed: ${result.error}`);
+      }
+    } catch (err) {
+      console.error('Migration error:', err);
+      setError(`Migration failed: ${err.message}`);
+    } finally {
+      setMigrating(false);
+    }
+  };
+
   return (
     <>
       <MainNavbar />
@@ -846,6 +914,19 @@ const CustomerInformation = () => {
               <i className="bi bi-trash me-2"></i><Translate textKey="deleteAll" fallback="Delete All" />
             </Button>
           )}
+          <Button
+            variant="outline-warning"
+            className="ms-2"
+            onClick={handleMigrateLoanPhone}
+            disabled={migrating}
+            title="Fix loan data for customers with same names"
+          >
+            {migrating ? (
+              <><Spinner size="sm" className="me-2" />Fixing...</>
+            ) : (
+              <><i className="bi bi-tools me-2"></i>Fix Loan Data</>
+            )}
+          </Button>
           <input
             type="file"
             ref={fileInputRef}
@@ -854,6 +935,13 @@ const CustomerInformation = () => {
             onChange={handleImportCSV}
           />
         </div>
+
+        {migrating && (
+          <Alert variant="info">
+            <Spinner size="sm" className="me-2" />
+            Migrating loan data... Please wait. Check browser console for details.
+          </Alert>
+        )}
 
         {error && <Alert variant="danger" dismissible onClose={() => setError('')}>{error}</Alert>}
         {success && <Alert variant="success" dismissible onClose={() => setSuccess('')}>{success}</Alert>}
@@ -914,7 +1002,19 @@ const CustomerInformation = () => {
                       <td>{customer.phone2 || '-'}</td>
                       <td>
                         {(() => {
-                          const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase());
+                          // Filter loans by customerId for accurate identification
+                          const custLoans = loans.filter(l => {
+                            // Prefer customerId matching
+                            if (l.customerId && customer.id) {
+                              return l.customerId === customer.id;
+                            }
+                            // Fallback to name+phone for old data
+                            const nameMatch = (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase();
+                            if (l.customerPhone && customer.phone) {
+                              return nameMatch && l.customerPhone === customer.phone;
+                            }
+                            return nameMatch;
+                          });
                           // Calculate total: loans are positive (customer owes), credits are negative (shop owes)
                           const total = custLoans.reduce((s, l) => {
                             const amount = parseFloat(l.amount) || 0;
@@ -937,7 +1037,17 @@ const CustomerInformation = () => {
                           size="sm"
                           className="me-2"
                           onClick={() => {
-                            const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase());
+                            // Filter loans by customerId for accurate identification
+                            const custLoans = loans.filter(l => {
+                              if (l.customerId && customer.id) {
+                                return l.customerId === customer.id;
+                              }
+                              const nameMatch = (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase();
+                              if (l.customerPhone && customer.phone) {
+                                return nameMatch && l.customerPhone === customer.phone;
+                              }
+                              return nameMatch;
+                            });
                             setSelectedCustomerLoans(custLoans);
                             setSelectedCustomerName(customer.name || '');
                             setShowLoansModal(true);
@@ -962,7 +1072,18 @@ const CustomerInformation = () => {
                           <i className="bi bi-plus-circle"></i> Loan/Credit
                         </Button>
                         {(() => {
-                          const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase() && (l.status || 'outstanding') !== 'paid');
+                          // Filter loans by customerId for accurate identification
+                          const custLoans = loans.filter(l => {
+                            if (l.customerId && customer.id) {
+                              return l.customerId === customer.id && (l.status || 'outstanding') !== 'paid';
+                            }
+                            const nameMatch = (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase();
+                            const notPaid = (l.status || 'outstanding') !== 'paid';
+                            if (l.customerPhone && customer.phone) {
+                              return nameMatch && l.customerPhone === customer.phone && notPaid;
+                            }
+                            return nameMatch && notPaid;
+                          });
                           const total = custLoans.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
                           return total > 0 ? (
                             <Button
@@ -1399,7 +1520,7 @@ const CustomerInformation = () => {
         </Modal.Body>
         <Modal.Footer>
           <div className="me-auto text-muted">
-            Total Payments: {paymentHistory.length} | 
+            Total Payments: {paymentHistory.length} |
             Total Amount: RS {paymentHistory.reduce((sum, p) => sum + (parseFloat(p.amountPaid) || 0), 0).toFixed(2)}
           </div>
           <Button variant="secondary" onClick={() => setShowPaymentHistoryModal(false)}>Close</Button>
@@ -1475,7 +1596,7 @@ const CustomerInformation = () => {
         </Modal.Body>
         <Modal.Footer>
           <div className="me-auto text-muted">
-            Total Payments: {allPaymentHistory.length} | 
+            Total Payments: {allPaymentHistory.length} |
             Total Amount: RS {allPaymentHistory.reduce((sum, p) => sum + (parseFloat(p.amountPaid) || 0), 0).toFixed(2)}
           </div>
           <Button variant="secondary" onClick={() => setShowAllPaymentHistoryModal(false)}>Close</Button>
@@ -1501,8 +1622,8 @@ const CustomerInformation = () => {
               <option value="credit">Credit (Shop Owes)</option>
             </Form.Select>
             <Form.Text className="text-muted">
-              {loanCreditType === 'loan' 
-                ? 'Loan: Amount customer owes to the shop (will show as positive)' 
+              {loanCreditType === 'loan'
+                ? 'Loan: Amount customer owes to the shop (will show as positive)'
                 : 'Credit: Amount shop owes to the customer (will show as negative)'}
             </Form.Text>
           </Form.Group>
@@ -1534,8 +1655,8 @@ const CustomerInformation = () => {
           <Button variant="secondary" onClick={() => setShowAddLoanCreditModal(false)}>
             Cancel
           </Button>
-          <Button 
-            variant={loanCreditType === 'loan' ? 'danger' : 'success'} 
+          <Button
+            variant={loanCreditType === 'loan' ? 'danger' : 'success'}
             onClick={handleAddLoanCredit}
             disabled={addingLoanCredit || !loanCreditAmount || parseFloat(loanCreditAmount) <= 0}
           >
