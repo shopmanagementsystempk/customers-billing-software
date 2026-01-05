@@ -56,7 +56,7 @@ const MainNavbar = () => {
   const [contactsOpenMobile, setContactsOpenMobile] = useState(isContactsPage);
 
   // Check if we're on a ledger page to auto-open the menu
-  const isLedgerPage = location.pathname === '/ledger-accounts' || location.pathname === '/ledger-entries' || location.pathname === '/add-ledger-entry' || location.pathname === '/daily-closing' || location.pathname === '/accounting-reports' || location.pathname.startsWith('/edit-ledger-entry');
+  const isLedgerPage = location.pathname === '/ledger-accounts' || location.pathname === '/ledger-entries' || location.pathname === '/add-ledger-entry' || location.pathname === '/daily-closing' || location.pathname === '/accounting-reports' || location.pathname === '/balance-sheet' || location.pathname.startsWith('/edit-ledger-entry');
   const [ledgerOpen, setLedgerOpen] = useState(isLedgerPage);
   const [ledgerOpenMobile, setLedgerOpenMobile] = useState(isLedgerPage);
 
@@ -394,7 +394,7 @@ const MainNavbar = () => {
     const isOpen = isMobile ? ledgerOpenMobile : ledgerOpen;
     const setIsOpen = isMobile ? setLedgerOpenMobile : setLedgerOpen;
     const iconStyle = googleIconPalette['account_balance'] || defaultGoogleIconStyle;
-    const isLedgerActive = isActive('/ledger-accounts') || isActive('/ledger-entries') || isActive('/add-ledger-entry') || isActive('/daily-closing') || isActive('/accounting-reports') || location.pathname.startsWith('/edit-ledger-entry');
+    const isLedgerActive = isActive('/ledger-accounts') || isActive('/ledger-entries') || isActive('/add-ledger-entry') || isActive('/daily-closing') || isActive('/accounting-reports') || isActive('/balance-sheet') || location.pathname.startsWith('/edit-ledger-entry');
 
     return (
       <>
@@ -414,6 +414,7 @@ const MainNavbar = () => {
             {renderSubNavItem('/ledger-accounts', <Translate textKey="ledgerAccounts" fallback="Accounts" />, closeSidebar)}
             {renderSubNavItem('/ledger-entries', <Translate textKey="ledgerEntries" fallback="Entries" />, closeSidebar)}
             {renderSubNavItem('/daily-closing', <Translate textKey="dailyClosing" fallback="Daily Closing" />, closeSidebar)}
+            {renderSubNavItem('/balance-sheet', <Translate textKey="balanceSheet" fallback="Balance Sheet" />, closeSidebar)}
             {renderSubNavItem('/accounting-reports', <Translate textKey="reports" fallback="Reports" />, closeSidebar)}
             {!isStaff && (
               renderSubNavItem('/add-ledger-entry', <Translate textKey="add" fallback="Add Entry" />, closeSidebar)
