@@ -868,14 +868,14 @@ const CustomerInformation = () => {
                       <td>
                         {(() => {
                           const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase());
-                          // Calculate total: loans are negative (customer owes), credits are positive (shop owes)
+                          // Calculate total: loans are positive (customer owes), credits are negative (shop owes)
                           const total = custLoans.reduce((s, l) => {
                             const amount = parseFloat(l.amount) || 0;
-                            // If type is 'credit', it's positive (shop owes customer)
-                            // If type is 'loan' or undefined, it's negative (customer owes shop)
-                            return s + (l.type === 'credit' ? amount : -amount);
+                            // If type is 'loan' or undefined, it's positive (customer owes shop)
+                            // If type is 'credit', it's negative (shop owes customer)
+                            return s + (l.type === 'credit' ? -amount : amount);
                           }, 0);
-                          return <span style={{ color: total < 0 ? '#dc3545' : total > 0 ? '#198754' : 'inherit' }}>RS {total.toFixed(2)}</span>;
+                          return <span style={{ color: total > 0 ? '#dc3545' : total < 0 ? '#198754' : 'inherit' }}>RS {total.toFixed(2)}</span>;
                         })()}
                       </td>
                       <td>
