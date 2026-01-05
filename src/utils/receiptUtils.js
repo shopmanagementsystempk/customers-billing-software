@@ -117,7 +117,36 @@ export const deleteReceipt = async (receiptId) => {
         }
       } catch (loanError) {
         console.error('Error deleting associated loan:', loanError);
-        // Don't throw - receipt is already deleted, just log the error
+      }
+
+      // Delete associated ledger entries (this also updates Daily Closing since it reads from ledgerEntries)
+      try {
+        const ledgerRef = collection(db, 'ledgerEntries');
+        
+        // Query by receiptId first (primary link)
+        let ledgerQuery = query(
+          ledgerRef,
+          where('shopId', '==', receipt.shopId),
+          where('receiptId', '==', receiptId)
+        );
+        let ledgerSnapshot = await getDocs(ledgerQuery);
+        
+        // If no match by receiptId, try by reference field (which stores transactionId)
+        if (ledgerSnapshot.empty && receipt.transactionId) {
+          ledgerQuery = query(
+            ledgerRef,
+            where('shopId', '==', receipt.shopId),
+            where('reference', '==', receipt.transactionId)
+          );
+          ledgerSnapshot = await getDocs(ledgerQuery);
+        }
+        
+        // Delete all matching ledger entries
+        for (const ledgerDoc of ledgerSnapshot.docs) {
+          await deleteDoc(doc(db, 'ledgerEntries', ledgerDoc.id));
+        }
+      } catch (ledgerError) {
+        console.error('Error deleting associated ledger entries:', ledgerError);
       }
     }
     
