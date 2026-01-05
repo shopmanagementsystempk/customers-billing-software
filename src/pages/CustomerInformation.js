@@ -38,6 +38,7 @@ const CustomerInformation = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [routeFilter, setRouteFilter] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState(null);
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
@@ -387,13 +388,18 @@ const CustomerInformation = () => {
     resetForm();
   };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.phone?.includes(searchTerm) ||
-    customer.phone2?.includes(searchTerm) ||
-    customer.route?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.accountType?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredCustomers = customers.filter(customer => {
+    const matchesSearch = 
+      customer.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.phone?.includes(searchTerm) ||
+      customer.phone2?.includes(searchTerm) ||
+      customer.route?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.accountType?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesRoute = !routeFilter || customer.route === routeFilter;
+    
+    return matchesSearch && matchesRoute;
+  });
 
   const viewPaymentHistory = async (customer) => {
     setSelectedCustomerForHistory(customer.name || '');
@@ -957,7 +963,7 @@ const CustomerInformation = () => {
         <Card>
           <Card.Body>
             <Row className="mb-3">
-              <Col md={6}>
+              <Col md={4}>
                 <InputGroup>
                   <InputGroup.Text>
                     <i className="bi bi-search"></i>
@@ -969,6 +975,17 @@ const CustomerInformation = () => {
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </InputGroup>
+              </Col>
+              <Col md={3}>
+                <Form.Select
+                  value={routeFilter}
+                  onChange={(e) => setRouteFilter(e.target.value)}
+                >
+                  <option value="">{getTranslatedAttr('allRoutes') || 'All Routes'}</option>
+                  {routes.map(route => (
+                    <option key={route.id} value={route.name}>{route.name}</option>
+                  ))}
+                </Form.Select>
               </Col>
             </Row>
 
