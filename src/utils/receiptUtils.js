@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { addDoc, collection, doc, getDoc, deleteDoc, updateDoc, runTransaction } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, deleteDoc, updateDoc, runTransaction, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { restoreStockQuantity } from './stockUtils';
 import { formatDisplayDate } from './dateUtils';
@@ -87,6 +87,38 @@ export const deleteReceipt = async (receiptId) => {
     // Restore items back to inventory
     if (receipt && receipt.items && receipt.items.length > 0) {
       await restoreStockQuantity(receipt.shopId, receipt.items);
+    }
+    
+    // Delete associated loan record from customerLoans
+    if (receipt && receipt.shopId) {
+      try {
+        const loansRef = collection(db, 'customerLoans');
+        // Query by receiptId (most accurate)
+        let loansQuery = query(
+          loansRef,
+          where('shopId', '==', receipt.shopId),
+          where('receiptId', '==', receiptId)
+        );
+        let loansSnapshot = await getDocs(loansQuery);
+        
+        // If no match by receiptId, try by transactionId
+        if (loansSnapshot.empty && receipt.transactionId) {
+          loansQuery = query(
+            loansRef,
+            where('shopId', '==', receipt.shopId),
+            where('transactionId', '==', receipt.transactionId)
+          );
+          loansSnapshot = await getDocs(loansQuery);
+        }
+        
+        // Delete all matching loan records
+        for (const loanDoc of loansSnapshot.docs) {
+          await deleteDoc(doc(db, 'customerLoans', loanDoc.id));
+        }
+      } catch (loanError) {
+        console.error('Error deleting associated loan:', loanError);
+        // Don't throw - receipt is already deleted, just log the error
+      }
     }
     
     return true;
