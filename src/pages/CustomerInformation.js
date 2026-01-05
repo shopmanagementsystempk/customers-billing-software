@@ -234,24 +234,25 @@ const CustomerInformation = () => {
         );
         const snapshot = await getDocs(q);
 
-        const newLoanAmount = parseFloat(formData.loan) || 0;
+        const newLoanAmountRaw = parseFloat(formData.loan) || 0;
 
         if (!snapshot.empty) {
           const loanDoc = snapshot.docs[0];
           await updateDoc(doc(db, 'customerLoans', loanDoc.id), {
-            amount: newLoanAmount,
+            amount: Math.abs(newLoanAmountRaw),
+            type: newLoanAmountRaw > 0 ? 'loan' : 'credit',
             customerName: formData.name, // sync name if changed
             customerPhone: formData.phone || '', // sync phone if changed
             customerId: editingCustomer.id // ensure ID is set
           });
-        } else if (newLoanAmount > 0) {
+        } else if (newLoanAmountRaw !== 0) {
           await addDoc(collection(db, 'customerLoans'), {
             shopId: activeShopId,
             customerId: editingCustomer.id, // Store customer ID
             customerName: formData.name,
             customerPhone: formData.phone || '',
-            amount: newLoanAmount,
-            type: 'loan',
+            amount: Math.abs(newLoanAmountRaw),
+            type: newLoanAmountRaw > 0 ? 'loan' : 'credit',
             transactionId: 'Opening Balance',
             status: 'outstanding',
             timestamp: new Date().toISOString()
@@ -262,14 +263,15 @@ const CustomerInformation = () => {
         const newCustomerRef = await addDoc(collection(db, 'customers'), customerData);
         const newCustomerId = newCustomerRef.id;
 
-        if (parseFloat(formData.loan) > 0) {
+        const initialLoanAmount = parseFloat(formData.loan) || 0;
+        if (initialLoanAmount !== 0) {
           await addDoc(collection(db, 'customerLoans'), {
             shopId: activeShopId,
             customerId: newCustomerId, // Store customer ID
             customerName: formData.name,
             customerPhone: formData.phone || '',
-            amount: parseFloat(formData.loan),
-            type: 'loan',
+            amount: Math.abs(initialLoanAmount),
+            type: initialLoanAmount > 0 ? 'loan' : 'credit',
             transactionId: 'Opening Balance',
             status: 'outstanding',
             timestamp: new Date().toISOString()
@@ -281,6 +283,7 @@ const CustomerInformation = () => {
       setShowModal(false);
       resetForm();
       fetchCustomers();
+      fetchLoans();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       console.error('Error saving customer:', err);
